@@ -1,0 +1,7 @@
+[package]
+name = "ghx_proc_gen"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ron = "0.8.1"
