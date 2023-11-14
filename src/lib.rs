@@ -1,3 +1,4 @@
+use rand::{rngs::ThreadRng, thread_rng, Rng};
 use std::collections::HashSet;
 
 /// Errors that can occur in Ghx_ProcGen
@@ -8,6 +9,7 @@ pub enum ProcGenError {
 }
 
 const DEFAULT_BLOCKS_RETRY_COUNT: u32 = 10;
+const MAX_NOISE_VALUE: f32 = 1E-6;
 
 /// Id of a possible connection type
 pub type SocketId = u32;
@@ -109,19 +111,20 @@ pub fn generate(
     height: u32,
     max_iteration: Option<u32>,
 ) -> Result<Nodes, ProcGenError> {
+    let mut rng = thread_rng();
     let mut all_possibilities = HashSet::new();
     for i in 0..models.len() {
         all_possibilities.insert(i);
     }
+    // TODO Might change the structure
     let nodes: Vec<HashSet<ModelIndex>> = std::iter::repeat(all_possibilities.clone())
         .take(width as usize * height as usize)
         .collect();
     // TODO max_iteration default value
-
     let max_iteration = max_iteration.unwrap_or(DEFAULT_BLOCKS_RETRY_COUNT);
     for i in 1..max_iteration {
         // TODO Split generation in multiple blocks
-        let success = generate_block(&nodes);
+        let success = generate_block(&nodes, &mut rng);
         if success {
             println!("Successfully generated a block");
             break;
@@ -135,9 +138,28 @@ pub fn generate(
     Err(ProcGenError::GenerationFailure())
 }
 
-fn generate_block(nodes: &Vec<HashSet<ModelIndex>>) -> bool {
-    // TODO Pick a node with minimal entropy
-    // TODO Observe the node: pick a model for the node
+fn pick_node_to_generate(nodes: &Vec<HashSet<ModelIndex>>, rng: &mut ThreadRng) -> Option<usize> {
+    // Pick a node according to the heuristic
+    // TODO Multiple heuristics ? (Entropy, Minimal remaining value)
+    let mut min = f32::MAX;
+    let mut index_of_min = None;
+    for (index, node) in nodes.iter().enumerate() {
+        // If the node is not generated yet (multiple possibilities)
+        if node.len() > 1 {
+            // Noise added to entropy so that when evaluating multiples candidates with the same entropy, we pick a random one, not in the evaluating order.
+            let noise = MAX_NOISE_VALUE * rng.gen::<f32>();
+            if (node.len() as f32) < min {
+                min = node.len() as f32 + noise;
+                index_of_min = Some(index);
+            }
+        }
+    }
+    index_of_min
+}
+
+fn generate_block(nodes: &Vec<HashSet<ModelIndex>>, rng: &mut ThreadRng) -> bool {
+    let node_index = pick_node_to_generate(nodes, rng);
+    // TODO Observe/collapse the node: pick a model for the node
     // TODO Propagate the constraints
     false
 }
