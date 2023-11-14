@@ -5,3 +5,4 @@ edition = "2021"
 
 [dependencies]
 ron = "0.8.1"
+thiserror = "1.0.50"
