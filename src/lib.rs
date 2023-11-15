@@ -1,3 +1,5 @@
+mod grid;
+
 use rand::{
     distributions::Distribution, distributions::WeightedIndex, rngs::ThreadRng, thread_rng, Rng,
 };
@@ -123,15 +125,12 @@ pub fn generate(
     let max_iteration = max_iteration.unwrap_or(DEFAULT_BLOCKS_RETRY_COUNT);
     for i in 1..max_iteration {
         // TODO Split generation in multiple blocks
-        let success = generate_nodes_block(&models, &generated_nodes, &mut rng);
+        let success = generate_nodes(&models, &generated_nodes, &mut rng);
         if success {
-            println!("Successfully generated a block");
+            println!("Successfully generated");
             break;
         } else {
-            println!(
-                "Failed to generate a block, retrying {}/{}",
-                i, max_iteration
-            );
+            println!("Failed to generate, retrying {}/{}", i, max_iteration);
         }
     }
     Err(ProcGenError::GenerationFailure())
@@ -160,7 +159,7 @@ fn select_node_to_generate<'a>(
     picked_node
 }
 
-fn generate_nodes_block(
+fn generate_nodes(
     models: &Vec<ExpandedNodeModel>,
     nodes: &Vec<Vec<ModelIndex>>,
     rng: &mut ThreadRng,
@@ -168,16 +167,19 @@ fn generate_nodes_block(
     // TODO Check this upper limit
     for i in 1..nodes.len() {
         let selected_node = select_node_to_generate(nodes, rng);
-        if let Some(node) = selected_node {
+        if let Some(selected_node) = selected_node {
             // We found a node not yet generated
             // Observe/collapse the node: select a model for the node
             // TODO May cache the current sum of weights at each node.
-            let weighted_distribution =
-                WeightedIndex::new(node.iter().map(|model_index| models[*model_index].weight))
-                    .unwrap();
-            let selected_model_index = node[weighted_distribution.sample(rng)];
+            let weighted_distribution = WeightedIndex::new(
+                selected_node
+                    .iter()
+                    .map(|model_index| models[*model_index].weight),
+            )
+            .unwrap();
+            let selected_model_index = selected_node[weighted_distribution.sample(rng)];
 
-            for model_index in node {
+            for model_index in selected_node {
                 // TODO Remove possibility
                 // TODO Enqueue removal for propagation
             }
