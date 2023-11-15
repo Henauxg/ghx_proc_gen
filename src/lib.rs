@@ -1,4 +1,6 @@
-use rand::{rngs::ThreadRng, thread_rng, Rng};
+use rand::{
+    distributions::Distribution, distributions::WeightedIndex, rngs::ThreadRng, thread_rng, Rng,
+};
 use std::collections::HashSet;
 
 /// Errors that can occur in Ghx_ProcGen
@@ -112,19 +114,16 @@ pub fn generate(
     max_iteration: Option<u32>,
 ) -> Result<Nodes, ProcGenError> {
     let mut rng = thread_rng();
-    let mut all_possibilities = HashSet::new();
-    for i in 0..models.len() {
-        all_possibilities.insert(i);
-    }
+    let all_models_indexes: Vec<ModelIndex> = (0..models.len()).collect();
     // TODO Might change the structure
-    let nodes: Vec<HashSet<ModelIndex>> = std::iter::repeat(all_possibilities.clone())
+    let generated_nodes: Vec<Vec<ModelIndex>> = std::iter::repeat(all_models_indexes.clone())
         .take(width as usize * height as usize)
         .collect();
     // TODO max_iteration default value
     let max_iteration = max_iteration.unwrap_or(DEFAULT_BLOCKS_RETRY_COUNT);
     for i in 1..max_iteration {
         // TODO Split generation in multiple blocks
-        let success = generate_block(&nodes, &mut rng);
+        let success = generate_nodes_block(&models, &generated_nodes, &mut rng);
         if success {
             println!("Successfully generated a block");
             break;
@@ -138,11 +137,14 @@ pub fn generate(
     Err(ProcGenError::GenerationFailure())
 }
 
-fn pick_node_to_generate(nodes: &Vec<HashSet<ModelIndex>>, rng: &mut ThreadRng) -> Option<usize> {
+fn select_node_to_generate<'a>(
+    nodes: &'a Vec<Vec<ModelIndex>>,
+    rng: &mut ThreadRng,
+) -> Option<&'a Vec<ModelIndex>> {
     // Pick a node according to the heuristic
     // TODO Multiple heuristics ? (Entropy, Minimal remaining value)
     let mut min = f32::MAX;
-    let mut index_of_min = None;
+    let mut picked_node = None;
     for (index, node) in nodes.iter().enumerate() {
         // If the node is not generated yet (multiple possibilities)
         if node.len() > 1 {
@@ -150,18 +152,41 @@ fn pick_node_to_generate(nodes: &Vec<HashSet<ModelIndex>>, rng: &mut ThreadRng) 
             let noise = MAX_NOISE_VALUE * rng.gen::<f32>();
             if (node.len() as f32) < min {
                 min = node.len() as f32 + noise;
-                index_of_min = Some(index);
+                // index_of_min = Some(index);
+                picked_node = Some(&nodes[index]);
             }
         }
     }
-    index_of_min
+    picked_node
 }
 
-fn generate_block(nodes: &Vec<HashSet<ModelIndex>>, rng: &mut ThreadRng) -> bool {
-    let node_index = pick_node_to_generate(nodes, rng);
-    // TODO Observe/collapse the node: pick a model for the node
-    // TODO Propagate the constraints
-    false
+fn generate_nodes_block(
+    models: &Vec<ExpandedNodeModel>,
+    nodes: &Vec<Vec<ModelIndex>>,
+    rng: &mut ThreadRng,
+) -> bool {
+    // TODO Check this upper limit
+    for i in 1..nodes.len() {
+        let selected_node = select_node_to_generate(nodes, rng);
+        if let Some(node) = selected_node {
+            // We found a node not yet generated
+            // Observe/collapse the node: select a model for the node
+            // TODO May cache the current sum of weights at each node.
+            let weighted_distribution =
+                WeightedIndex::new(node.iter().map(|model_index| models[*model_index].weight))
+                    .unwrap();
+            let selected_model_index = node[weighted_distribution.sample(rng)];
+
+            for model_index in node {
+                // TODO Remove possibility
+                // TODO Enqueue removal for propagation
+            }
+        } else {
+            // Block fully generated
+            return true;
+        }
+    }
+    true
 }
 
 #[cfg(test)]
