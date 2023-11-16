@@ -83,6 +83,7 @@ impl GeneratorBuilder<Set, Set> {
             max_retry_count: self.max_retry_count,
             node_selection_heuristic: self.node_selection_heuristic,
             rng: thread_rng(),
+            propagation_stack: Vec::new(),
         }
     }
 }
