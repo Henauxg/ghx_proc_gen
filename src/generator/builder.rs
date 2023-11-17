@@ -1,12 +1,13 @@
-use std::marker::PhantomData;
+use std::{marker::PhantomData, rc::Rc};
 
+use ndarray::Array;
 use rand::thread_rng;
 
 use crate::grid::Grid;
 
 use super::{
-    node::{expand_models, ExpandedNodeModel, NodeModel},
-    Generator, NodeSelectionHeuristic,
+    node::{expand_models, ExpandedNodeModel, ModelIndex, NodeModel},
+    Generator, ModelSelectionHeuristic, NodeSelectionHeuristic,
 };
 
 const DEFAULT_RETRY_COUNT: u32 = 10;
@@ -19,6 +20,7 @@ pub struct GeneratorBuilder<G, M> {
     grid: Option<Grid>,
     max_retry_count: u32,
     node_selection_heuristic: NodeSelectionHeuristic,
+    model_selection_heuristic: ModelSelectionHeuristic,
     typestate: PhantomData<(G, M)>,
 }
 
@@ -29,6 +31,7 @@ impl GeneratorBuilder<Unset, Unset> {
             grid: None,
             max_retry_count: DEFAULT_RETRY_COUNT,
             node_selection_heuristic: NodeSelectionHeuristic::MinimumRemainingValue,
+            model_selection_heuristic: ModelSelectionHeuristic::WeightedProbability,
             typestate: PhantomData,
         }
     }
@@ -41,6 +44,7 @@ impl<M> GeneratorBuilder<Unset, M> {
             models: self.models,
             max_retry_count: self.max_retry_count,
             node_selection_heuristic: self.node_selection_heuristic,
+            model_selection_heuristic: self.model_selection_heuristic,
             typestate: PhantomData,
         }
     }
@@ -58,6 +62,7 @@ impl<G> GeneratorBuilder<G, Unset> {
             models: Some(models),
             max_retry_count: self.max_retry_count,
             node_selection_heuristic: self.node_selection_heuristic,
+            model_selection_heuristic: self.model_selection_heuristic,
             typestate: PhantomData,
         }
     }
@@ -69,21 +74,44 @@ impl<G, M> GeneratorBuilder<G, M> {
         self
     }
 
-    pub fn with_heuristic(mut self, heuristic: NodeSelectionHeuristic) -> Self {
+    pub fn with_node_heuristic(mut self, heuristic: NodeSelectionHeuristic) -> Self {
         self.node_selection_heuristic = heuristic;
+        self
+    }
+
+    pub fn with_model_heuristic(mut self, heuristic: ModelSelectionHeuristic) -> Self {
+        self.model_selection_heuristic = heuristic;
         self
     }
 }
 
 impl GeneratorBuilder<Set, Set> {
     pub fn build(self) -> Generator {
+        let models = self.models.unwrap();
+        let models_count = models.len();
+        let grid = self.grid.unwrap();
+        let direction_count = grid.directions().len();
+        let nodes_count = grid.total_size();
+
+        // TODO Cache in expanded models
+        let all_models_indexes: Vec<ModelIndex> = (0..models.len()).collect();
+
         Generator {
-            models: self.models.unwrap(),
-            grid: self.grid.unwrap(),
+            grid,
             max_retry_count: self.max_retry_count,
             node_selection_heuristic: self.node_selection_heuristic,
+            model_selection_heuristic: self.model_selection_heuristic,
             rng: thread_rng(),
+            nodes: std::iter::repeat(all_models_indexes.clone())
+                .take(nodes_count)
+                .collect(),
             propagation_stack: Vec::new(),
+            models,
+            compatibility_rules: Rc::new(Array::from_elem(
+                (models_count, direction_count),
+                Vec::new(),
+            )),
+            supports_count: Array::zeros((nodes_count, models_count, direction_count)),
         }
     }
 }
