@@ -201,7 +201,7 @@ impl Generator {
                     if count > 1 {
                         // Noise added to entropy so that when evaluating multiples candidates with the same entropy, we pick a random one, not in the evaluating order.
                         let noise = MAX_NOISE_VALUE * self.rng.gen::<f32>();
-                        if (count as f32) < min {
+                        if (count as f32 + noise) < min {
                             min = count as f32 + noise;
                             picked_node = Some(index);
                         }
