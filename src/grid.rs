@@ -154,6 +154,7 @@ impl Grid {
         }
     }
 
+    #[inline]
     pub(crate) fn directions(&self) -> &'static [Direction] {
         self.direction_set.dirs
     }
