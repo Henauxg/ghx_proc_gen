@@ -1,9 +1,9 @@
+use bitvec::vec::BitVec;
+use ndarray::{Array, Ix2, Ix3};
+use rand::{distributions::Distribution, distributions::WeightedIndex, rngs::ThreadRng, Rng};
 use std::rc::Rc;
 
-use ndarray::{Array, Ix2, Ix3};
-
 use crate::{grid::Grid, ProcGenError};
-use rand::{distributions::Distribution, distributions::WeightedIndex, rngs::ThreadRng, Rng};
 
 use self::{
     builder::{GeneratorBuilder, Unset},
@@ -48,8 +48,9 @@ pub struct Generator {
     rng: ThreadRng,
 
     // Generation state
-    // TODO Might change the structure
-    nodes: Vec<Vec<ModelIndex>>,
+    nodes: BitVec<usize>,
+    /// Describes how many models are still possible for a given node
+    possible_models_count: Vec<usize>,
 
     // Constraint satisfaction algorithm data
     propagation_stack: Vec<PropagationEntry>,
@@ -80,23 +81,26 @@ impl Generator {
     }
 
     fn try_generate_all_nodes(&mut self) -> bool {
-        // TODO Check this upper limit
-        for i in 1..self.nodes.len() {
+        for _i in 1..self.grid.total_size() {
             let selected_node_index = self.select_node_to_generate();
             if let Some(node_index) = selected_node_index {
                 // We found a node not yet generated
                 // "Observe/collapse" the node: select a model for the node
                 let selected_model_index = self.select_model(node_index);
 
-                for model_index in &self.nodes[node_index] {
-                    if *model_index == selected_model_index {
+                // Iterate all the possible models because we don't have an easy way to iterate only the models possible at node_index. But we'll filter impossible models right away. TODO: iter_ones ?
+                for model_index in 0..self.models.len() {
+                    if model_index == selected_model_index {
+                        continue;
+                    }
+                    if !self.is_model_possible(node_index, model_index) {
                         continue;
                     }
 
                     // Enqueue removal for propagation
                     self.propagation_stack.push(PropagationEntry {
                         node_index,
-                        model_index: *model_index,
+                        model_index,
                     });
 
                     // None of these model is possible on this node now, set their support to 0
@@ -109,9 +113,15 @@ impl Generator {
                     }
                 }
                 // Remove eliminated possibilities, all at once
-                let possible_models = &mut self.nodes[node_index];
-                possible_models.clear();
-                possible_models.push(selected_model_index);
+                // TODO Remove alias ?
+                for mut bit in self.nodes[node_index * self.models.len()
+                    ..node_index * self.models.len() + self.models.len()]
+                    .iter_mut()
+                {
+                    *bit = false;
+                }
+                self.nodes
+                    .set(node_index * self.models.len() + selected_model_index, true);
 
                 if !self.propagate() {
                     return false;
@@ -174,25 +184,25 @@ impl Generator {
             *supports_count = 0;
         }
         // Update the state
-        // node_state.(index)
-        let node_state = &mut self.nodes[node_index];
-        todo!()
+        self.nodes
+            .set(node_index * self.models.len() + model_index, false);
+        self.possible_models_count[node_index] -= 1;
+        self.possible_models_count[node_index] == 0
     }
 
     fn select_node_to_generate<'a>(&mut self) -> Option<usize> {
         // Pick a node according to the heuristic
-        // TODO Add heuristics (Entropy, Scanline, ...)
         match self.node_selection_heuristic {
             NodeSelectionHeuristic::MinimumRemainingValue => {
                 let mut min = f32::MAX;
                 let mut picked_node = None;
-                for (index, node) in self.nodes.iter().enumerate() {
+                for (index, &count) in self.possible_models_count.iter().enumerate() {
                     // If the node is not generated yet (multiple possibilities)
-                    if node.len() > 1 {
+                    if count > 1 {
                         // Noise added to entropy so that when evaluating multiples candidates with the same entropy, we pick a random one, not in the evaluating order.
                         let noise = MAX_NOISE_VALUE * self.rng.gen::<f32>();
-                        if (node.len() as f32) < min {
-                            min = node.len() as f32 + noise;
+                        if (count as f32) < min {
+                            min = count as f32 + noise;
                             picked_node = Some(index);
                         }
                     }
@@ -203,19 +213,26 @@ impl Generator {
     }
 
     fn select_model(&mut self, node_index: usize) -> usize {
-        // selected_node: &[usize]
-        let possible_models = &self.nodes[node_index];
         match self.model_selection_heuristic {
             ModelSelectionHeuristic::WeightedProbability => {
+                let possible_models: Vec<ModelIndex> = (0..self.models.len())
+                    .filter(|&model_index| self.is_model_possible(node_index, model_index))
+                    .collect();
+
                 // TODO May cache the current sum of weights at each node.
                 let weighted_distribution = WeightedIndex::new(
                     possible_models
                         .iter()
-                        .map(|model_index| self.models[*model_index].weight),
+                        .map(|&model_index| self.models[model_index].weight),
                 )
                 .unwrap();
                 possible_models[weighted_distribution.sample(&mut self.rng)]
             }
         }
+    }
+
+    #[inline]
+    fn is_model_possible(&self, node_index: usize, model_index: usize) -> bool {
+        self.nodes[node_index * self.models.len() + model_index] == true
     }
 }

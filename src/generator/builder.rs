@@ -1,12 +1,13 @@
 use std::{marker::PhantomData, rc::Rc};
 
+use bitvec::prelude::*;
 use ndarray::Array;
 use rand::thread_rng;
 
 use crate::grid::Grid;
 
 use super::{
-    node::{expand_models, ExpandedNodeModel, ModelIndex, NodeModel},
+    node::{expand_models, ExpandedNodeModel, NodeModel},
     Generator, ModelSelectionHeuristic, NodeSelectionHeuristic,
 };
 
@@ -93,18 +94,14 @@ impl GeneratorBuilder<Set, Set> {
         let direction_count = grid.directions().len();
         let nodes_count = grid.total_size();
 
-        // TODO Cache in expanded models
-        let all_models_indexes: Vec<ModelIndex> = (0..models.len()).collect();
-
         Generator {
             grid,
             max_retry_count: self.max_retry_count,
             node_selection_heuristic: self.node_selection_heuristic,
             model_selection_heuristic: self.model_selection_heuristic,
             rng: thread_rng(),
-            nodes: std::iter::repeat(all_models_indexes.clone())
-                .take(nodes_count)
-                .collect(),
+            nodes: bitvec![1; nodes_count * models_count],
+            possible_models_count: vec![models_count, nodes_count],
             propagation_stack: Vec::new(),
             models,
             compatibility_rules: Rc::new(Array::from_elem(
