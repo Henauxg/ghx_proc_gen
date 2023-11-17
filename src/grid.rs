@@ -113,23 +113,23 @@ impl Grid {
         grid_position: &GridPosition,
         delta: &GridDelta,
     ) -> Option<GridPosition> {
-        let next_pos = grid_position.get_delta_position(&delta);
-        for (looping, mut pos, size) in vec![
-            (self.looping_x, next_pos.0, self.size_x),
-            (self.looping_y, next_pos.1, self.size_y),
-            (self.looping_z, next_pos.2, self.size_z),
+        let mut next_pos = grid_position.get_delta_position(&delta);
+        for (looping, pos, size) in vec![
+            (self.looping_x, &mut next_pos.0, self.size_x),
+            (self.looping_y, &mut next_pos.1, self.size_y),
+            (self.looping_z, &mut next_pos.2, self.size_z),
         ] {
             match looping {
                 true => {
-                    if pos < 0 {
-                        pos += size as i64
+                    if *pos < 0 {
+                        *pos += size as i64
                     }
-                    if pos >= size as i64 {
-                        pos -= size as i64
+                    if *pos >= size as i64 {
+                        *pos -= size as i64
                     }
                 }
                 false => {
-                    if pos < 0 || pos >= size as i64 {
+                    if *pos < 0 || *pos >= size as i64 {
                         return None;
                     }
                 }
