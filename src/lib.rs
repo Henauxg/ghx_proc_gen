@@ -19,17 +19,17 @@ mod tests {
     fn generate_test() {
         let models = vec![
             // corner
-            NodeModel::new(0, 0, 1, 1),
+            NodeModel::new_2d(vec![0], vec![0], vec![1], vec![1]),
             // cross
-            NodeModel::new(0, 0, 1, 1),
+            NodeModel::new_2d(vec![1], vec![1], vec![1], vec![1]),
             // empty
-            NodeModel::new(0, 0, 0, 0),
+            NodeModel::new_2d(vec![0], vec![0], vec![0], vec![0]),
             // line
-            NodeModel::new(0, 1, 0, 1),
+            NodeModel::new_2d(vec![0], vec![1], vec![0], vec![1]),
             // T intersection
-            NodeModel::new(0, 1, 1, 1),
+            NodeModel::new_2d(vec![0], vec![1], vec![1], vec![1]),
         ];
-        let grid = Grid::new_cartesian_2d_grid(8, 8, false);
+        let grid = Grid::new_cartesian_2d(8, 8, false);
         let mut generator = Generator::builder()
             .with_models(models)
             .with_grid(grid)

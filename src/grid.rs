@@ -71,11 +71,11 @@ impl Grid {
         }
     }
 
-    pub fn new_cartesian_2d_grid(size_x: u32, size_y: u32, looping: bool) -> Self {
+    pub fn new_cartesian_2d(size_x: u32, size_y: u32, looping: bool) -> Self {
         Self::new(size_x, size_y, 1, looping, looping, false, CARTESIAN_2D)
     }
 
-    pub fn new_cartesian_3d_grid(size_x: u32, size_y: u32, size_z: u32, looping: bool) -> Self {
+    pub fn new_cartesian_3d(size_x: u32, size_y: u32, size_z: u32, looping: bool) -> Self {
         Self::new(
             size_x,
             size_y,
