@@ -49,10 +49,11 @@ pub struct Generator {
 
     // Generation state
     nodes: BitVec<usize>,
-    /// Describes how many models are still possible for a given node
+    /// Stores how many models are still possible for a given node
     possible_models_count: Vec<usize>,
 
     // Constraint satisfaction algorithm data
+    /// Stack of bans to propagate
     propagation_stack: Vec<PropagationEntry>,
     /// The value at `support_count[node_index][model_index][direction]` represents the number of supports of a `model_index` at `node_index` from `direction`
     supports_count: Array<u32, Ix3>,
@@ -135,7 +136,7 @@ impl Generator {
     }
 
     fn propagate(&mut self) -> bool {
-        // Rc to allow for mutability in the interior loops
+        // Clone to allow for mutability in the interior loops
         let rules = Rc::clone(&self.compatibility_rules);
 
         while let Some(from) = self.propagation_stack.pop() {
