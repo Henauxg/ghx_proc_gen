@@ -30,10 +30,10 @@ struct PropagationEntry {
     model_index: ModelIndex,
 }
 
-pub struct Generator<Grid: GridTrait, Rules: RulesTrait> {
+pub struct Generator<G: GridTrait, R: RulesTrait> {
     // Configuration
-    grid: Grid,
-    rules: Rc<Rules>,
+    grid: G,
+    rules: Rc<R>,
     max_retry_count: u32,
     node_selection_heuristic: NodeSelectionHeuristic,
     model_selection_heuristic: ModelSelectionHeuristic,
