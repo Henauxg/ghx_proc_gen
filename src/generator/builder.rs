@@ -15,13 +15,13 @@ const DEFAULT_RETRY_COUNT: u32 = 10;
 pub enum Set {}
 pub enum Unset {}
 
-pub struct GeneratorBuilder<G, R, DS: DirectionSet> {
-    rules: Option<Rc<Rules<DS>>>,
-    grid: Option<Grid<DS>>,
+pub struct GeneratorBuilder<G, R, T: DirectionSet> {
+    rules: Option<Rc<Rules<T>>>,
+    grid: Option<Grid<T>>,
     max_retry_count: u32,
     node_selection_heuristic: NodeSelectionHeuristic,
     model_selection_heuristic: ModelSelectionHeuristic,
-    typestate: PhantomData<(G, R, DS)>,
+    typestate: PhantomData<(G, R)>,
 }
 
 impl GeneratorBuilder<Unset, Unset, Cartesian2D> {
@@ -104,8 +104,8 @@ impl<G, R, T: DirectionSet> GeneratorBuilder<G, R, T> {
     }
 }
 
-impl<RDS: DirectionSet> GeneratorBuilder<Set, Set, RDS> {
-    pub fn build(self) -> Generator<RDS> {
+impl<T: DirectionSet> GeneratorBuilder<Set, Set, T> {
+    pub fn build(self) -> Generator<T> {
         let rules = self.rules.unwrap();
         let models_count = rules.models_count();
         let grid = self.grid.unwrap();
