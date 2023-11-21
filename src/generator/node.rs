@@ -9,27 +9,27 @@ pub type SocketId = u32;
 /// Index of a model
 pub type ModelIndex = usize;
 
-pub(crate) fn expand_models(
+pub(crate) fn expand_models<T: DirectionSet>(
     models: Vec<NodeModel>,
-    direction_set: &DirectionSet,
+    direction_set: &T,
 ) -> Vec<ExpandedNodeModel> {
     let mut expanded_models = Vec::new();
     for (index, model) in models.iter().enumerate() {
         // Check for model/rules compatibility
-        if direction_set.dirs.len() > model.sockets.len() {
+        if direction_set.directions().len() > model.sockets.len() {
             warn!(
                 "Node model with index {} has less sockets directions {} than the Rules {}, this model will be ignored",
                 index,
                 model.sockets.len(),
-                direction_set.dirs.len()
+                direction_set.directions().len()
             );
             continue;
-        } else if direction_set.dirs.len() < model.sockets.len() {
+        } else if direction_set.directions().len() < model.sockets.len() {
             trace!(
                 "Node model with index {} has more sockets directions {} than the Rules {}, those additional sockets will be ignored",
                 index,
                 model.sockets.len(),
-                direction_set.dirs.len()
+                direction_set.directions().len()
             );
         }
         for rotation in &model.allowed_rotations {

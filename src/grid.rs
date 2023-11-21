@@ -1,4 +1,4 @@
-use self::direction::{Direction, DirectionSet, GridDelta, CARTESIAN_2D, CARTESIAN_3D};
+use self::direction::{Cartesian2D, Cartesian3D, Direction, DirectionSet, GridDelta};
 
 pub mod direction;
 
@@ -17,28 +17,43 @@ impl GridPosition {
     }
 }
 
-pub trait GridTrait {
-    fn total_size(&self) -> usize;
-    fn get_index(&self, grid_position: &GridPosition) -> usize;
-    fn get_position(&self, grid_index: usize) -> GridPosition;
-    fn get_next_pos(&self, grid_position: &GridPosition, delta: &GridDelta)
-        -> Option<GridPosition>;
-    fn get_next_index(&self, grid_position: &GridPosition, direction: Direction) -> Option<usize>;
-    fn directions(&self) -> &'static [Direction];
-}
-
-pub struct Grid {
+pub struct Grid<T: DirectionSet> {
     size_x: u32,
     size_y: u32,
     size_z: u32,
     looping_x: bool,
     looping_y: bool,
     looping_z: bool,
-    pub(crate) direction_set: DirectionSet,
+    pub(crate) direction_set: T,
     size_xy: u32,
 }
 
-impl Grid {
+impl Grid<Cartesian2D> {
+    pub fn new_cartesian_2d(size_x: u32, size_y: u32, looping: bool) -> Grid<Cartesian2D> {
+        Self::new(size_x, size_y, 1, looping, looping, false, Cartesian2D {})
+    }
+}
+
+impl Grid<Cartesian3D> {
+    pub fn new_cartesian_3d(
+        size_x: u32,
+        size_y: u32,
+        size_z: u32,
+        looping: bool,
+    ) -> Grid<Cartesian3D> {
+        Self::new(
+            size_x,
+            size_y,
+            size_z,
+            looping,
+            looping,
+            looping,
+            Cartesian3D {},
+        )
+    }
+}
+
+impl<T: DirectionSet> Grid<T> {
     pub fn new(
         size_x: u32,
         size_y: u32,
@@ -46,8 +61,8 @@ impl Grid {
         looping_x: bool,
         looping_y: bool,
         looping_z: bool,
-        direction_set: DirectionSet,
-    ) -> Self {
+        direction_set: T,
+    ) -> Grid<T> {
         Self {
             size_x,
             size_y,
@@ -58,22 +73,6 @@ impl Grid {
             direction_set,
             size_xy: size_x * size_y,
         }
-    }
-
-    pub fn new_cartesian_2d(size_x: u32, size_y: u32, looping: bool) -> Self {
-        Self::new(size_x, size_y, 1, looping, looping, false, CARTESIAN_2D)
-    }
-
-    pub fn new_cartesian_3d(size_x: u32, size_y: u32, size_z: u32, looping: bool) -> Self {
-        Self::new(
-            size_x,
-            size_y,
-            size_z,
-            looping,
-            looping,
-            looping,
-            CARTESIAN_3D,
-        )
     }
 
     pub fn total_size(&self) -> usize {
@@ -136,7 +135,7 @@ impl Grid {
         grid_position: &GridPosition,
         direction: Direction,
     ) -> Option<usize> {
-        let delta = &self.direction_set.deltas[direction as usize];
+        let delta = &self.direction_set.deltas()[direction as usize];
         match self.get_next_pos(grid_position, &delta) {
             Some(next_pos) => Some(self.get_index(&next_pos)),
             None => None,
@@ -145,122 +144,6 @@ impl Grid {
 
     #[inline]
     pub(crate) fn directions(&self) -> &'static [Direction] {
-        self.direction_set.dirs
-    }
-}
-
-pub struct GridCartesian2D {
-    pub(crate) grid: Grid,
-}
-
-impl GridCartesian2D {
-    pub fn new(size_x: u32, size_y: u32) -> Self {
-        Self {
-            grid: Grid::new(size_x, size_y, 1, false, false, false, CARTESIAN_2D),
-        }
-    }
-
-    pub fn new_looping(size_x: u32, size_y: u32, looping: (bool, bool)) -> Self {
-        Self {
-            grid: Grid::new(size_x, size_y, 1, looping.0, looping.1, false, CARTESIAN_2D),
-        }
-    }
-}
-
-impl GridTrait for GridCartesian2D {
-    #[inline]
-    fn total_size(&self) -> usize {
-        self.grid.total_size()
-    }
-
-    #[inline]
-    fn get_index(&self, grid_position: &GridPosition) -> usize {
-        self.grid.get_index(grid_position)
-    }
-
-    #[inline]
-    fn get_position(&self, grid_index: usize) -> GridPosition {
-        self.grid.get_position(grid_index)
-    }
-
-    #[inline]
-    fn get_next_pos(
-        &self,
-        grid_position: &GridPosition,
-        delta: &GridDelta,
-    ) -> Option<GridPosition> {
-        self.grid.get_next_pos(grid_position, delta)
-    }
-
-    #[inline]
-    fn get_next_index(&self, grid_position: &GridPosition, direction: Direction) -> Option<usize> {
-        self.grid.get_next_index(grid_position, direction)
-    }
-
-    #[inline]
-    fn directions(&self) -> &'static [Direction] {
-        self.grid.directions()
-    }
-}
-
-pub struct GridCartesian3D {
-    pub(crate) grid: Grid,
-}
-
-impl GridCartesian3D {
-    pub fn new(size: (u32, u32, u32)) -> Self {
-        Self {
-            grid: Grid::new(size.0, size.1, size.2, false, false, false, CARTESIAN_3D),
-        }
-    }
-
-    pub fn new_looping(size: (u32, u32, u32), looping: (bool, bool, bool)) -> Self {
-        Self {
-            grid: Grid::new(
-                size.0,
-                size.1,
-                size.2,
-                looping.0,
-                looping.1,
-                looping.2,
-                CARTESIAN_3D,
-            ),
-        }
-    }
-}
-
-impl GridTrait for GridCartesian3D {
-    #[inline]
-    fn total_size(&self) -> usize {
-        self.grid.total_size()
-    }
-
-    #[inline]
-    fn get_index(&self, grid_position: &GridPosition) -> usize {
-        self.grid.get_index(grid_position)
-    }
-
-    #[inline]
-    fn get_position(&self, grid_index: usize) -> GridPosition {
-        self.grid.get_position(grid_index)
-    }
-
-    #[inline]
-    fn get_next_pos(
-        &self,
-        grid_position: &GridPosition,
-        delta: &GridDelta,
-    ) -> Option<GridPosition> {
-        self.grid.get_next_pos(grid_position, delta)
-    }
-
-    #[inline]
-    fn get_next_index(&self, grid_position: &GridPosition, direction: Direction) -> Option<usize> {
-        self.grid.get_next_index(grid_position, direction)
-    }
-
-    #[inline]
-    fn directions(&self) -> &'static [Direction] {
-        self.grid.directions()
+        self.direction_set.directions()
     }
 }

@@ -1,30 +1,30 @@
 use std::{marker::PhantomData, rc::Rc};
 
-use crate::grid::{GridCartesian2D, GridCartesian3D, GridTrait};
+use crate::grid::{
+    direction::{Cartesian2D, Cartesian3D, DirectionSet},
+    Grid,
+};
 use bitvec::prelude::*;
 use ndarray::Array;
 use rand::thread_rng;
 
-use super::{
-    rules::{RulesCartesian2D, RulesCartesian3D, RulesTrait},
-    Generator, ModelSelectionHeuristic, NodeSelectionHeuristic,
-};
+use super::{rules::Rules, Generator, ModelSelectionHeuristic, NodeSelectionHeuristic};
 
 const DEFAULT_RETRY_COUNT: u32 = 10;
 
 pub enum Set {}
 pub enum Unset {}
 
-pub struct GeneratorBuilder<G, R> {
-    rules: Option<Rc<R>>,
-    grid: Option<G>,
+pub struct GeneratorBuilder<G, R, DS: DirectionSet> {
+    rules: Option<Rc<Rules<DS>>>,
+    grid: Option<Grid<DS>>,
     max_retry_count: u32,
     node_selection_heuristic: NodeSelectionHeuristic,
     model_selection_heuristic: ModelSelectionHeuristic,
-    typestate: PhantomData<(G, R)>,
+    typestate: PhantomData<(G, R, DS)>,
 }
 
-impl GeneratorBuilder<Unset, Unset> {
+impl GeneratorBuilder<Unset, Unset, Cartesian2D> {
     pub fn new() -> Self {
         Self {
             rules: None,
@@ -37,8 +37,8 @@ impl GeneratorBuilder<Unset, Unset> {
     }
 }
 
-impl GeneratorBuilder<Unset, Unset> {
-    pub fn with_rules<T: RulesTrait>(self, rules: T) -> GeneratorBuilder<Unset, T> {
+impl<T: DirectionSet> GeneratorBuilder<Unset, Unset, T> {
+    pub fn with_rules(self, rules: Rules<T>) -> GeneratorBuilder<Unset, Set, T> {
         GeneratorBuilder {
             grid: self.grid,
             rules: Some(Rc::new(rules)),
@@ -49,7 +49,7 @@ impl GeneratorBuilder<Unset, Unset> {
         }
     }
 
-    pub fn with_shared_rules<T: RulesTrait>(self, rules: Rc<T>) -> GeneratorBuilder<Unset, T> {
+    pub fn with_shared_rules(self, rules: Rc<Rules<T>>) -> GeneratorBuilder<Unset, Set, T> {
         GeneratorBuilder {
             grid: self.grid,
             rules: Some(rules),
@@ -61,11 +61,8 @@ impl GeneratorBuilder<Unset, Unset> {
     }
 }
 
-impl GeneratorBuilder<Unset, RulesCartesian2D> {
-    pub fn with_grid(
-        self,
-        grid: GridCartesian2D,
-    ) -> GeneratorBuilder<GridCartesian2D, RulesCartesian2D> {
+impl GeneratorBuilder<Unset, Set, Cartesian2D> {
+    pub fn with_grid(self, grid: Grid<Cartesian2D>) -> GeneratorBuilder<Set, Set, Cartesian2D> {
         GeneratorBuilder {
             grid: Some(grid),
             rules: self.rules,
@@ -77,11 +74,8 @@ impl GeneratorBuilder<Unset, RulesCartesian2D> {
     }
 }
 
-impl GeneratorBuilder<Unset, RulesCartesian3D> {
-    pub fn with_grid(
-        self,
-        grid: GridCartesian3D,
-    ) -> GeneratorBuilder<GridCartesian3D, RulesCartesian3D> {
+impl GeneratorBuilder<Unset, Set, Cartesian3D> {
+    pub fn with_grid(self, grid: Grid<Cartesian3D>) -> GeneratorBuilder<Set, Set, Cartesian3D> {
         GeneratorBuilder {
             grid: Some(grid),
             rules: self.rules,
@@ -93,7 +87,7 @@ impl GeneratorBuilder<Unset, RulesCartesian3D> {
     }
 }
 
-impl<G, R> GeneratorBuilder<G, R> {
+impl<G, R, T: DirectionSet> GeneratorBuilder<G, R, T> {
     pub fn with_max_retry_count(mut self, max_retry_count: u32) -> Self {
         self.max_retry_count = max_retry_count;
         self
@@ -110,8 +104,8 @@ impl<G, R> GeneratorBuilder<G, R> {
     }
 }
 
-impl<G: GridTrait, R: RulesTrait> GeneratorBuilder<G, R> {
-    pub fn build(self) -> Generator<G, R> {
+impl<RDS: DirectionSet> GeneratorBuilder<Set, Set, RDS> {
+    pub fn build(self) -> Generator<RDS> {
         let rules = self.rules.unwrap();
         let models_count = rules.models_count();
         let grid = self.grid.unwrap();

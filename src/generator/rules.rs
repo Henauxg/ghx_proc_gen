@@ -1,20 +1,15 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    marker::PhantomData,
+};
 
 use ndarray::{Array, Ix1, Ix2};
 
-use crate::grid::direction::{Direction, DirectionSet, CARTESIAN_2D, CARTESIAN_3D};
+use crate::grid::direction::{Cartesian2D, Cartesian3D, Direction, DirectionSet};
 
 use super::node::{expand_models, ExpandedNodeModel, ModelIndex, NodeModel};
 
-pub trait RulesTrait {
-    fn supported_models(&self, model_index: ModelIndex, direction: Direction) -> &Vec<ModelIndex>;
-    fn weight(&self, model_index: ModelIndex) -> f32;
-    fn directions(&self) -> &'static [Direction];
-    fn models_count(&self) -> usize;
-}
-
-pub struct Rules {
-    direction_set: DirectionSet,
+pub struct Rules<T: DirectionSet> {
     models: Vec<ExpandedNodeModel>,
     /// The vector `allowed_neighbours[model_index][direction]` holds all the allowed adjacent models (indexes) to `model_index` in `direction`.
     ///
@@ -22,18 +17,32 @@ pub struct Rules {
     ///
     /// Note: this cannot be a 3d array since the third dimension is different for each element.
     allowed_neighbours: Array<Vec<usize>, Ix2>,
+
+    typestate: PhantomData<T>,
 }
 
-impl Rules {
-    fn new(models: Vec<NodeModel>, direction_set: DirectionSet) -> Rules {
+impl Rules<Cartesian2D> {
+    pub fn new_cartesian_2d(models: Vec<NodeModel>) -> Rules<Cartesian2D> {
+        Self::new(models, Cartesian2D {})
+    }
+}
+
+impl Rules<Cartesian3D> {
+    pub fn new_cartesian_3d(models: Vec<NodeModel>) -> Rules<Cartesian3D> {
+        Self::new(models, Cartesian3D {})
+    }
+}
+
+impl<T: DirectionSet> Rules<T> {
+    fn new(models: Vec<NodeModel>, direction_set: T) -> Rules<T> {
         let expanded_models = expand_models(models, &direction_set);
 
         // Temporary collection to reverse the relation: sockets_to_models.get(socket)[direction] will hold all the models that can be set in 'direction' from 'socket'
         let mut sockets_to_models = HashMap::new();
         let empty_in_all_directions: Array<HashSet<ModelIndex>, Ix1> =
-            Array::from_elem(direction_set.dirs.len(), HashSet::new());
+            Array::from_elem(direction_set.directions().len(), HashSet::new());
         for model in &expanded_models {
-            for &direction in direction_set.dirs {
+            for &direction in direction_set.directions() {
                 let inverse_dir = direction.opposite() as usize;
                 for socket in &model.sockets()[direction as usize] {
                     let allowed_neighbours = sockets_to_models
@@ -45,11 +54,11 @@ impl Rules {
         }
 
         let mut allowed_neighbours = Array::from_elem(
-            (expanded_models.len(), direction_set.dirs.len()),
+            (expanded_models.len(), direction_set.directions().len()),
             Vec::new(),
         );
         for model in &expanded_models {
-            for &direction in direction_set.dirs {
+            for &direction in direction_set.directions() {
                 let mut unique_models = HashSet::new();
                 for socket in &model.sockets()[direction as usize] {
                     for allowed_model in
@@ -66,9 +75,10 @@ impl Rules {
         }
 
         Rules {
-            direction_set,
+            // direction_set,
             models: expanded_models,
             allowed_neighbours,
+            typestate: PhantomData,
         }
     }
 
@@ -87,85 +97,7 @@ impl Rules {
     }
 
     #[inline]
-    pub(crate) fn directions(&self) -> &'static [Direction] {
-        self.direction_set.dirs
-    }
-
-    #[inline]
     pub fn models_count(&self) -> usize {
         self.models.len()
-    }
-}
-
-/// ////
-/// ////
-//// Typed rules
-/// ////
-/// ////
-
-pub struct RulesCartesian2D {
-    pub(crate) rules: Rules,
-}
-
-impl RulesCartesian2D {
-    pub fn new(models: Vec<NodeModel>) -> Self {
-        Self {
-            rules: Rules::new(models, CARTESIAN_2D),
-        }
-    }
-}
-
-impl RulesTrait for RulesCartesian2D {
-    #[inline]
-    fn supported_models(&self, model_index: ModelIndex, direction: Direction) -> &Vec<ModelIndex> {
-        &self.rules.supported_models(model_index, direction)
-    }
-
-    #[inline]
-    fn weight(&self, model_index: ModelIndex) -> f32 {
-        self.rules.weight(model_index)
-    }
-
-    #[inline]
-    fn directions(&self) -> &'static [Direction] {
-        self.rules.directions()
-    }
-
-    #[inline]
-    fn models_count(&self) -> usize {
-        self.rules.models_count()
-    }
-}
-pub struct RulesCartesian3D {
-    pub(crate) rules: Rules,
-}
-
-impl RulesCartesian3D {
-    pub fn new(models: Vec<NodeModel>) -> Self {
-        Self {
-            rules: Rules::new(models, CARTESIAN_3D),
-        }
-    }
-}
-
-impl RulesTrait for RulesCartesian3D {
-    #[inline]
-    fn supported_models(&self, model_index: ModelIndex, direction: Direction) -> &Vec<ModelIndex> {
-        &self.rules.supported_models(model_index, direction)
-    }
-
-    #[inline]
-    fn weight(&self, model_index: ModelIndex) -> f32 {
-        self.rules.weight(model_index)
-    }
-
-    #[inline]
-    fn directions(&self) -> &'static [Direction] {
-        self.rules.directions()
-    }
-
-    #[inline]
-    fn models_count(&self) -> usize {
-        self.rules.models_count()
     }
 }

@@ -3,12 +3,18 @@ use ndarray::{Array, Ix3};
 use rand::{distributions::Distribution, distributions::WeightedIndex, rngs::ThreadRng, Rng};
 use std::rc::Rc;
 
-use crate::{grid::GridTrait, ProcGenError};
+use crate::{
+    grid::{
+        direction::{Cartesian2D, DirectionSet},
+        Grid,
+    },
+    ProcGenError,
+};
 
 use self::{
     builder::{GeneratorBuilder, Unset},
     node::{ModelIndex, Nodes},
-    rules::RulesTrait,
+    rules::Rules,
 };
 
 pub mod builder;
@@ -30,10 +36,10 @@ struct PropagationEntry {
     model_index: ModelIndex,
 }
 
-pub struct Generator<G: GridTrait, R: RulesTrait> {
+pub struct Generator<T: DirectionSet> {
     // Configuration
-    grid: G,
-    rules: Rc<R>,
+    grid: Grid<T>,
+    rules: Rc<Rules<T>>,
     max_retry_count: u32,
     node_selection_heuristic: NodeSelectionHeuristic,
     model_selection_heuristic: ModelSelectionHeuristic,
@@ -54,8 +60,8 @@ pub struct Generator<G: GridTrait, R: RulesTrait> {
     supports_count: Array<u32, Ix3>,
 }
 
-impl<G: GridTrait, R: RulesTrait> Generator<G, R> {
-    pub fn builder() -> GeneratorBuilder<Unset, Unset> {
+impl<DS: DirectionSet> Generator<DS> {
+    pub fn builder() -> GeneratorBuilder<Unset, Unset, Cartesian2D> {
         GeneratorBuilder::new()
     }
 

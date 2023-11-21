@@ -21,15 +21,32 @@ impl Direction {
     }
 }
 
-pub struct DirectionSet {
-    pub(crate) dirs: &'static [Direction],
-    pub(crate) deltas: &'static [GridDelta],
+pub trait DirectionSet {
+    fn directions(&self) -> &'static [Direction];
+    fn deltas(&self) -> &'static [GridDelta];
 }
 
-pub const CARTESIAN_2D: DirectionSet = DirectionSet {
-    dirs: CARTESIAN_2D_DIRECTIONS,
-    deltas: CARTESIAN_2D_DELTAS,
-};
+pub struct Cartesian2D {}
+impl DirectionSet for Cartesian2D {
+    fn directions(&self) -> &'static [Direction] {
+        CARTESIAN_2D_DIRECTIONS
+    }
+
+    fn deltas(&self) -> &'static [GridDelta] {
+        CARTESIAN_2D_DELTAS
+    }
+}
+
+pub struct Cartesian3D {}
+impl DirectionSet for Cartesian3D {
+    fn directions(&self) -> &'static [Direction] {
+        CARTESIAN_3D_DIRECTIONS
+    }
+
+    fn deltas(&self) -> &'static [GridDelta] {
+        CARTESIAN_3D_DELTAS
+    }
+}
 
 pub const CARTESIAN_2D_DIRECTIONS: &'static [Direction] = &[
     Direction::XForward,
@@ -76,11 +93,6 @@ pub const CARTESIAN_2D_DELTAS: &'static [GridDelta] = &[
         dz: 0,
     },
 ];
-
-pub const CARTESIAN_3D: DirectionSet = DirectionSet {
-    dirs: CARTESIAN_3D_DIRECTIONS,
-    deltas: CARTESIAN_3D_DELTAS,
-};
 
 pub const CARTESIAN_3D_DIRECTIONS: &'static [Direction] = &[
     Direction::XForward,
