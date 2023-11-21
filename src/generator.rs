@@ -3,12 +3,12 @@ use ndarray::{Array, Ix3};
 use rand::{distributions::Distribution, distributions::WeightedIndex, rngs::ThreadRng, Rng};
 use std::rc::Rc;
 
-use crate::{grid::Grid, ProcGenError};
+use crate::{grid::GridTrait, ProcGenError};
 
 use self::{
     builder::{GeneratorBuilder, Unset},
     node::{ModelIndex, Nodes},
-    rules::GenerationRules,
+    rules::RulesTrait,
 };
 
 pub mod builder;
@@ -30,10 +30,10 @@ struct PropagationEntry {
     model_index: ModelIndex,
 }
 
-pub struct Generator {
+pub struct Generator<Grid: GridTrait, Rules: RulesTrait> {
     // Configuration
     grid: Grid,
-    rules: Rc<GenerationRules>,
+    rules: Rc<Rules>,
     max_retry_count: u32,
     node_selection_heuristic: NodeSelectionHeuristic,
     model_selection_heuristic: ModelSelectionHeuristic,
@@ -54,7 +54,7 @@ pub struct Generator {
     supports_count: Array<u32, Ix3>,
 }
 
-impl Generator {
+impl<G: GridTrait, R: RulesTrait> Generator<G, R> {
     pub fn builder() -> GeneratorBuilder<Unset, Unset> {
         GeneratorBuilder::new()
     }
@@ -134,7 +134,7 @@ impl Generator {
 
     fn propagate(&mut self) -> bool {
         // Clone the Rc to allow for mutability in the interior loops
-        let rules: Rc<GenerationRules> = Rc::clone(&self.rules);
+        let rules = Rc::clone(&self.rules);
 
         while let Some(from) = self.propagation_stack.pop() {
             let from_position = self.grid.get_position(from.node_index);

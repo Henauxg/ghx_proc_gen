@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use tracing::{trace, warn};
 
-use crate::grid::DirectionSet;
+use crate::grid::direction::DirectionSet;
 
 /// Id of a possible connection type
 pub type SocketId = u32;

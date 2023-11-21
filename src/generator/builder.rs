@@ -1,13 +1,14 @@
 use std::{marker::PhantomData, rc::Rc};
 
+use crate::grid::{GridCartesian2D, GridCartesian3D, GridTrait};
 use bitvec::prelude::*;
 use ndarray::Array;
 use rand::thread_rng;
-use tracing::error;
 
-use crate::{grid::Grid, ProcGenError};
-
-use super::{rules::GenerationRules, Generator, ModelSelectionHeuristic, NodeSelectionHeuristic};
+use super::{
+    rules::{RulesCartesian2D, RulesCartesian3D, RulesTrait},
+    Generator, ModelSelectionHeuristic, NodeSelectionHeuristic,
+};
 
 const DEFAULT_RETRY_COUNT: u32 = 10;
 
@@ -15,8 +16,8 @@ pub enum Set {}
 pub enum Unset {}
 
 pub struct GeneratorBuilder<G, R> {
-    rules: Option<Rc<GenerationRules>>,
-    grid: Option<Grid>,
+    rules: Option<Rc<R>>,
+    grid: Option<G>,
     max_retry_count: u32,
     node_selection_heuristic: NodeSelectionHeuristic,
     model_selection_heuristic: ModelSelectionHeuristic,
@@ -36,8 +37,35 @@ impl GeneratorBuilder<Unset, Unset> {
     }
 }
 
-impl<R> GeneratorBuilder<Unset, R> {
-    pub fn with_grid(self, grid: Grid) -> GeneratorBuilder<Set, R> {
+impl GeneratorBuilder<Unset, Unset> {
+    pub fn with_rules<T: RulesTrait>(self, rules: T) -> GeneratorBuilder<Unset, T> {
+        GeneratorBuilder {
+            grid: self.grid,
+            rules: Some(Rc::new(rules)),
+            max_retry_count: self.max_retry_count,
+            node_selection_heuristic: self.node_selection_heuristic,
+            model_selection_heuristic: self.model_selection_heuristic,
+            typestate: PhantomData,
+        }
+    }
+
+    pub fn with_shared_rules<T: RulesTrait>(self, rules: Rc<T>) -> GeneratorBuilder<Unset, T> {
+        GeneratorBuilder {
+            grid: self.grid,
+            rules: Some(rules),
+            max_retry_count: self.max_retry_count,
+            node_selection_heuristic: self.node_selection_heuristic,
+            model_selection_heuristic: self.model_selection_heuristic,
+            typestate: PhantomData,
+        }
+    }
+}
+
+impl GeneratorBuilder<Unset, RulesCartesian2D> {
+    pub fn with_grid(
+        self,
+        grid: GridCartesian2D,
+    ) -> GeneratorBuilder<GridCartesian2D, RulesCartesian2D> {
         GeneratorBuilder {
             grid: Some(grid),
             rules: self.rules,
@@ -49,22 +77,14 @@ impl<R> GeneratorBuilder<Unset, R> {
     }
 }
 
-impl<G> GeneratorBuilder<G, Unset> {
-    pub fn with_rules(self, rules: GenerationRules) -> GeneratorBuilder<G, Set> {
+impl GeneratorBuilder<Unset, RulesCartesian3D> {
+    pub fn with_grid(
+        self,
+        grid: GridCartesian3D,
+    ) -> GeneratorBuilder<GridCartesian3D, RulesCartesian3D> {
         GeneratorBuilder {
-            grid: self.grid,
-            rules: Some(Rc::new(rules)),
-            max_retry_count: self.max_retry_count,
-            node_selection_heuristic: self.node_selection_heuristic,
-            model_selection_heuristic: self.model_selection_heuristic,
-            typestate: PhantomData,
-        }
-    }
-
-    pub fn with_shared_rules(self, rules: Rc<GenerationRules>) -> GeneratorBuilder<G, Set> {
-        GeneratorBuilder {
-            grid: self.grid,
-            rules: Some(rules),
+            grid: Some(grid),
+            rules: self.rules,
             max_retry_count: self.max_retry_count,
             node_selection_heuristic: self.node_selection_heuristic,
             model_selection_heuristic: self.model_selection_heuristic,
@@ -90,21 +110,15 @@ impl<G, R> GeneratorBuilder<G, R> {
     }
 }
 
-impl GeneratorBuilder<Set, Set> {
-    pub fn build(self) -> Result<Generator, ProcGenError> {
+impl<G: GridTrait, R: RulesTrait> GeneratorBuilder<G, R> {
+    pub fn build(self) -> Generator<G, R> {
         let rules = self.rules.unwrap();
         let models_count = rules.models_count();
         let grid = self.grid.unwrap();
         let direction_count = grid.directions().len();
         let nodes_count = grid.total_size();
 
-        // Check grid/rules compatibility
-        if grid.directions().len() != rules.directions().len() {
-            error!("Grid direction set does not match Generator rules direction set");
-            return Err(ProcGenError::ConfigurationFailure);
-        }
-
-        Ok(Generator {
+        Generator {
             grid,
             rules,
             max_retry_count: self.max_retry_count,
@@ -118,6 +132,6 @@ impl GeneratorBuilder<Set, Set> {
 
             propagation_stack: Vec::new(),
             supports_count: Array::zeros((nodes_count, models_count, direction_count)),
-        })
+        }
     }
 }
