@@ -8,6 +8,18 @@ pub enum Direction {
     ZForward = 4,
     ZBackward = 5,
 }
+impl Direction {
+    pub(crate) fn opposite(&self) -> Direction {
+        match self {
+            Direction::XForward => Direction::XBackward,
+            Direction::XBackward => Direction::XForward,
+            Direction::YForward => Direction::YBackward,
+            Direction::YBackward => Direction::YForward,
+            Direction::ZForward => Direction::ZBackward,
+            Direction::ZBackward => Direction::ZForward,
+        }
+    }
+}
 
 pub struct GridDelta {
     dx: i32,
@@ -161,7 +173,7 @@ impl Grid {
 }
 
 pub struct DirectionSet {
-    dirs: &'static [Direction],
+    pub(crate) dirs: &'static [Direction],
     deltas: &'static [GridDelta],
 }
 

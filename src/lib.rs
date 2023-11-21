@@ -11,8 +11,8 @@ pub enum ProcGenError {
 #[cfg(test)]
 mod tests {
     use crate::{
-        generator::{node::NodeModel, Generator},
-        grid::Grid,
+        generator::{node::NodeModel, rules::Rules, Generator},
+        grid::{Grid, CARTESIAN_2D},
     };
 
     #[test]
@@ -29,9 +29,10 @@ mod tests {
             // T intersection
             NodeModel::new_2d(vec![0], vec![1], vec![1], vec![1]),
         ];
+        let rules = Rules::new(models, CARTESIAN_2D);
         let grid = Grid::new_cartesian_2d(8, 8, false);
         let mut generator = Generator::builder()
-            .with_models(models)
+            .with_rules(rules)
             .with_grid(grid)
             .build();
         generator.generate().unwrap();

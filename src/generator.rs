@@ -1,5 +1,5 @@
 use bitvec::vec::BitVec;
-use ndarray::{Array, Ix2, Ix3};
+use ndarray::{Array, Ix3};
 use rand::{distributions::Distribution, distributions::WeightedIndex, rngs::ThreadRng, Rng};
 use std::rc::Rc;
 
@@ -7,11 +7,13 @@ use crate::{grid::Grid, ProcGenError};
 
 use self::{
     builder::{GeneratorBuilder, Unset},
-    node::{ExpandedNodeModel, ModelIndex, Nodes},
+    node::{ModelIndex, Nodes},
+    rules::Rules,
 };
 
 pub mod builder;
 pub mod node;
+pub mod rules;
 
 const MAX_NOISE_VALUE: f32 = 1E-6;
 
@@ -34,15 +36,7 @@ pub struct Generator {
     max_retry_count: u32,
     node_selection_heuristic: NodeSelectionHeuristic,
     model_selection_heuristic: ModelSelectionHeuristic,
-
-    // Models data
-    models: Vec<ExpandedNodeModel>,
-    /// The vector `compatibility_rules[model_index][direction]` holds all the allowed adjacent models (indexes) to `model_index` in `direction`.
-    ///
-    /// Calculated from expanded models.
-    ///
-    /// Note: this cannot be a 3d array since the third dimension is different for each element.
-    compatibility_rules: Rc<Array<Vec<usize>, Ix2>>,
+    rules: Rc<Rules>,
 
     // Internal
     rng: ThreadRng,
@@ -90,7 +84,7 @@ impl Generator {
                 let selected_model_index = self.select_model(node_index);
 
                 // Iterate all the possible models because we don't have an easy way to iterate only the models possible at node_index. But we'll filter impossible models right away. TODO: iter_ones ?
-                for model_index in 0..self.models.len() {
+                for model_index in 0..self.rules.models_count() {
                     if model_index == selected_model_index {
                         continue;
                     }
@@ -115,14 +109,16 @@ impl Generator {
                 }
                 // Remove eliminated possibilities, all at once
                 // TODO Remove alias ?
-                for mut bit in self.nodes[node_index * self.models.len()
-                    ..node_index * self.models.len() + self.models.len()]
+                for mut bit in self.nodes[node_index * self.rules.models_count()
+                    ..node_index * self.rules.models_count() + self.rules.models_count()]
                     .iter_mut()
                 {
                     *bit = false;
                 }
-                self.nodes
-                    .set(node_index * self.models.len() + selected_model_index, true);
+                self.nodes.set(
+                    node_index * self.rules.models_count() + selected_model_index,
+                    true,
+                );
 
                 if !self.propagate() {
                     return false;
@@ -136,8 +132,8 @@ impl Generator {
     }
 
     fn propagate(&mut self) -> bool {
-        // Clone to allow for mutability in the interior loops
-        let rules = Rc::clone(&self.compatibility_rules);
+        // Clone the Rc to allow for mutability in the interior loops
+        let rules: Rc<Rules> = Rc::clone(&self.rules);
 
         while let Some(from) = self.propagation_stack.pop() {
             let from_position = self.grid.get_position(from.node_index);
@@ -146,8 +142,7 @@ impl Generator {
                 // Get the adjacent node in this direction, it may not exist.
                 if let Some(to_node_index) = self.grid.get_next_index(&from_position, *dir) {
                     // Decrease the support count of all models previously supported by "from"
-                    let supported_models = &rules[(from.model_index, *dir as usize)];
-                    for &model in supported_models {
+                    for &model in rules.supported_models(from.model_index, *dir) {
                         let supports_count =
                             &mut self.supports_count[(to_node_index, model, *dir as usize)];
                         *supports_count -= 1;
@@ -186,7 +181,7 @@ impl Generator {
         }
         // Update the state
         self.nodes
-            .set(node_index * self.models.len() + model_index, false);
+            .set(node_index * self.rules.models_count() + model_index, false);
         self.possible_models_count[node_index] -= 1;
         self.possible_models_count[node_index] == 0
     }
@@ -216,7 +211,7 @@ impl Generator {
     fn select_model(&mut self, node_index: usize) -> usize {
         match self.model_selection_heuristic {
             ModelSelectionHeuristic::WeightedProbability => {
-                let possible_models: Vec<ModelIndex> = (0..self.models.len())
+                let possible_models: Vec<ModelIndex> = (0..self.rules.models_count())
                     .filter(|&model_index| self.is_model_possible(node_index, model_index))
                     .collect();
 
@@ -224,7 +219,7 @@ impl Generator {
                 let weighted_distribution = WeightedIndex::new(
                     possible_models
                         .iter()
-                        .map(|&model_index| self.models[model_index].weight),
+                        .map(|&model_index| self.rules.weight(model_index)),
                 )
                 .unwrap();
                 possible_models[weighted_distribution.sample(&mut self.rng)]
@@ -234,6 +229,6 @@ impl Generator {
 
     #[inline]
     fn is_model_possible(&self, node_index: usize, model_index: usize) -> bool {
-        self.nodes[node_index * self.models.len() + model_index] == true
+        self.nodes[node_index * self.rules.models_count() + model_index] == true
     }
 }

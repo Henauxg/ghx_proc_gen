@@ -5,7 +5,7 @@ pub type SocketId = u32;
 /// Index of a model
 pub type ModelIndex = usize;
 
-pub fn expand_models(models: Vec<NodeModel>) -> Vec<ExpandedNodeModel> {
+pub(crate) fn expand_models(models: Vec<NodeModel>) -> Vec<ExpandedNodeModel> {
     let mut expanded_models = Vec::new();
     for (index, model) in models.iter().enumerate() {
         for rotation in &model.allowed_rotations {
@@ -14,7 +14,7 @@ pub fn expand_models(models: Vec<NodeModel>) -> Vec<ExpandedNodeModel> {
             expanded_models.push(ExpandedNodeModel {
                 sockets,
                 weight: model.weight,
-                model_index: index,
+                index,
                 rotation: *rotation,
             });
         }
@@ -24,13 +24,13 @@ pub fn expand_models(models: Vec<NodeModel>) -> Vec<ExpandedNodeModel> {
 
 pub struct NodeModel {
     /// Allowed connections for this NodeModel in the output: up, left, bottom, right
-    // pub(crate) sockets: [Vec<SocketId>; 4],
-    pub(crate) sockets: Vec<Vec<SocketId>>,
+    sockets: Vec<Vec<SocketId>>,
     /// Weight factor between 0 and 1 influencing the density of this NodeModel in the generated output. Defaults to 1.0
-    pub(crate) weight: f32,
+    weight: f32,
     /// Allowed rotations of this NodeModel in the output, around the Z axis. Defaults to none.
+    ///
     /// Note: In 3d, top and bottom sockets of a model should be invariant to rotation around the Z axis.
-    pub(crate) allowed_rotations: HashSet<NodeRotation>,
+    allowed_rotations: HashSet<NodeRotation>,
 }
 
 impl NodeModel {
@@ -56,9 +56,9 @@ impl NodeModel {
         }
     }
 
-    pub fn new_2d<T: Into<Vec<SocketId>>>(up: T, left: T, bottom: T, right: T) -> Self {
+    pub fn new_2d<T: Into<Vec<SocketId>>>(up: T, left: T, down: T, right: T) -> Self {
         Self {
-            sockets: vec![up.into(), left.into(), bottom.into(), right.into()],
+            sockets: vec![up.into(), left.into(), down.into(), right.into()],
             allowed_rotations: HashSet::new(),
             weight: 1.0,
         }
@@ -97,21 +97,36 @@ impl Into<Vec<SocketId>> for Sockets {
     }
 }
 
-pub struct ExpandedNodeModel {
+pub(crate) struct ExpandedNodeModel {
     /// Allowed connections for this NodeModel in the output: up, left, bottom, right
     // sockets: [Vec<SocketId>; 4],
-    pub(crate) sockets: Vec<Vec<SocketId>>,
+    sockets: Vec<Vec<SocketId>>,
     /// Weight factor between 0 and 1 influencing the density of this NodeModel in the generated output. Defaults to 1
-    pub(crate) weight: f32,
+    weight: f32,
     /// Index of the NodeModel this was expanded from
-    model_index: ModelIndex,
+    index: ModelIndex,
     /// Rotation of the NodeModel in degrees
     rotation: NodeRotation,
 }
 
+impl ExpandedNodeModel {
+    pub fn sockets(&self) -> &Vec<Vec<SocketId>> {
+        &self.sockets
+    }
+    pub fn weight(&self) -> f32 {
+        self.weight
+    }
+    pub fn index(&self) -> ModelIndex {
+        self.index
+    }
+    pub fn rotation(&self) -> NodeRotation {
+        self.rotation
+    }
+}
+
 pub struct GeneratedNode {
     /// Index of the NodeModel this was expanded from
-    model_index: ModelIndex,
+    index: ModelIndex,
     /// Rotation of the NodeModel in degrees
     rotation: NodeRotation,
 }
