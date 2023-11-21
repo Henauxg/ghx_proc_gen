@@ -1,13 +1,37 @@
 use std::collections::HashSet;
 
+use tracing::{trace, warn};
+
+use crate::grid::DirectionSet;
+
 /// Id of a possible connection type
 pub type SocketId = u32;
 /// Index of a model
 pub type ModelIndex = usize;
 
-pub(crate) fn expand_models(models: Vec<NodeModel>) -> Vec<ExpandedNodeModel> {
+pub(crate) fn expand_models(
+    models: Vec<NodeModel>,
+    direction_set: &DirectionSet,
+) -> Vec<ExpandedNodeModel> {
     let mut expanded_models = Vec::new();
     for (index, model) in models.iter().enumerate() {
+        // Check for model/rules compatibility
+        if direction_set.dirs.len() > model.sockets.len() {
+            warn!(
+                "Node model with index {} has less sockets directions {} than the Rules {}, this model will be ignored",
+                index,
+                model.sockets.len(),
+                direction_set.dirs.len()
+            );
+            continue;
+        } else if direction_set.dirs.len() < model.sockets.len() {
+            trace!(
+                "Node model with index {} has more sockets directions {} than the Rules {}, those additional sockets will be ignored",
+                index,
+                model.sockets.len(),
+                direction_set.dirs.len()
+            );
+        }
         for rotation in &model.allowed_rotations {
             let mut sockets = model.sockets.clone();
             rotation.rotate_sockets(&mut sockets);

@@ -8,7 +8,7 @@ use crate::{grid::Grid, ProcGenError};
 use self::{
     builder::{GeneratorBuilder, Unset},
     node::{ModelIndex, Nodes},
-    rules::Rules,
+    rules::GenerationRules,
 };
 
 pub mod builder;
@@ -33,15 +33,16 @@ struct PropagationEntry {
 pub struct Generator {
     // Configuration
     grid: Grid,
+    rules: Rc<GenerationRules>,
     max_retry_count: u32,
     node_selection_heuristic: NodeSelectionHeuristic,
     model_selection_heuristic: ModelSelectionHeuristic,
-    rules: Rc<Rules>,
 
     // Internal
     rng: ThreadRng,
 
     // Generation state
+    /// `nodes[node_index * self.rules.models_count() + model_index]` is true (1) if model with index `model_index` is still allowed on node with index `node_index`
     nodes: BitVec<usize>,
     /// Stores how many models are still possible for a given node
     possible_models_count: Vec<usize>,
@@ -72,7 +73,7 @@ impl Generator {
                 );
             }
         }
-        Err(ProcGenError::GenerationFailure())
+        Err(ProcGenError::GenerationFailure)
     }
 
     fn try_generate_all_nodes(&mut self) -> bool {
@@ -133,7 +134,7 @@ impl Generator {
 
     fn propagate(&mut self) -> bool {
         // Clone the Rc to allow for mutability in the interior loops
-        let rules: Rc<Rules> = Rc::clone(&self.rules);
+        let rules: Rc<GenerationRules> = Rc::clone(&self.rules);
 
         while let Some(from) = self.propagation_stack.pop() {
             let from_position = self.grid.get_position(from.node_index);

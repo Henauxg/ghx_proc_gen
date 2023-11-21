@@ -5,13 +5,15 @@ pub mod grid;
 #[derive(thiserror::Error, Debug)]
 pub enum ProcGenError {
     #[error("Failed to generate")]
-    GenerationFailure(),
+    GenerationFailure,
+    #[error("Configuration failure")]
+    ConfigurationFailure,
 }
 
 #[cfg(test)]
 mod tests {
     use crate::{
-        generator::{node::NodeModel, rules::Rules, Generator},
+        generator::{node::NodeModel, rules::GenerationRules, Generator},
         grid::{Grid, CARTESIAN_2D},
     };
 
@@ -29,12 +31,13 @@ mod tests {
             // T intersection
             NodeModel::new_2d(vec![0], vec![1], vec![1], vec![1]),
         ];
-        let rules = Rules::new(models, CARTESIAN_2D);
+        let rules = GenerationRules::new(models, CARTESIAN_2D);
         let grid = Grid::new_cartesian_2d(8, 8, false);
         let mut generator = Generator::builder()
             .with_rules(rules)
             .with_grid(grid)
-            .build();
+            .build()
+            .unwrap();
         generator.generate().unwrap();
     }
 }
