@@ -75,7 +75,6 @@ impl<T: DirectionSet> Rules<T> {
         }
 
         Rules {
-            // direction_set,
             models: expanded_models,
             allowed_neighbours,
             typestate: PhantomData,

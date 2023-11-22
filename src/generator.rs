@@ -86,8 +86,7 @@ impl<DS: DirectionSet> Generator<DS> {
         for _i in 0..self.grid.total_size() {
             let selected_node_index = self.select_node_to_generate();
             if let Some(node_index) = selected_node_index {
-                // We found a node not yet generated
-                // "Observe/collapse" the node: select a model for the node
+                // We found a node not yet generated. "Observe/collapse" the node: select a model for the node
                 let selected_model_index = self.select_model(node_index);
 
                 // Iterate all the possible models because we don't have an easy way to iterate only the models possible at node_index. But we'll filter impossible models right away. TODO: iter_ones ?
