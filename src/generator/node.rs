@@ -51,7 +51,7 @@ pub struct NodeModel {
     sockets: Vec<Vec<SocketId>>,
     /// Weight factor between 0 and 1 influencing the density of this NodeModel in the generated output. Defaults to 1.0
     weight: f32,
-    /// Allowed rotations of this NodeModel in the output, around the Z axis. Defaults to none.
+    /// Allowed rotations of this NodeModel in the output, around the Z axis. Defaults to only Rot0.
     ///
     /// Note: In 3d, top and bottom sockets of a model should be invariant to rotation around the Z axis.
     allowed_rotations: HashSet<NodeRotation>,
@@ -83,7 +83,7 @@ impl NodeModel {
     pub fn new_2d<T: Into<Vec<SocketId>>>(up: T, left: T, down: T, right: T) -> Self {
         Self {
             sockets: vec![up.into(), left.into(), down.into(), right.into()],
-            allowed_rotations: HashSet::new(),
+            allowed_rotations: HashSet::from([NodeRotation::Rot0]),
             weight: 1.0,
         }
     }
@@ -97,7 +97,7 @@ impl NodeModel {
         self
     }
     pub fn with_no_rotations(mut self) -> Self {
-        self.allowed_rotations = HashSet::new();
+        self.allowed_rotations = HashSet::from([NodeRotation::Rot0]);
         self
     }
 
@@ -189,6 +189,7 @@ impl NodeRotation {
 }
 
 pub const ALL_NODE_ROTATIONS: &'static [NodeRotation] = &[
+    NodeRotation::Rot0,
     NodeRotation::Rot90,
     NodeRotation::Rot180,
     NodeRotation::Rot270,
