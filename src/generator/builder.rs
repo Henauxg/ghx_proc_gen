@@ -4,9 +4,6 @@ use crate::grid::{
     direction::{Cartesian2D, Cartesian3D, DirectionSet},
     Grid,
 };
-use bitvec::prelude::*;
-use ndarray::Array;
-use rand::thread_rng;
 
 use super::{rules::Rules, Generator, ModelSelectionHeuristic, NodeSelectionHeuristic};
 
@@ -107,40 +104,13 @@ impl<G, R, T: DirectionSet> GeneratorBuilder<G, R, T> {
 impl<T: DirectionSet> GeneratorBuilder<Set, Set, T> {
     pub fn build(self) -> Generator<T> {
         let rules = self.rules.unwrap();
-        let models_count = rules.models_count();
         let grid = self.grid.unwrap();
-        let direction_count = grid.directions().len();
-        let nodes_count = grid.total_size();
-
-        let mut supports_count = Array::zeros((nodes_count, models_count, direction_count));
-        for node in 0..grid.total_size() {
-            for model in 0..rules.models_count() {
-                for direction in grid.directions() {
-                    let grid_pos = grid.get_position(node);
-                    // During initialization, the support count for a model from a direction is simply his total count of allowed adjacent models in the opposite direction (or 0 for a non-looping border).
-                    supports_count[(node, model, *direction as usize)] =
-                        match grid.get_next_index(&grid_pos, *direction) {
-                            Some(_) => rules.supported_models(model, direction.opposite()).len(),
-                            None => 0,
-                        };
-                }
-            }
-        }
-
-        Generator {
-            grid,
+        Generator::new(
             rules,
-            max_retry_count: self.max_retry_count,
-            node_selection_heuristic: self.node_selection_heuristic,
-            model_selection_heuristic: self.model_selection_heuristic,
-
-            rng: thread_rng(),
-
-            nodes: bitvec![1; nodes_count * models_count],
-            possible_models_count: vec![models_count; nodes_count],
-
-            propagation_stack: Vec::new(),
-            supports_count,
-        }
+            grid,
+            self.max_retry_count,
+            self.node_selection_heuristic,
+            self.model_selection_heuristic,
+        )
     }
 }

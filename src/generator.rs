@@ -1,6 +1,8 @@
-use bitvec::vec::BitVec;
+use bitvec::{bitvec, vec::BitVec};
 use ndarray::{Array, Ix3};
-use rand::{distributions::Distribution, distributions::WeightedIndex, rngs::ThreadRng, Rng};
+use rand::{
+    distributions::Distribution, distributions::WeightedIndex, rngs::ThreadRng, thread_rng, Rng,
+};
 use std::rc::Rc;
 
 use crate::{
@@ -37,7 +39,7 @@ struct PropagationEntry {
 }
 
 pub struct Generator<T: DirectionSet> {
-    // Configuration
+    // Read-only configuration
     grid: Grid<T>,
     rules: Rc<Rules<T>>,
     max_retry_count: u32,
@@ -60,9 +62,64 @@ pub struct Generator<T: DirectionSet> {
     supports_count: Array<usize, Ix3>,
 }
 
-impl<DS: DirectionSet> Generator<DS> {
+impl<T: DirectionSet> Generator<T> {
     pub fn builder() -> GeneratorBuilder<Unset, Unset, Cartesian2D> {
         GeneratorBuilder::new()
+    }
+
+    fn new(
+        rules: Rc<Rules<T>>,
+        grid: Grid<T>,
+        max_retry_count: u32,
+        node_selection_heuristic: NodeSelectionHeuristic,
+        model_selection_heuristic: ModelSelectionHeuristic,
+    ) -> Self {
+        let models_count = rules.models_count();
+        let nodes_count = grid.total_size();
+        let direction_count = grid.directions().len();
+        let mut generator = Self {
+            grid,
+            rules,
+            max_retry_count,
+            node_selection_heuristic,
+            model_selection_heuristic,
+
+            rng: thread_rng(),
+
+            nodes: bitvec![1; nodes_count * models_count],
+            possible_models_count: vec![models_count; nodes_count],
+
+            propagation_stack: Vec::new(),
+            supports_count: Array::zeros((nodes_count, models_count, direction_count)),
+        };
+        generator.initialize_supports_count();
+        generator
+    }
+
+    fn reinitialize(&mut self) {
+        self.nodes = bitvec![1;self.rules.models_count()* self.grid.total_size() ];
+        self.possible_models_count = vec![self.rules.models_count(); self.grid.total_size()];
+        self.propagation_stack = Vec::new();
+        self.initialize_supports_count();
+    }
+
+    fn initialize_supports_count(&mut self) {
+        for node in 0..self.grid.total_size() {
+            for model in 0..self.rules.models_count() {
+                for direction in self.grid.directions() {
+                    let grid_pos = self.grid.get_position(node);
+                    // During initialization, the support count for a model from a direction is simply his total count of allowed adjacent models in the opposite direction (or 0 for a non-looping border).
+                    self.supports_count[(node, model, *direction as usize)] =
+                        match self.grid.get_next_index(&grid_pos, *direction) {
+                            Some(_) => self
+                                .rules
+                                .supported_models(model, direction.opposite())
+                                .len(),
+                            None => 0,
+                        };
+                }
+            }
+        }
     }
 
     pub fn generate(&mut self) -> Result<Nodes, ProcGenError> {
@@ -77,7 +134,7 @@ impl<DS: DirectionSet> Generator<DS> {
                     "Failed to generate, retrying {}/{}",
                     i, self.max_retry_count
                 );
-                // TODO Reset
+                self.reinitialize();
             }
         }
         Err(ProcGenError::GenerationFailure)
