@@ -130,15 +130,11 @@ impl<T: DirectionSet + Clone> Generator<T> {
     }
 
     pub fn generate(&mut self) -> Result<GridData<T, GeneratedNode>, ProcGenError> {
-        for i in 1..self.max_retry_count + 1 {
+        for _i in 1..self.max_retry_count + 1 {
             // TODO Split generation in multiple blocks
             match self.try_generate_all_nodes() {
                 Ok(_) => return Ok(self.get_grid_data()),
                 Err(ProcGenError::GenerationFailure) => {
-                    println!(
-                        "Failed to generate, retrying {}/{}",
-                        i, self.max_retry_count
-                    );
                     self.reinitialize();
                 }
             }
