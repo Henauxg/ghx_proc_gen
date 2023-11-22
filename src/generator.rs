@@ -77,6 +77,7 @@ impl<DS: DirectionSet> Generator<DS> {
                     "Failed to generate, retrying {}/{}",
                     i, self.max_retry_count
                 );
+                // TODO Reset
             }
         }
         Err(ProcGenError::GenerationFailure)
@@ -151,7 +152,7 @@ impl<DS: DirectionSet> Generator<DS> {
                     for &model in rules.supported_models(from.model_index, *dir) {
                         let supports_count =
                             &mut self.supports_count[(to_node_index, model, *dir as usize)];
-                        *supports_count -= 1;
+                        *supports_count = supports_count.saturating_sub(1);
                         // When we find a model which is now unsupported, we queue a ban
                         // We check for == because we only want to queue the event once.
                         if *supports_count == 0 {
@@ -167,12 +168,7 @@ impl<DS: DirectionSet> Generator<DS> {
         true
     }
 
-    fn ban_model_from_node(
-        &mut self,
-        // node_state: &mut Vec<ModelIndex>,
-        node_index: usize,
-        model_index: usize,
-    ) -> bool {
+    fn ban_model_from_node(&mut self, node_index: usize, model_index: usize) -> bool {
         // Enqueue removal for propagation
         self.propagation_stack.push(PropagationEntry {
             node_index,
@@ -188,8 +184,10 @@ impl<DS: DirectionSet> Generator<DS> {
         // Update the state
         self.nodes
             .set(node_index * self.rules.models_count() + model_index, false);
-        self.possible_models_count[node_index] -= 1;
-        self.possible_models_count[node_index] == 0
+
+        let count = &mut self.possible_models_count[node_index];
+        *count = count.saturating_sub(1);
+        *count == 0
     }
 
     fn select_node_to_generate<'a>(&mut self) -> Option<usize> {
