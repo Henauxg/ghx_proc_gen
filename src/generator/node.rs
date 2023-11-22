@@ -127,7 +127,7 @@ impl Into<Vec<SocketId>> for Sockets {
 }
 
 #[derive(Debug)]
-pub(crate) struct ExpandedNodeModel {
+pub struct ExpandedNodeModel {
     /// Allowed connections for this NodeModel in the output: up, left, bottom, right
     // sockets: [Vec<SocketId>; 4],
     sockets: Vec<Vec<SocketId>>,
@@ -152,13 +152,20 @@ impl ExpandedNodeModel {
     pub fn rotation(&self) -> NodeRotation {
         self.rotation
     }
+
+    pub(crate) fn to_generated(&self) -> GeneratedNode {
+        GeneratedNode {
+            index: self.original_index,
+            rotation: self.rotation,
+        }
+    }
 }
 
 pub struct GeneratedNode {
     /// Index of the NodeModel this was expanded from
-    index: ModelIndex,
-    /// Rotation of the NodeModel in degrees
-    rotation: NodeRotation,
+    pub index: ModelIndex,
+    /// Rotation of the NodeModel
+    pub rotation: NodeRotation,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
@@ -170,7 +177,7 @@ pub enum NodeRotation {
 }
 
 impl NodeRotation {
-    fn value(&self) -> u32 {
+    pub fn value(&self) -> u32 {
         match *self {
             NodeRotation::Rot0 => 0,
             NodeRotation::Rot90 => 90,
@@ -179,7 +186,7 @@ impl NodeRotation {
         }
     }
 
-    fn index(&self) -> usize {
+    pub fn index(&self) -> usize {
         match *self {
             NodeRotation::Rot0 => 0,
             NodeRotation::Rot90 => 1,
@@ -200,13 +207,3 @@ pub const ALL_NODE_ROTATIONS: &'static [NodeRotation] = &[
     NodeRotation::Rot180,
     NodeRotation::Rot270,
 ];
-
-#[derive(Clone)]
-pub struct Node {
-    /// Index of the NodeModel
-    model_index: ModelIndex,
-    /// Rotation of the NodeModel in degrees
-    rotation: NodeRotation,
-}
-
-pub struct Nodes {}
