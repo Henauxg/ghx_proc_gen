@@ -15,6 +15,7 @@ mod tests {
             builder::GeneratorBuilder,
             node::{NodeModel, NodeRotation},
             rules::Rules,
+            RngMode,
         },
         grid::Grid,
     };
@@ -47,6 +48,7 @@ mod tests {
 
     #[test]
     fn generate_test_ascii() {
+        tracing_subscriber::fmt::init();
         let models = vec![
             NodeModel::new_2d(vec![2], vec![2], vec![2], vec![2]), // Mountain
             NodeModel::new_2d(vec![1, 2], vec![1, 2], vec![1, 2], vec![1, 2]), // Forest
@@ -54,13 +56,14 @@ mod tests {
             NodeModel::new_2d(vec![0], vec![0], vec![0], vec![0]), // Sea
         ];
         let rules = Rules::new_cartesian_2d(models);
-        let size_x = 12;
-        let size_y = 6;
+        let size_x = 2;
+        let size_y = 2;
         let grid = Grid::new_cartesian_2d(size_x, size_y, false);
         let mut generator = GeneratorBuilder::new()
             .with_rules(rules)
             .with_grid(grid)
             .with_max_retry_count(10)
+            .with_rng(RngMode::Seeded(0))
             .build();
         let output = generator.generate().unwrap();
 

@@ -1,10 +1,9 @@
 use bitvec::{bitvec, vec::BitVec};
 use ndarray::{Array, Ix3};
 use rand::{
-    distributions::Distribution, distributions::WeightedIndex, rngs::ThreadRng, thread_rng, Rng,
+    distributions::Distribution, distributions::WeightedIndex, rngs::StdRng, Rng, SeedableRng,
 };
 use std::rc::Rc;
-use tracing::info;
 
 use crate::{
     grid::{
@@ -34,6 +33,11 @@ pub enum ModelSelectionHeuristic {
     WeightedProbability,
 }
 
+pub enum RngMode {
+    Seeded(u64),
+    Random,
+}
+
 struct PropagationEntry {
     node_index: usize,
     model_index: ModelIndex,
@@ -48,7 +52,7 @@ pub struct Generator<T: DirectionSet + Clone> {
     model_selection_heuristic: ModelSelectionHeuristic,
 
     // Internal
-    rng: ThreadRng,
+    rng: StdRng,
 
     // Generation state
     /// `nodes[node_index * self.rules.models_count() + model_index]` is true (1) if model with index `model_index` is still allowed on node with index `node_index`
@@ -74,6 +78,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
         max_retry_count: u32,
         node_selection_heuristic: NodeSelectionHeuristic,
         model_selection_heuristic: ModelSelectionHeuristic,
+        rng_mode: RngMode,
     ) -> Self {
         let models_count = rules.models_count();
         let nodes_count = grid.total_size();
@@ -85,7 +90,10 @@ impl<T: DirectionSet + Clone> Generator<T> {
             node_selection_heuristic,
             model_selection_heuristic,
 
-            rng: thread_rng(),
+            rng: match rng_mode {
+                RngMode::Seeded(seed) => StdRng::seed_from_u64(seed),
+                RngMode::Random => StdRng::from_entropy(),
+            },
 
             nodes: bitvec![1; nodes_count * models_count],
             possible_models_count: vec![models_count; nodes_count],
@@ -167,12 +175,12 @@ impl<T: DirectionSet + Clone> Generator<T> {
                 model_index,
             });
 
-            // None of these model is possible on this node now, set their support to 0
+            // None of these model are possible on this node now, set their support to 0
             // TODO May not be needed
             #[cfg(feature = "zeroise-support")]
             for dir in self.grid.directions() {
                 let supports_count =
-                    &mut self.supports_count[(node_index, *model_index, *dir as usize)];
+                    &mut self.supports_count[(node_index, model_index, *dir as usize)];
                 *supports_count = 0;
             }
         }
