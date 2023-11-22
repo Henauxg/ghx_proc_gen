@@ -8,14 +8,14 @@ use std::rc::Rc;
 use crate::{
     grid::{
         direction::{Cartesian2D, DirectionSet},
-        Grid,
+        Grid, GridData,
     },
     ProcGenError,
 };
 
 use self::{
     builder::{GeneratorBuilder, Unset},
-    node::ModelIndex,
+    node::{GeneratedNode, ModelIndex},
     rules::Rules,
 };
 
@@ -38,7 +38,7 @@ struct PropagationEntry {
     model_index: ModelIndex,
 }
 
-pub struct Generator<T: DirectionSet> {
+pub struct Generator<T: DirectionSet + Clone> {
     // Read-only configuration
     grid: Grid<T>,
     rules: Rc<Rules<T>>,
@@ -62,7 +62,7 @@ pub struct Generator<T: DirectionSet> {
     supports_count: Array<usize, Ix3>,
 }
 
-impl<T: DirectionSet> Generator<T> {
+impl<T: DirectionSet + Clone> Generator<T> {
     pub fn builder() -> GeneratorBuilder<Unset, Unset, Cartesian2D> {
         GeneratorBuilder::new()
     }
@@ -120,11 +120,11 @@ impl<T: DirectionSet> Generator<T> {
         }
     }
 
-    pub fn generate(&mut self) -> Result<(), ProcGenError> {
+    pub fn generate(&mut self) -> Result<GridData<T, GeneratedNode>, ProcGenError> {
         for i in 1..self.max_retry_count + 1 {
             // TODO Split generation in multiple blocks
             match self.try_generate_all_nodes() {
-                Ok(_) => return Ok(()),
+                Ok(_) => return Ok(self.get_grid_data()),
                 Err(ProcGenError::GenerationFailure) => {
                     println!(
                         "Failed to generate, retrying {}/{}",
@@ -292,5 +292,20 @@ impl<T: DirectionSet> Generator<T> {
     #[inline]
     fn is_model_possible(&self, node_index: usize, model_index: usize) -> bool {
         self.nodes[node_index * self.rules.models_count() + model_index] == true
+    }
+
+    /// Should only be called when the nodes are fully generated
+    fn get_grid_data(&self) -> GridData<T, GeneratedNode> {
+        let mut generated_nodes = Vec::with_capacity(self.nodes.len());
+        for node_index in 0..self.grid.total_size() {
+            let model_index = self.nodes[node_index * self.rules.models_count()
+                ..node_index * self.rules.models_count() + self.rules.models_count()]
+                .first_one()
+                .unwrap_or(0);
+            let expanded_model = self.rules.model(model_index);
+            generated_nodes.push(expanded_model.to_generated())
+        }
+
+        GridData::new(self.grid.clone(), generated_nodes)
     }
 }

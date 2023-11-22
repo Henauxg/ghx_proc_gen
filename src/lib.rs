@@ -42,6 +42,39 @@ mod tests {
             .with_grid(grid)
             .with_max_retry_count(10)
             .build();
-        generator.generate().unwrap();
+        let output = generator.generate().unwrap();
+    }
+
+    #[test]
+    fn generate_test_ascii() {
+        let models = vec![
+            NodeModel::new_2d(vec![2], vec![2], vec![2], vec![2]), // Mountain
+            NodeModel::new_2d(vec![1, 2], vec![1, 2], vec![1, 2], vec![1, 2]), // Forest
+            NodeModel::new_2d(vec![0, 1], vec![0, 1], vec![0, 1], vec![0, 1]), // Beach
+            NodeModel::new_2d(vec![0], vec![0], vec![0], vec![0]), // Sea
+        ];
+        let rules = Rules::new_cartesian_2d(models);
+        let size_x = 12;
+        let size_y = 6;
+        let grid = Grid::new_cartesian_2d(size_x, size_y, false);
+        let mut generator = GeneratorBuilder::new()
+            .with_rules(rules)
+            .with_grid(grid)
+            .with_max_retry_count(10)
+            .build();
+        let output = generator.generate().unwrap();
+
+        for y in (0..size_y).rev() {
+            for x in 0..size_x {
+                match output.get_2d(x, y).index {
+                    0 => print!("🗻"),
+                    1 => print!("🌲"),
+                    2 => print!("🟨"),
+                    3 => print!("🌊"),
+                    others => print!("{}", others),
+                }
+            }
+            println!();
+        }
     }
 }
