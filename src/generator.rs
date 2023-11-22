@@ -66,7 +66,7 @@ impl<DS: DirectionSet> Generator<DS> {
     }
 
     pub fn generate(&mut self) -> Result<Nodes, ProcGenError> {
-        for i in 1..self.max_retry_count {
+        for i in 1..self.max_retry_count + 1 {
             // TODO Split generation in multiple blocks
             let success = self.try_generate_all_nodes();
             if success {
