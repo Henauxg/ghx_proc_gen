@@ -27,6 +27,7 @@ const MAX_NOISE_VALUE: f32 = 1E-6;
 
 pub enum NodeSelectionHeuristic {
     MinimumRemainingValue,
+    Random,
 }
 
 pub enum ModelSelectionHeuristic {
@@ -259,13 +260,26 @@ impl<T: DirectionSet + Clone> Generator<T> {
                 for (index, &count) in self.possible_models_count.iter().enumerate() {
                     // If the node is not generated yet (multiple possibilities)
                     if count > 1 {
-                        // Noise added to entropy so that when evaluating multiples candidates with the same entropy, we pick a random one, not in the evaluating order.
+                        // Noise added to entropy so that when evaluating multiples candidates with the same value, we pick a random one, not in the evaluating order.
                         let noise = MAX_NOISE_VALUE * self.rng.gen::<f32>();
                         if (count as f32 + noise) < min {
                             min = count as f32 + noise;
                             picked_node = Some(index);
                         }
                     }
+                }
+                picked_node
+            }
+            NodeSelectionHeuristic::Random => {
+                let mut picked_node = None;
+                let mut candidates = Vec::new();
+                for (index, &count) in self.possible_models_count.iter().enumerate() {
+                    if count > 1 {
+                        candidates.push(index);
+                    }
+                }
+                if candidates.len() > 0 {
+                    picked_node = Some(candidates[self.rng.gen_range(0..candidates.len())]);
                 }
                 picked_node
             }
