@@ -88,8 +88,13 @@ impl NodeModel {
         }
     }
 
+    pub fn with_rotation(mut self, rotation: NodeRotation) -> Self {
+        self.allowed_rotations = HashSet::from([NodeRotation::Rot0, rotation]);
+        self
+    }
     pub fn with_rotations<T: Into<HashSet<NodeRotation>>>(mut self, rotations: T) -> Self {
         self.allowed_rotations = rotations.into();
+        self.allowed_rotations.insert(NodeRotation::Rot0);
         self
     }
     pub fn with_all_rotations(mut self) -> Self {
