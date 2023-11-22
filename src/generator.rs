@@ -15,7 +15,7 @@ use crate::{
 
 use self::{
     builder::{GeneratorBuilder, Unset},
-    node::{ModelIndex, Nodes},
+    node::ModelIndex,
     rules::Rules,
 };
 
@@ -107,14 +107,12 @@ impl<T: DirectionSet> Generator<T> {
         for node in 0..self.grid.total_size() {
             for model in 0..self.rules.models_count() {
                 for direction in self.grid.directions() {
+                    let opposite_dir = direction.opposite();
                     let grid_pos = self.grid.get_position(node);
                     // During initialization, the support count for a model from a direction is simply his total count of allowed adjacent models in the opposite direction (or 0 for a non-looping border).
                     self.supports_count[(node, model, *direction as usize)] =
-                        match self.grid.get_next_index(&grid_pos, *direction) {
-                            Some(_) => self
-                                .rules
-                                .supported_models(model, direction.opposite())
-                                .len(),
+                        match self.grid.get_next_index(&grid_pos, opposite_dir) {
+                            Some(_) => self.rules.supported_models(model, opposite_dir).len(),
                             None => 0,
                         };
                 }
@@ -141,53 +139,55 @@ impl<T: DirectionSet> Generator<T> {
 
     fn try_generate_all_nodes(&mut self) -> Result<(), ProcGenError> {
         for _i in 0..self.grid.total_size() {
-            if let Some(node_index) = self.select_node_to_generate() {
-                // We found a node not yet generated. "Observe/collapse" the node: select a model for the node
-                let selected_model_index = self.select_model(node_index);
-
-                // Iterate all the possible models because we don't have an easy way to iterate only the models possible at node_index. But we'll filter impossible models right away. TODO: iter_ones ?
-                for model_index in 0..self.rules.models_count() {
-                    if model_index == selected_model_index {
-                        continue;
-                    }
-                    if !self.is_model_possible(node_index, model_index) {
-                        continue;
-                    }
-
-                    // Enqueue removal for propagation
-                    self.propagation_stack.push(PropagationEntry {
-                        node_index,
-                        model_index,
-                    });
-
-                    // None of these model is possible on this node now, set their support to 0
-                    // TODO May not be needed
-                    #[cfg(feature = "zeroise-support")]
-                    for dir in self.grid.directions() {
-                        let supports_count =
-                            &mut self.supports_count[(node_index, *model_index, *dir as usize)];
-                        *supports_count = 0;
-                    }
-                }
-                // Remove eliminated possibilities, all at once
-                // TODO Remove alias ?
-                for mut bit in self.nodes[node_index * self.rules.models_count()
-                    ..node_index * self.rules.models_count() + self.rules.models_count()]
-                    .iter_mut()
-                {
-                    *bit = false;
-                }
-                self.nodes.set(
-                    node_index * self.rules.models_count() + selected_model_index,
-                    true,
-                );
-                self.propagate()?;
-            } else {
-                // Block fully generated
-                return Ok(());
-            }
+            self.generate_one_node()?;
         }
         Ok(())
+    }
+
+    pub fn generate_one_node(&mut self) -> Result<(), ProcGenError> {
+        let node_index = self
+            .select_node_to_generate()
+            .ok_or(ProcGenError::GenerationFailure)?;
+        // We found a node not yet generated. "Observe/collapse" the node: select a model for the node
+        let selected_model_index = self.select_model(node_index);
+
+        // Iterate all the possible models because we don't have an easy way to iterate only the models possible at node_index. But we'll filter impossible models right away. TODO: iter_ones ?
+        for model_index in 0..self.rules.models_count() {
+            if model_index == selected_model_index {
+                continue;
+            }
+            if !self.is_model_possible(node_index, model_index) {
+                continue;
+            }
+
+            // Enqueue removal for propagation
+            self.propagation_stack.push(PropagationEntry {
+                node_index,
+                model_index,
+            });
+
+            // None of these model is possible on this node now, set their support to 0
+            // TODO May not be needed
+            #[cfg(feature = "zeroise-support")]
+            for dir in self.grid.directions() {
+                let supports_count =
+                    &mut self.supports_count[(node_index, *model_index, *dir as usize)];
+                *supports_count = 0;
+            }
+        }
+        // Remove eliminated possibilities, all at once
+        // TODO Remove alias ?
+        for mut bit in self.nodes[node_index * self.rules.models_count()
+            ..node_index * self.rules.models_count() + self.rules.models_count()]
+            .iter_mut()
+        {
+            *bit = false;
+        }
+        self.nodes.set(
+            node_index * self.rules.models_count() + selected_model_index,
+            true,
+        );
+        self.propagate()
     }
 
     fn propagate(&mut self) -> Result<(), ProcGenError> {
@@ -204,11 +204,13 @@ impl<T: DirectionSet> Generator<T> {
                     for &model in rules.supported_models(from.model_index, *dir) {
                         let supports_count =
                             &mut self.supports_count[(to_node_index, model, *dir as usize)];
-                        *supports_count = supports_count.saturating_sub(1);
-                        // When we find a model which is now unsupported, we queue a ban
-                        // We check for == because we only want to queue the event once.
-                        if *supports_count == 0 {
-                            self.ban_model_from_node(to_node_index, model)?;
+                        if *supports_count > 1 {
+                            *supports_count -= 1;
+                            // When we find a model which is now unsupported, we queue a ban
+                            // We check for == because we only want to queue the event once.
+                            if *supports_count == 0 {
+                                self.ban_model_from_node(to_node_index, model)?;
+                            }
                         }
                     }
                 }
