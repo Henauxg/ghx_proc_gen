@@ -4,6 +4,7 @@ use rand::{
     distributions::Distribution, distributions::WeightedIndex, rngs::ThreadRng, thread_rng, Rng,
 };
 use std::rc::Rc;
+use tracing::info;
 
 use crate::{
     grid::{
@@ -175,7 +176,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
                 *supports_count = 0;
             }
         }
-        // Remove eliminated possibilities, all at once
+        // Remove eliminated possibilities (after enqueuing the propagation entries)
         // TODO Remove alias ?
         for mut bit in self.nodes[node_index * self.rules.models_count()
             ..node_index * self.rules.models_count() + self.rules.models_count()]
@@ -187,6 +188,8 @@ impl<T: DirectionSet + Clone> Generator<T> {
             node_index * self.rules.models_count() + selected_model_index,
             true,
         );
+        self.possible_models_count[node_index] = 1;
+
         self.propagate()
     }
 
