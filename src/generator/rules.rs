@@ -99,4 +99,9 @@ impl<T: DirectionSet> Rules<T> {
     pub fn models_count(&self) -> usize {
         self.models.len()
     }
+
+    #[inline]
+    pub(crate) fn model(&self, index: usize) -> &ExpandedNodeModel {
+        &self.models[index]
+    }
 }
