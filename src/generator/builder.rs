@@ -112,6 +112,21 @@ impl<T: DirectionSet> GeneratorBuilder<Set, Set, T> {
         let direction_count = grid.directions().len();
         let nodes_count = grid.total_size();
 
+        let mut supports_count = Array::zeros((nodes_count, models_count, direction_count));
+        for node in 0..grid.total_size() {
+            for model in 0..rules.models_count() {
+                for direction in grid.directions() {
+                    let grid_pos = grid.get_position(node);
+                    // During initialization, the support count for a model from a direction is simply his total count of allowed adjacent models in the opposite direction (or 0 for a non-looping border).
+                    supports_count[(node, model, *direction as usize)] =
+                        match grid.get_next_index(&grid_pos, *direction) {
+                            Some(_) => rules.supported_models(model, direction.opposite()).len(),
+                            None => 0,
+                        };
+                }
+            }
+        }
+
         Generator {
             grid,
             rules,
@@ -125,7 +140,7 @@ impl<T: DirectionSet> GeneratorBuilder<Set, Set, T> {
             possible_models_count: vec![models_count, nodes_count],
 
             propagation_stack: Vec::new(),
-            supports_count: Array::zeros((nodes_count, models_count, direction_count)),
+            supports_count,
         }
     }
 }
