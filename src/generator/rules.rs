@@ -45,10 +45,10 @@ impl<T: DirectionSet> Rules<T> {
             for &direction in direction_set.directions() {
                 let inverse_dir = direction.opposite() as usize;
                 for socket in &model.sockets()[direction as usize] {
-                    let allowed_neighbours = sockets_to_models
+                    let compatible_models = sockets_to_models
                         .entry(socket)
                         .or_insert(empty_in_all_directions.clone());
-                    allowed_neighbours[inverse_dir].insert(model_index);
+                    compatible_models[inverse_dir].insert(model_index);
                 }
             }
         }
