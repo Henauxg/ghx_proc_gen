@@ -137,7 +137,7 @@ impl<T: DirectionSet> GeneratorBuilder<Set, Set, T> {
             rng: thread_rng(),
 
             nodes: bitvec![1; nodes_count * models_count],
-            possible_models_count: vec![models_count, nodes_count],
+            possible_models_count: vec![models_count; nodes_count],
 
             propagation_stack: Vec::new(),
             supports_count,
