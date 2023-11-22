@@ -41,14 +41,14 @@ impl<T: DirectionSet> Rules<T> {
         let mut sockets_to_models = HashMap::new();
         let empty_in_all_directions: Array<HashSet<ModelIndex>, Ix1> =
             Array::from_elem(direction_set.directions().len(), HashSet::new());
-        for model in &expanded_models {
+        for (model_index, model) in expanded_models.iter().enumerate() {
             for &direction in direction_set.directions() {
                 let inverse_dir = direction.opposite() as usize;
                 for socket in &model.sockets()[direction as usize] {
                     let allowed_neighbours = sockets_to_models
                         .entry(socket)
                         .or_insert(empty_in_all_directions.clone());
-                    allowed_neighbours[inverse_dir].insert(model.index());
+                    allowed_neighbours[inverse_dir].insert(model_index);
                 }
             }
         }
@@ -57,7 +57,7 @@ impl<T: DirectionSet> Rules<T> {
             (expanded_models.len(), direction_set.directions().len()),
             Vec::new(),
         );
-        for model in &expanded_models {
+        for (model_index, model) in expanded_models.iter().enumerate() {
             for &direction in direction_set.directions() {
                 let mut unique_models = HashSet::new();
                 for socket in &model.sockets()[direction as usize] {
@@ -65,7 +65,7 @@ impl<T: DirectionSet> Rules<T> {
                         &sockets_to_models.get(&socket).unwrap()[direction as usize]
                     {
                         match unique_models.insert(*allowed_model) {
-                            true => allowed_neighbours[(model.index(), direction as usize)]
+                            true => allowed_neighbours[(model_index, direction as usize)]
                                 .push(*allowed_model),
                             false => (),
                         }

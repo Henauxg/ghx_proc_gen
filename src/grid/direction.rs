@@ -1,5 +1,5 @@
 // TODO See if std::ops::index can be used here
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Direction {
     XForward = 0,
     XBackward = 1,

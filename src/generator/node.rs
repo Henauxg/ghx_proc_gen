@@ -38,7 +38,7 @@ pub(crate) fn expand_models<T: DirectionSet>(
             expanded_models.push(ExpandedNodeModel {
                 sockets,
                 weight: model.weight,
-                index,
+                original_index: index,
                 rotation: *rotation,
             });
         }
@@ -121,6 +121,7 @@ impl Into<Vec<SocketId>> for Sockets {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct ExpandedNodeModel {
     /// Allowed connections for this NodeModel in the output: up, left, bottom, right
     // sockets: [Vec<SocketId>; 4],
@@ -128,7 +129,7 @@ pub(crate) struct ExpandedNodeModel {
     /// Weight factor between 0 and 1 influencing the density of this NodeModel in the generated output. Defaults to 1
     weight: f32,
     /// Index of the NodeModel this was expanded from
-    index: ModelIndex,
+    original_index: ModelIndex,
     /// Rotation of the NodeModel in degrees
     rotation: NodeRotation,
 }
@@ -140,8 +141,8 @@ impl ExpandedNodeModel {
     pub fn weight(&self) -> f32 {
         self.weight
     }
-    pub fn index(&self) -> ModelIndex {
-        self.index
+    pub fn original_index(&self) -> ModelIndex {
+        self.original_index
     }
     pub fn rotation(&self) -> NodeRotation {
         self.rotation
@@ -155,7 +156,7 @@ pub struct GeneratedNode {
     rotation: NodeRotation,
 }
 
-#[derive(Clone, Copy, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum NodeRotation {
     Rot0,
     Rot90,
