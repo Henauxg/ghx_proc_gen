@@ -17,7 +17,8 @@ impl GridPosition {
     }
 }
 
-pub struct Grid<T: DirectionSet> {
+#[derive(Clone)]
+pub struct Grid<T: DirectionSet + Clone> {
     size_x: u32,
     size_y: u32,
     size_z: u32,
@@ -53,7 +54,7 @@ impl Grid<Cartesian3D> {
     }
 }
 
-impl<T: DirectionSet> Grid<T> {
+impl<T: DirectionSet + Clone> Grid<T> {
     pub fn new(
         size_x: u32,
         size_y: u32,
@@ -145,5 +146,22 @@ impl<T: DirectionSet> Grid<T> {
     #[inline]
     pub(crate) fn directions(&self) -> &'static [Direction] {
         self.direction_set.directions()
+    }
+}
+
+pub struct GridData<T: DirectionSet + Clone, D> {
+    grid: Grid<T>,
+    data: Vec<D>,
+}
+
+impl<T: DirectionSet + Clone, D> GridData<T, D> {
+    pub fn new(grid: Grid<T>, data: Vec<D>) -> Self {
+        Self { grid, data }
+    }
+}
+
+impl<D> GridData<Cartesian2D, D> {
+    pub fn get_2d(&self, x: u32, y: u32) -> &D {
+        &self.data[(x + y * self.grid.size_x) as usize]
     }
 }
