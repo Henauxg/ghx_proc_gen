@@ -57,7 +57,7 @@ pub struct Generator<T: DirectionSet> {
     /// Stack of bans to propagate
     propagation_stack: Vec<PropagationEntry>,
     /// The value at `support_count[node_index][model_index][direction]` represents the number of supports of a `model_index` at `node_index` from `direction`
-    supports_count: Array<u32, Ix3>,
+    supports_count: Array<usize, Ix3>,
 }
 
 impl<DS: DirectionSet> Generator<DS> {
@@ -83,7 +83,7 @@ impl<DS: DirectionSet> Generator<DS> {
     }
 
     fn try_generate_all_nodes(&mut self) -> bool {
-        for _i in 1..self.grid.total_size() {
+        for _i in 0..self.grid.total_size() {
             let selected_node_index = self.select_node_to_generate();
             if let Some(node_index) = selected_node_index {
                 // We found a node not yet generated
