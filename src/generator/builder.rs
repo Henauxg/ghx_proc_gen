@@ -12,7 +12,7 @@ const DEFAULT_RETRY_COUNT: u32 = 10;
 pub enum Set {}
 pub enum Unset {}
 
-pub struct GeneratorBuilder<G, R, T: DirectionSet> {
+pub struct GeneratorBuilder<G, R, T: DirectionSet + Clone> {
     rules: Option<Rc<Rules<T>>>,
     grid: Option<Grid<T>>,
     max_retry_count: u32,
@@ -34,7 +34,7 @@ impl GeneratorBuilder<Unset, Unset, Cartesian2D> {
     }
 }
 
-impl<T: DirectionSet> GeneratorBuilder<Unset, Unset, T> {
+impl<T: DirectionSet + Clone> GeneratorBuilder<Unset, Unset, T> {
     pub fn with_rules(self, rules: Rules<T>) -> GeneratorBuilder<Unset, Set, T> {
         GeneratorBuilder {
             grid: self.grid,
@@ -84,7 +84,7 @@ impl GeneratorBuilder<Unset, Set, Cartesian3D> {
     }
 }
 
-impl<G, R, T: DirectionSet> GeneratorBuilder<G, R, T> {
+impl<G, R, T: DirectionSet + Clone> GeneratorBuilder<G, R, T> {
     pub fn with_max_retry_count(mut self, max_retry_count: u32) -> Self {
         self.max_retry_count = max_retry_count;
         self
@@ -101,7 +101,7 @@ impl<G, R, T: DirectionSet> GeneratorBuilder<G, R, T> {
     }
 }
 
-impl<T: DirectionSet> GeneratorBuilder<Set, Set, T> {
+impl<T: DirectionSet + Clone> GeneratorBuilder<Set, Set, T> {
     pub fn build(self) -> Generator<T> {
         let rules = self.rules.unwrap();
         let grid = self.grid.unwrap();

@@ -26,6 +26,7 @@ pub trait DirectionSet {
     fn deltas(&self) -> &'static [GridDelta];
 }
 
+#[derive(Clone)]
 pub struct Cartesian2D {}
 impl DirectionSet for Cartesian2D {
     fn directions(&self) -> &'static [Direction] {
@@ -37,6 +38,7 @@ impl DirectionSet for Cartesian2D {
     }
 }
 
+#[derive(Clone)]
 pub struct Cartesian3D {}
 impl DirectionSet for Cartesian3D {
     fn directions(&self) -> &'static [Direction] {
