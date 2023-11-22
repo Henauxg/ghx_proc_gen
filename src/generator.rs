@@ -122,28 +122,26 @@ impl<T: DirectionSet> Generator<T> {
         }
     }
 
-    pub fn generate(&mut self) -> Result<Nodes, ProcGenError> {
+    pub fn generate(&mut self) -> Result<(), ProcGenError> {
         for i in 1..self.max_retry_count + 1 {
             // TODO Split generation in multiple blocks
-            let success = self.try_generate_all_nodes();
-            if success {
-                println!("Successfully generated");
-                break;
-            } else {
-                println!(
-                    "Failed to generate, retrying {}/{}",
-                    i, self.max_retry_count
-                );
-                self.reinitialize();
+            match self.try_generate_all_nodes() {
+                Ok(_) => return Ok(()),
+                Err(ProcGenError::GenerationFailure) => {
+                    println!(
+                        "Failed to generate, retrying {}/{}",
+                        i, self.max_retry_count
+                    );
+                    self.reinitialize();
+                }
             }
         }
         Err(ProcGenError::GenerationFailure)
     }
 
-    fn try_generate_all_nodes(&mut self) -> bool {
+    fn try_generate_all_nodes(&mut self) -> Result<(), ProcGenError> {
         for _i in 0..self.grid.total_size() {
-            let selected_node_index = self.select_node_to_generate();
-            if let Some(node_index) = selected_node_index {
+            if let Some(node_index) = self.select_node_to_generate() {
                 // We found a node not yet generated. "Observe/collapse" the node: select a model for the node
                 let selected_model_index = self.select_model(node_index);
 
@@ -183,19 +181,16 @@ impl<T: DirectionSet> Generator<T> {
                     node_index * self.rules.models_count() + selected_model_index,
                     true,
                 );
-
-                if !self.propagate() {
-                    return false;
-                }
+                self.propagate()?;
             } else {
                 // Block fully generated
-                return true;
+                return Ok(());
             }
         }
-        true
+        Ok(())
     }
 
-    fn propagate(&mut self) -> bool {
+    fn propagate(&mut self) -> Result<(), ProcGenError> {
         // Clone the Rc to allow for mutability in the interior loops
         let rules = Rc::clone(&self.rules);
 
@@ -213,19 +208,20 @@ impl<T: DirectionSet> Generator<T> {
                         // When we find a model which is now unsupported, we queue a ban
                         // We check for == because we only want to queue the event once.
                         if *supports_count == 0 {
-                            if self.ban_model_from_node(to_node_index, model) {
-                                // Failed generation.
-                                return false;
-                            }
+                            self.ban_model_from_node(to_node_index, model)?;
                         }
                     }
                 }
             }
         }
-        true
+        Ok(())
     }
 
-    fn ban_model_from_node(&mut self, node_index: usize, model_index: usize) -> bool {
+    fn ban_model_from_node(
+        &mut self,
+        node_index: usize,
+        model_index: usize,
+    ) -> Result<(), ProcGenError> {
         // Enqueue removal for propagation
         self.propagation_stack.push(PropagationEntry {
             node_index,
@@ -244,7 +240,10 @@ impl<T: DirectionSet> Generator<T> {
 
         let count = &mut self.possible_models_count[node_index];
         *count = count.saturating_sub(1);
-        *count == 0
+        match *count {
+            0 => Err(ProcGenError::GenerationFailure),
+            _ => Ok(()),
+        }
     }
 
     fn select_node_to_generate<'a>(&mut self) -> Option<usize> {
