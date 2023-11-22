@@ -68,10 +68,10 @@ impl NodeModel {
     ) -> Self {
         Self {
             sockets: vec![
-                up.into(),
-                left.into(),
-                down.into(),
                 right.into(),
+                left.into(),
+                up.into(),
+                down.into(),
                 top.into(),
                 bottom.into(),
             ],
@@ -82,7 +82,7 @@ impl NodeModel {
 
     pub fn new_2d<T: Into<Vec<SocketId>>>(up: T, left: T, down: T, right: T) -> Self {
         Self {
-            sockets: vec![up.into(), left.into(), down.into(), right.into()],
+            sockets: vec![right.into(), left.into(), up.into(), down.into()],
             allowed_rotations: HashSet::from([NodeRotation::Rot0]),
             weight: 1.0,
         }
