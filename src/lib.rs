@@ -17,7 +17,7 @@ mod tests {
             builder::GeneratorBuilder,
             node::{NodeModel, NodeRotation},
             rules::Rules,
-            RngMode,
+            NodeSelectionHeuristic, RngMode,
         },
         grid::Grid,
     };
@@ -53,23 +53,26 @@ mod tests {
         tracing_subscriber::fmt::init();
         let models = vec![
             NodeModel::new_2d(vec![3], vec![3], vec![3], vec![3]), // Mountain
-            NodeModel::new_2d(vec![2, 3], vec![2, 3], vec![2, 3], vec![2, 3]), // Forest1
-            NodeModel::new_2d(vec![2, 3], vec![2, 3], vec![2, 3], vec![2, 3]), // Forest2
+            NodeModel::new_2d(vec![2, 3], vec![2, 3], vec![2, 3], vec![2, 3]).with_weight(0.5), // Forest1
+            NodeModel::new_2d(vec![2, 3], vec![2, 3], vec![2, 3], vec![2, 3]).with_weight(0.5), // Forest2
             NodeModel::new_2d(vec![2, 1], vec![2, 1], vec![2, 1], vec![2, 1]), // Meadows
-            NodeModel::new_2d(vec![0, 1], vec![0, 1], vec![0, 1], vec![0, 1]), // Beach
-            NodeModel::new_2d(vec![0], vec![0], vec![0], vec![0]), // Sea
+            NodeModel::new_2d(vec![0], vec![0], vec![0], vec![0]).with_weight(1.5), // Sea
+            NodeModel::new_2d(vec![0], vec![0, 1], vec![0, 1], vec![0, 1])
+                .with_weight(0.25)
+                .with_all_rotations(), // Beach
         ];
         let rules = Rc::new(Rules::new_cartesian_2d(models));
         let repeat_count = 1;
         for _ in 0..repeat_count {
-            let size_x = 22;
-            let size_y = 10;
+            let size_x = 11;
+            let size_y = 8;
             let grid = Grid::new_cartesian_2d(size_x, size_y, false);
             let mut generator = GeneratorBuilder::new()
                 .with_shared_rules(Rc::clone(&rules))
                 .with_grid(grid)
-                .with_max_retry_count(250)
+                .with_max_retry_count(750)
                 .with_rng(RngMode::Random)
+                .with_node_heuristic(NodeSelectionHeuristic::MinimumRemainingValue)
                 .build();
             let output = generator.generate().unwrap();
 
@@ -80,9 +83,8 @@ mod tests {
                         1 => print!("🌲"),
                         2 => print!("🌳"),
                         3 => print!("🟩"),
-                        4 => print!("🟨"),
-                        5 => print!("🟦"), // 🌊
-                        others => print!("{}", others),
+                        4 => print!("🟦"), // 🌊
+                        _ => print!("🟨"),
                     }
                 }
                 println!();
