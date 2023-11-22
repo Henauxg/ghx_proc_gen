@@ -159,7 +159,6 @@ impl<T: DirectionSet + Clone> Generator<T> {
             .ok_or(ProcGenError::GenerationFailure)?;
         // We found a node not yet generated. "Observe/collapse" the node: select a model for the node
         let selected_model_index = self.select_model(node_index);
-
         // Iterate all the possible models because we don't have an easy way to iterate only the models possible at node_index. But we'll filter impossible models right away. TODO: iter_ones ?
         for model_index in 0..self.rules.models_count() {
             if model_index == selected_model_index {
@@ -176,8 +175,6 @@ impl<T: DirectionSet + Clone> Generator<T> {
             });
 
             // None of these model are possible on this node now, set their support to 0
-            // TODO May not be needed
-            #[cfg(feature = "zeroise-support")]
             for dir in self.grid.directions() {
                 let supports_count =
                     &mut self.supports_count[(node_index, model_index, *dir as usize)];
@@ -215,7 +212,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
                     for &model in rules.supported_models(from.model_index, *dir) {
                         let supports_count =
                             &mut self.supports_count[(to_node_index, model, *dir as usize)];
-                        if *supports_count > 1 {
+                        if *supports_count > 0 {
                             *supports_count -= 1;
                             // When we find a model which is now unsupported, we queue a ban
                             // We check for == because we only want to queue the event once.
@@ -241,8 +238,6 @@ impl<T: DirectionSet + Clone> Generator<T> {
             model_index,
         });
         // Update the supports
-        // TODO May not be needed
-        #[cfg(feature = "zeroise-support")]
         for dir in self.grid.directions() {
             let supports_count = &mut self.supports_count[(node_index, model_index, *dir as usize)];
             *supports_count = 0;
