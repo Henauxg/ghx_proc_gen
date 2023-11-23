@@ -3,7 +3,7 @@ use ndarray::{Array, Ix3};
 use rand::{
     distributions::Distribution, distributions::WeightedIndex, rngs::StdRng, Rng, SeedableRng,
 };
-use std::rc::Rc;
+use std::{rc::Rc, sync::mpsc};
 
 use crate::{
     grid::{
@@ -16,11 +16,13 @@ use crate::{
 use self::{
     builder::{GeneratorBuilder, Unset},
     node::{GeneratedNode, ModelIndex},
+    observer::GenerationUpdate,
     rules::Rules,
 };
 
 pub mod builder;
 pub mod node;
+pub mod observer;
 pub mod rules;
 
 const MAX_NOISE_VALUE: f32 = 1E-6;
@@ -60,6 +62,7 @@ pub struct Generator<T: DirectionSet + Clone> {
     nodes: BitVec<usize>,
     /// Stores how many models are still possible for a given node
     possible_models_count: Vec<usize>,
+    observers: Vec<mpsc::Sender<GenerationUpdate>>,
 
     // Constraint satisfaction algorithm data
     /// Stack of bans to propagate
@@ -98,6 +101,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
 
             nodes: bitvec![1; nodes_count * models_count],
             possible_models_count: vec![models_count; nodes_count],
+            observers: Vec::new(),
 
             propagation_stack: Vec::new(),
             supports_count: Array::zeros((nodes_count, models_count, direction_count)),
@@ -192,7 +196,17 @@ impl<T: DirectionSet + Clone> Generator<T> {
         );
         self.possible_models_count[node_index] = 1;
 
-        self.propagate()
+        self.propagate()?;
+
+        let update = GenerationUpdate {
+            node_index,
+            generated_node: self.rules.model(selected_model_index).to_generated(),
+        };
+        for obs in &mut self.observers {
+            let _ = obs.send(update);
+        }
+
+        Ok(())
     }
 
     fn propagate(&mut self) -> Result<(), ProcGenError> {
@@ -323,5 +337,9 @@ impl<T: DirectionSet + Clone> Generator<T> {
         }
 
         GridData::new(self.grid.clone(), generated_nodes)
+    }
+
+    fn add_observer_queue(&mut self, sender: mpsc::Sender<GenerationUpdate>) {
+        self.observers.push(sender);
     }
 }

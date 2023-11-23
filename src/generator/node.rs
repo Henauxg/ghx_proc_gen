@@ -161,6 +161,7 @@ impl ExpandedNodeModel {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct GeneratedNode {
     /// Index of the NodeModel this was expanded from
     pub index: ModelIndex,
