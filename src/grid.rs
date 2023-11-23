@@ -52,6 +52,10 @@ impl Grid<Cartesian3D> {
             Cartesian3D {},
         )
     }
+
+    pub fn size_z(&self) -> u32 {
+        self.size_z
+    }
 }
 
 impl<T: DirectionSet + Clone> Grid<T> {
@@ -74,6 +78,13 @@ impl<T: DirectionSet + Clone> Grid<T> {
             direction_set,
             size_xy: size_x * size_y,
         }
+    }
+
+    pub fn size_x(&self) -> u32 {
+        self.size_x
+    }
+    pub fn size_y(&self) -> u32 {
+        self.size_y
     }
 
     pub fn total_size(&self) -> usize {
@@ -157,6 +168,14 @@ pub struct GridData<T: DirectionSet + Clone, D> {
 impl<T: DirectionSet + Clone, D> GridData<T, D> {
     pub fn new(grid: Grid<T>, data: Vec<D>) -> Self {
         Self { grid, data }
+    }
+
+    pub fn grid(&self) -> &Grid<T> {
+        &self.grid
+    }
+
+    pub fn set(&mut self, index: usize, val: D) {
+        self.data[index] = val;
     }
 }
 
