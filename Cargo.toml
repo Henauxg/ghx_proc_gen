@@ -11,6 +11,9 @@ categories = ["game-development", "algorithms"]
 readme = "README.md"
 exclude = ["assets/"]
 
+[features]
+debug-traces = []
+
 [dependencies]
 bitvec = "1.0.1"
 ndarray = "0.15.6"

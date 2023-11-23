@@ -5,6 +5,9 @@ use rand::{
 };
 use std::{rc::Rc, sync::mpsc};
 
+#[cfg(feature = "debug-traces")]
+use tracing::info;
+
 use crate::{
     grid::{
         direction::{Cartesian2D, DirectionSet},
@@ -39,6 +42,11 @@ pub enum ModelSelectionHeuristic {
 pub enum RngMode {
     Seeded(u64),
     Random,
+}
+
+pub enum GenerationStatus {
+    Ongoing,
+    Done,
 }
 
 struct PropagationEntry {
@@ -137,8 +145,8 @@ impl<T: DirectionSet + Clone> Generator<T> {
     pub fn generate(&mut self) -> Result<GridData<T, GeneratedNode>, ProcGenError> {
         for _i in 1..self.max_retry_count + 1 {
             // TODO Split generation in multiple blocks
-            match self.try_generate_all_nodes() {
-                Ok(_) => return Ok(self.get_grid_data()),
+            match self.generate_all_nodes() {
+                Ok(_) => return Ok(self.to_grid_data()),
                 Err(ProcGenError::GenerationFailure) => {
                     self.reinitialize();
                 }
@@ -147,19 +155,25 @@ impl<T: DirectionSet + Clone> Generator<T> {
         Err(ProcGenError::GenerationFailure)
     }
 
-    fn try_generate_all_nodes(&mut self) -> Result<(), ProcGenError> {
+    fn generate_all_nodes(&mut self) -> Result<(), ProcGenError> {
         for _i in 0..self.grid.total_size() {
-            self.generate_one_node()?;
+            match self.select_and_propagate() {
+                Ok(GenerationStatus::Done) => break,
+                Ok(GenerationStatus::Ongoing) => (),
+                Err(e) => return Err(e),
+            };
         }
         Ok(())
     }
 
-    pub fn generate_one_node(&mut self) -> Result<(), ProcGenError> {
-        let node_index = self
-            .select_node_to_generate()
-            .ok_or(ProcGenError::GenerationFailure)?;
+    pub fn select_and_propagate(&mut self) -> Result<GenerationStatus, ProcGenError> {
+        let node_index = match self.select_node_to_generate() {
+            Some(index) => index,
+            None => return Ok(GenerationStatus::Done),
+        };
         // We found a node not yet generated. "Observe/collapse" the node: select a model for the node
         let selected_model_index = self.select_model(node_index);
+
         // Iterate all the possible models because we don't have an easy way to iterate only the models possible at node_index. But we'll filter impossible models right away. TODO: iter_ones ?
         for model_index in 0..self.rules.models_count() {
             if model_index == selected_model_index {
@@ -196,17 +210,29 @@ impl<T: DirectionSet + Clone> Generator<T> {
         );
         self.possible_models_count[node_index] = 1;
 
+        self.signal_observers(node_index, selected_model_index);
+
         self.propagate()?;
+
+        Ok(GenerationStatus::Ongoing)
+    }
+
+    fn signal_observers(&mut self, node_index: usize, model_index: ModelIndex) {
+        #[cfg(feature = "debug-traces")]
+        info!(
+            "Select model {} for node {} at position {:?}",
+            model_index,
+            node_index,
+            self.grid.get_position(node_index)
+        );
 
         let update = GenerationUpdate {
             node_index,
-            generated_node: self.rules.model(selected_model_index).to_generated(),
+            generated_node: self.rules.model(model_index).to_generated(),
         };
         for obs in &mut self.observers {
             let _ = obs.send(update);
         }
-
-        Ok(())
     }
 
     fn propagate(&mut self) -> Result<(), ProcGenError> {
@@ -243,6 +269,14 @@ impl<T: DirectionSet + Clone> Generator<T> {
         node_index: usize,
         model_index: usize,
     ) -> Result<(), ProcGenError> {
+        #[cfg(feature = "debug-traces")]
+        info!(
+            "Ban model {} for node {} at position {:?}",
+            model_index,
+            node_index,
+            self.grid.get_position(node_index)
+        );
+
         // Enqueue removal for propagation
         self.propagation_stack.push(PropagationEntry {
             node_index,
@@ -257,10 +291,15 @@ impl<T: DirectionSet + Clone> Generator<T> {
         self.nodes
             .set(node_index * self.rules.models_count() + model_index, false);
 
-        let count = &mut self.possible_models_count[node_index];
-        *count = count.saturating_sub(1);
-        match *count {
+        let number_of_models_left = &mut self.possible_models_count[node_index];
+        *number_of_models_left = number_of_models_left.saturating_sub(1);
+        match *number_of_models_left {
             0 => Err(ProcGenError::GenerationFailure),
+            1 => {
+                // This node has collapsed into a specific model
+                self.signal_observers(node_index, self.get_model_index(node_index));
+                Ok(())
+            }
             _ => Ok(()),
         }
     }
@@ -325,18 +364,22 @@ impl<T: DirectionSet + Clone> Generator<T> {
     }
 
     /// Should only be called when the nodes are fully generated
-    fn get_grid_data(&self) -> GridData<T, GeneratedNode> {
+    fn to_grid_data(&self) -> GridData<T, GeneratedNode> {
         let mut generated_nodes = Vec::with_capacity(self.nodes.len());
         for node_index in 0..self.grid.total_size() {
-            let model_index = self.nodes[node_index * self.rules.models_count()
-                ..node_index * self.rules.models_count() + self.rules.models_count()]
-                .first_one()
-                .unwrap_or(0);
+            let model_index = self.get_model_index(node_index);
             let expanded_model = self.rules.model(model_index);
             generated_nodes.push(expanded_model.to_generated())
         }
 
         GridData::new(self.grid.clone(), generated_nodes)
+    }
+
+    fn get_model_index(&self, node_index: usize) -> usize {
+        self.nodes[node_index * self.rules.models_count()
+            ..node_index * self.rules.models_count() + self.rules.models_count()]
+            .first_one()
+            .unwrap_or(0)
     }
 
     fn add_observer_queue(&mut self, sender: mpsc::Sender<GenerationUpdate>) {
