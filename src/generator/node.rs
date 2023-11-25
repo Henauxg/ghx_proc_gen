@@ -1,37 +1,15 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, marker::PhantomData};
 
-use tracing::{trace, warn};
-
-use crate::grid::direction::DirectionSet;
+use crate::grid::direction::{Cartesian2D, Cartesian3D, DirectionSet};
 
 /// Id of a possible connection type
 pub type SocketId = u32;
 /// Index of a model
 pub type ModelIndex = usize;
 
-pub(crate) fn expand_models<T: DirectionSet>(
-    models: Vec<NodeModel>,
-    direction_set: &T,
-) -> Vec<ExpandedNodeModel> {
+pub(crate) fn expand_models<T: DirectionSet>(models: Vec<NodeModel<T>>) -> Vec<ExpandedNodeModel> {
     let mut expanded_models = Vec::new();
     for (index, model) in models.iter().enumerate() {
-        // Check for model/rules compatibility
-        if direction_set.directions().len() > model.sockets.len() {
-            warn!(
-                "Node model with index {} has less sockets directions {} than the Rules {}, this model will be ignored",
-                index,
-                model.sockets.len(),
-                direction_set.directions().len()
-            );
-            continue;
-        } else if direction_set.directions().len() < model.sockets.len() {
-            trace!(
-                "Node model with index {} has more sockets directions {} than the Rules {}, those additional sockets will be ignored",
-                index,
-                model.sockets.len(),
-                direction_set.directions().len()
-            );
-        }
         for rotation in &model.allowed_rotations {
             let mut sockets = model.sockets.clone();
             rotation.rotate_sockets(&mut sockets);
@@ -46,7 +24,7 @@ pub(crate) fn expand_models<T: DirectionSet>(
     expanded_models
 }
 
-pub struct NodeModel {
+pub struct NodeModel<T: DirectionSet> {
     /// Allowed connections for this NodeModel in the output: up, left, bottom, right
     sockets: Vec<Vec<SocketId>>,
     /// Weight factor between 0 and 1 influencing the density of this NodeModel in the generated output. Defaults to 1.0
@@ -55,44 +33,112 @@ pub struct NodeModel {
     ///
     /// Note: In 3d, top and bottom sockets of a model should be invariant to rotation around the Z axis.
     allowed_rotations: HashSet<NodeRotation>,
+
+    typestate: PhantomData<T>,
 }
 
-impl NodeModel {
-    pub fn new_3d<T: Into<Vec<SocketId>>>(
-        up: T,
-        left: T,
-        down: T,
-        right: T,
-        top: T,
-        bottom: T,
-    ) -> Self {
-        Self {
-            sockets: vec![
-                right.into(),
-                left.into(),
-                up.into(),
-                down.into(),
-                top.into(),
-                bottom.into(),
-            ],
-            allowed_rotations: HashSet::new(),
-            weight: 1.0,
+pub enum SocketsCartesian2D {
+    Mono(SocketId),
+    Simple(SocketId, SocketId, SocketId, SocketId),
+    Multiple(Vec<SocketId>, Vec<SocketId>, Vec<SocketId>, Vec<SocketId>),
+}
+
+impl Into<Vec<Vec<SocketId>>> for SocketsCartesian2D {
+    fn into(self) -> Vec<Vec<SocketId>> {
+        match self {
+            SocketsCartesian2D::Mono(socket) => vec![vec![socket]; 4],
+            SocketsCartesian2D::Simple(up, left, down, right) => {
+                vec![vec![up], vec![left], vec![down], vec![right]]
+            }
+            SocketsCartesian2D::Multiple(up, left, down, right) => vec![up, left, down, right],
         }
     }
+}
 
-    pub fn new_2d<T: Into<Vec<SocketId>>>(up: T, left: T, down: T, right: T) -> Self {
-        Self {
-            sockets: vec![right.into(), left.into(), up.into(), down.into()],
+impl SocketsCartesian2D {
+    pub fn new_model(self) -> NodeModel<Cartesian2D> {
+        NodeModel {
+            sockets: self.into(),
             allowed_rotations: HashSet::from([NodeRotation::Rot0]),
             weight: 1.0,
+            typestate: PhantomData,
         }
     }
+}
 
+impl NodeModel<Cartesian2D> {
+    pub fn new_cartesian_2d(sockets: SocketsCartesian2D) -> NodeModel<Cartesian2D> {
+        Self {
+            sockets: sockets.into(),
+            allowed_rotations: HashSet::from([NodeRotation::Rot0]),
+            weight: 1.0,
+            typestate: PhantomData,
+        }
+    }
+}
+
+pub enum SocketsCartesian3D {
+    Mono(SocketId),
+    Simple(SocketId, SocketId, SocketId, SocketId, SocketId, SocketId),
+    Multiple(
+        Vec<SocketId>,
+        Vec<SocketId>,
+        Vec<SocketId>,
+        Vec<SocketId>,
+        Vec<SocketId>,
+        Vec<SocketId>,
+    ),
+}
+
+impl Into<Vec<Vec<SocketId>>> for SocketsCartesian3D {
+    fn into(self) -> Vec<Vec<SocketId>> {
+        match self {
+            SocketsCartesian3D::Mono(socket) => vec![vec![socket]; 6],
+            SocketsCartesian3D::Simple(up, left, down, right, top, bottom) => {
+                vec![
+                    vec![up],
+                    vec![left],
+                    vec![down],
+                    vec![right],
+                    vec![top],
+                    vec![bottom],
+                ]
+            }
+            SocketsCartesian3D::Multiple(up, left, down, right, top, bottom) => {
+                vec![up, left, down, right, top, bottom]
+            }
+        }
+    }
+}
+
+impl SocketsCartesian3D {
+    pub fn new_model(self) -> NodeModel<Cartesian3D> {
+        NodeModel {
+            sockets: self.into(),
+            allowed_rotations: HashSet::from([NodeRotation::Rot0]),
+            weight: 1.0,
+            typestate: PhantomData,
+        }
+    }
+}
+
+impl NodeModel<Cartesian3D> {
+    pub fn new_cartesian_3d(sockets: SocketsCartesian3D) -> NodeModel<Cartesian3D> {
+        Self {
+            sockets: sockets.into(),
+            allowed_rotations: HashSet::from([NodeRotation::Rot0]),
+            weight: 1.0,
+            typestate: PhantomData,
+        }
+    }
+}
+
+impl<T: DirectionSet> NodeModel<T> {
     pub fn with_rotation(mut self, rotation: NodeRotation) -> Self {
         self.allowed_rotations = HashSet::from([NodeRotation::Rot0, rotation]);
         self
     }
-    pub fn with_rotations<T: Into<HashSet<NodeRotation>>>(mut self, rotations: T) -> Self {
+    pub fn with_rotations<R: Into<HashSet<NodeRotation>>>(mut self, rotations: R) -> Self {
         self.allowed_rotations = rotations.into();
         self.allowed_rotations.insert(NodeRotation::Rot0);
         self
@@ -106,30 +152,15 @@ impl NodeModel {
         self
     }
 
-    pub fn with_weight<T: Into<f32>>(mut self, weight: T) -> Self {
+    pub fn with_weight<W: Into<f32>>(mut self, weight: W) -> Self {
         self.weight = weight.into();
         self
     }
 }
 
-pub enum Sockets {
-    Single(SocketId),
-    Multiple(Vec<SocketId>),
-}
-
-impl Into<Vec<SocketId>> for Sockets {
-    fn into(self) -> Vec<SocketId> {
-        match self {
-            Sockets::Single(socket) => vec![socket],
-            Sockets::Multiple(sockets) => sockets,
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct ExpandedNodeModel {
-    /// Allowed connections for this NodeModel in the output: up, left, bottom, right
-    // sockets: [Vec<SocketId>; 4],
+    /// Allowed connections for this NodeModel in the output
     sockets: Vec<Vec<SocketId>>,
     /// Weight factor between 0 and 1 influencing the density of this NodeModel in the generated output. Defaults to 1
     weight: f32,

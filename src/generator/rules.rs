@@ -22,20 +22,20 @@ pub struct Rules<T: DirectionSet> {
 }
 
 impl Rules<Cartesian2D> {
-    pub fn new_cartesian_2d(models: Vec<NodeModel>) -> Rules<Cartesian2D> {
+    pub fn new_cartesian_2d(models: Vec<NodeModel<Cartesian2D>>) -> Rules<Cartesian2D> {
         Self::new(models, Cartesian2D {})
     }
 }
 
 impl Rules<Cartesian3D> {
-    pub fn new_cartesian_3d(models: Vec<NodeModel>) -> Rules<Cartesian3D> {
+    pub fn new_cartesian_3d(models: Vec<NodeModel<Cartesian3D>>) -> Rules<Cartesian3D> {
         Self::new(models, Cartesian3D {})
     }
 }
 
 impl<T: DirectionSet> Rules<T> {
-    fn new(models: Vec<NodeModel>, direction_set: T) -> Rules<T> {
-        let expanded_models = expand_models(models, &direction_set);
+    fn new(models: Vec<NodeModel<T>>, direction_set: T) -> Rules<T> {
+        let expanded_models = expand_models(models);
 
         // Temporary collection to reverse the relation: sockets_to_models.get(socket)[direction] will hold all the models that can be set in 'direction' from 'socket'
         let mut sockets_to_models = HashMap::new();

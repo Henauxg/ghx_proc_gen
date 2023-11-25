@@ -14,7 +14,7 @@ mod tests {
     use crate::{
         generator::{
             builder::GeneratorBuilder,
-            node::{NodeModel, NodeRotation},
+            node::{NodeRotation, SocketsCartesian2D},
             rules::Rules,
         },
         grid::Grid,
@@ -24,16 +24,25 @@ mod tests {
     fn generate_test() {
         let models = vec![
             // corner
-            NodeModel::new_2d(vec![0], vec![0], vec![1], vec![1]).with_all_rotations(),
+            SocketsCartesian2D::Simple(0, 0, 1, 1)
+                .new_model()
+                .with_all_rotations(),
             // cross
-            NodeModel::new_2d(vec![1], vec![1], vec![1], vec![1]).with_no_rotations(),
+            SocketsCartesian2D::Simple(1, 1, 1, 1)
+                .new_model()
+                .with_no_rotations(),
             // empty
-            NodeModel::new_2d(vec![0], vec![0], vec![0], vec![0]).with_no_rotations(),
+            SocketsCartesian2D::Simple(0, 0, 0, 0)
+                .new_model()
+                .with_no_rotations(),
             // line
-            NodeModel::new_2d(vec![0], vec![1], vec![0], vec![1])
+            SocketsCartesian2D::Simple(0, 1, 0, 1)
+                .new_model()
                 .with_rotation(NodeRotation::Rot90),
             // T intersection
-            NodeModel::new_2d(vec![0], vec![1], vec![1], vec![1]).with_all_rotations(),
+            SocketsCartesian2D::Simple(0, 1, 1, 1)
+                .new_model()
+                .with_all_rotations(),
         ];
         let rules = Rules::new_cartesian_2d(models);
         let grid = Grid::new_cartesian_2d(5, 5, false);
