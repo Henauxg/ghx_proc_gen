@@ -7,37 +7,53 @@ use ndarray::{Array, Ix1, Ix2};
 
 use crate::grid::direction::{Cartesian2D, Cartesian3D, Direction, DirectionSet};
 
-use super::node::{expand_models, ExpandedNodeModel, ModelIndex, NodeModel};
+use super::node::{expand_models, ExpandedNodeModel, ModelIndex, NodeModel, SocketId};
+
+pub type SocketConnections = (SocketId, Vec<SocketId>);
 
 pub struct Rules<T: DirectionSet> {
+    /// All the models in this ruleset. Expanded from a given set of a base models with generated variations of rotations around the Z axis.
     models: Vec<ExpandedNodeModel>,
     /// The vector `allowed_neighbours[model_index][direction]` holds all the allowed adjacent models (indexes) to `model_index` in `direction`.
     ///
     /// Calculated from expanded models.
     ///
-    /// Note: this cannot be a 3d array since the third dimension is different for each element.
+    /// Note: this cannot be a simple 3d array since the third dimension is different for each element.
     allowed_neighbours: Array<Vec<usize>, Ix2>,
-
     typestate: PhantomData<T>,
 }
 
 impl Rules<Cartesian2D> {
-    pub fn new_cartesian_2d(models: Vec<NodeModel<Cartesian2D>>) -> Rules<Cartesian2D> {
-        Self::new(models, Cartesian2D {})
+    pub fn new_cartesian_2d(
+        models: Vec<NodeModel<Cartesian2D>>,
+        sockets_connections: Vec<SocketConnections>,
+    ) -> Rules<Cartesian2D> {
+        Self::new(models, sockets_connections, Cartesian2D {})
     }
 }
 
 impl Rules<Cartesian3D> {
-    pub fn new_cartesian_3d(models: Vec<NodeModel<Cartesian3D>>) -> Rules<Cartesian3D> {
-        Self::new(models, Cartesian3D {})
+    pub fn new_cartesian_3d(
+        models: Vec<NodeModel<Cartesian3D>>,
+        sockets_connections: Vec<SocketConnections>,
+    ) -> Rules<Cartesian3D> {
+        Self::new(models, sockets_connections, Cartesian3D {})
     }
 }
 
 impl<T: DirectionSet> Rules<T> {
-    fn new(models: Vec<NodeModel<T>>, direction_set: T) -> Rules<T> {
+    fn new(
+        models: Vec<NodeModel<T>>,
+        sockets_connections: Vec<SocketConnections>,
+        direction_set: T,
+    ) -> Rules<T> {
         let expanded_models = expand_models(models);
 
-        // Temporary collection to reverse the relation: sockets_to_models.get(socket)[direction] will hold all the models that can be set in 'direction' from 'socket'
+        // Expand sockets_connections
+        // From a socket: get all sockets that are compatible for connection
+        let socket_to_sockets = expand_socket_connection(sockets_connections);
+
+        // Temporary collection to reverse the relation: sockets_to_models.get(socket)[direction] will hold all the models that have 'socket' from 'direction'
         let mut sockets_to_models = HashMap::new();
         let empty_in_all_directions: Array<HashSet<ModelIndex>, Ix1> =
             Array::from_elem(direction_set.directions().len(), HashSet::new());
@@ -52,6 +68,8 @@ impl<T: DirectionSet> Rules<T> {
                 }
             }
         }
+
+        // TODO Then: for each model, for each direction, for each socket: get all the sockets that are compatible for connection, for each of those: get all the models that have this socket from direction
 
         let mut allowed_neighbours = Array::from_elem(
             (expanded_models.len(), direction_set.directions().len()),
@@ -104,4 +122,28 @@ impl<T: DirectionSet> Rules<T> {
     pub(crate) fn model(&self, index: usize) -> &ExpandedNodeModel {
         &self.models[index]
     }
+}
+
+fn expand_socket_connection(
+    sockets_connections: Vec<(u32, Vec<u32>)>,
+) -> HashMap<u32, HashSet<u32>> {
+    let mut socket_to_sockets = HashMap::new();
+    for (socket, connections) in sockets_connections {
+        {
+            let connectable_sockets = socket_to_sockets.entry(socket).or_insert(HashSet::new());
+            for other_socket in &connections {
+                connectable_sockets.insert(*other_socket);
+            }
+        }
+        // Register the connection from the other socket too.
+        for other_socket in &connections {
+            if *other_socket != socket {
+                let other_connectable_sockets = socket_to_sockets
+                    .entry(*other_socket)
+                    .or_insert(HashSet::new());
+                other_connectable_sockets.insert(socket);
+            }
+        }
+    }
+    socket_to_sockets
 }
