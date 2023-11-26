@@ -14,37 +14,41 @@ mod tests {
     use crate::{
         generator::{
             builder::GeneratorBuilder,
-            node::{NodeRotation, SocketsCartesian2D},
+            node::{NodeRotation, SocketId, SocketsCartesian2D},
             rules::Rules,
         },
         grid::Grid,
     };
 
+    const VOID: SocketId = 0;
+    const PIPE: SocketId = 1;
+
     #[test]
     fn generate_test() {
         let models = vec![
             // corner
-            SocketsCartesian2D::Simple(0, 0, 1, 1)
+            SocketsCartesian2D::Simple(VOID, VOID, PIPE, PIPE)
                 .new_model()
                 .with_all_rotations(),
             // cross
-            SocketsCartesian2D::Simple(1, 1, 1, 1)
+            SocketsCartesian2D::Simple(PIPE, PIPE, PIPE, PIPE)
                 .new_model()
                 .with_no_rotations(),
             // empty
-            SocketsCartesian2D::Simple(0, 0, 0, 0)
+            SocketsCartesian2D::Simple(VOID, VOID, VOID, VOID)
                 .new_model()
                 .with_no_rotations(),
             // line
-            SocketsCartesian2D::Simple(0, 1, 0, 1)
+            SocketsCartesian2D::Simple(VOID, PIPE, VOID, PIPE)
                 .new_model()
                 .with_rotation(NodeRotation::Rot90),
             // T intersection
-            SocketsCartesian2D::Simple(0, 1, 1, 1)
+            SocketsCartesian2D::Simple(VOID, PIPE, PIPE, PIPE)
                 .new_model()
                 .with_all_rotations(),
         ];
-        let rules = Rules::new_cartesian_2d(models);
+        let sockets_connections = vec![(VOID, vec![VOID]), (PIPE, vec![PIPE])];
+        let rules = Rules::new_cartesian_2d(models, sockets_connections);
         let grid = Grid::new_cartesian_2d(5, 5, false);
         let mut generator = GeneratorBuilder::new()
             .with_rules(rules)

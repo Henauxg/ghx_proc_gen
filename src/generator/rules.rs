@@ -48,10 +48,7 @@ impl<T: DirectionSet> Rules<T> {
         direction_set: T,
     ) -> Rules<T> {
         let expanded_models = expand_models(models);
-
-        // Expand sockets_connections
-        // From a socket: get all sockets that are compatible for connection
-        let socket_to_sockets = expand_socket_connection(sockets_connections);
+        let socket_to_sockets = expand_sockets_connections(sockets_connections);
 
         // Temporary collection to reverse the relation: sockets_to_models.get(socket)[direction] will hold all the models that have 'socket' from 'direction'
         let mut sockets_to_models = HashMap::new();
@@ -69,8 +66,6 @@ impl<T: DirectionSet> Rules<T> {
             }
         }
 
-        // TODO Then: for each model, for each direction, for each socket: get all the sockets that are compatible for connection, for each of those: get all the models that have this socket from direction
-
         let mut allowed_neighbours = Array::from_elem(
             (expanded_models.len(), direction_set.directions().len()),
             Vec::new(),
@@ -78,14 +73,22 @@ impl<T: DirectionSet> Rules<T> {
         for (model_index, model) in expanded_models.iter().enumerate() {
             for &direction in direction_set.directions() {
                 let mut unique_models = HashSet::new();
+                // For each socket of the model in this direction: get all the sockets that are compatible for connection
                 for socket in &model.sockets()[direction as usize] {
-                    for allowed_model in
-                        &sockets_to_models.get(&socket).unwrap()[direction as usize]
-                    {
-                        match unique_models.insert(*allowed_model) {
-                            true => allowed_neighbours[(model_index, direction as usize)]
-                                .push(*allowed_model),
-                            false => (),
+                    if let Some(compatible_sockets) = socket_to_sockets.get(socket) {
+                        for compatible_socket in compatible_sockets {
+                            // For each of those: get all the models that have this socket from direction
+                            // `sockets_to_models` may not have an entry for `compatible_socket` depending on user input data (socket present in sockets_connections but not in a model)
+                            if let Some(entry) = sockets_to_models.get(compatible_socket) {
+                                for allowed_model in &entry[direction as usize] {
+                                    match unique_models.insert(*allowed_model) {
+                                        true => allowed_neighbours
+                                            [(model_index, direction as usize)]
+                                            .push(*allowed_model),
+                                        false => (),
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -124,7 +127,8 @@ impl<T: DirectionSet> Rules<T> {
     }
 }
 
-fn expand_socket_connection(
+/// Expand sockets connections. `socket_to_sockets`: from a socket, get all sockets that are compatible for connection
+fn expand_sockets_connections(
     sockets_connections: Vec<(u32, Vec<u32>)>,
 ) -> HashMap<u32, HashSet<u32>> {
     let mut socket_to_sockets = HashMap::new();
