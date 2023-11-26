@@ -4,30 +4,53 @@ use std::{
 };
 
 use ghx_proc_gen::{
-    generator::{node::GeneratedNode, observer::QueuedStatefulObserver, ModelSelectionHeuristic},
+    generator::{
+        node::{GeneratedNode, SocketsCartesian2D},
+        observer::QueuedStatefulObserver,
+        ModelSelectionHeuristic,
+    },
     grid::{direction::Cartesian2D, GridData},
 };
 
 use {
     ghx_proc_gen::generator::{
-        builder::GeneratorBuilder, node::NodeModel, rules::Rules, NodeSelectionHeuristic, RngMode,
+        builder::GeneratorBuilder, rules::Rules, NodeSelectionHeuristic, RngMode,
     },
     ghx_proc_gen::grid::Grid,
 };
 
 const ICONES: &'static [&str] = &["🗻", "🌲", "🌳", "🟩", "🟨", "🟦"]; // ,
+
+const MOUNTAIN: u32 = 0;
+const FOREST: u32 = 1;
+const MEADOWS: u32 = 2;
+const BEACH: u32 = 3;
+const SEA: u32 = 4;
+
 fn main() {
     tracing_subscriber::fmt::init();
+
     let models = vec![
-        NodeModel::new_2d(vec![3], vec![3], vec![3], vec![3]), // Mountain
-        NodeModel::new_2d(vec![2, 3], vec![2, 3], vec![2, 3], vec![2, 3]).with_weight(0.5), // Forest1
-        NodeModel::new_2d(vec![2, 3], vec![2, 3], vec![2, 3], vec![2, 3]).with_weight(0.5), // Forest2
-        NodeModel::new_2d(vec![2, 1], vec![2, 1], vec![2, 1], vec![2, 1]), // // Meadows
-        NodeModel::new_2d(vec![0, 1], vec![0, 1], vec![0, 1], vec![0, 1]), // Beach
-        NodeModel::new_2d(vec![0], vec![0], vec![0], vec![0]),             // Sea
+        SocketsCartesian2D::Mono(MOUNTAIN).new_model(),
+        SocketsCartesian2D::Mono(FOREST)
+            .new_model()
+            .with_weight(0.5), // Variation 1
+        SocketsCartesian2D::Mono(FOREST)
+            .new_model()
+            .with_weight(0.5), // Variation 2
+        SocketsCartesian2D::Mono(MEADOWS).new_model(),
+        SocketsCartesian2D::Mono(BEACH).new_model(),
+        SocketsCartesian2D::Mono(SEA).new_model(),
     ];
-    let rules = Rules::new_cartesian_2d(models);
-    let grid = Grid::new_cartesian_2d(45, 20, false);
+    let sockets_connections = vec![
+        (MOUNTAIN, vec![MOUNTAIN, FOREST]),
+        (FOREST, vec![FOREST, MEADOWS]),
+        (MEADOWS, vec![MEADOWS, BEACH]),
+        (BEACH, vec![BEACH, SEA]),
+        (SEA, vec![SEA]),
+    ];
+    let rules = Rules::new_cartesian_2d(models, sockets_connections);
+    let grid = Grid::new_cartesian_2d(30, 15, false);
     let size = grid.total_size();
     let mut generator = GeneratorBuilder::new()
         .with_rules(rules)
@@ -44,8 +67,7 @@ fn main() {
         observer.update();
         println!("Grid at step {}:", i);
         display_grid(observer.grid_data());
-        //  pause();
-
+        // pause();
         // thread::sleep(time::Duration::from_millis(400));
     }
 }
