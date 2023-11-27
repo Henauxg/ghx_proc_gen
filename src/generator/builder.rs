@@ -30,7 +30,7 @@ impl GeneratorBuilder<Unset, Unset, Cartesian2D> {
             max_retry_count: DEFAULT_RETRY_COUNT,
             node_selection_heuristic: NodeSelectionHeuristic::MinimumRemainingValue,
             model_selection_heuristic: ModelSelectionHeuristic::WeightedProbability,
-            rng_mode: RngMode::Random,
+            rng_mode: RngMode::RandomSeed,
             typestate: PhantomData,
         }
     }

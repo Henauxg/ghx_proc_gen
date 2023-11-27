@@ -40,8 +40,10 @@ pub enum ModelSelectionHeuristic {
 }
 
 pub enum RngMode {
+    /// The generator will use the given seed for its random source.
     Seeded(u64),
-    Random,
+    /// The generator will use a random seed for its random source. The randomly generated seed can be retrieved by calling `get_seed` on the generator.
+    RandomSeed,
 }
 
 pub enum GenerationStatus {
@@ -64,6 +66,7 @@ pub struct Generator<T: DirectionSet + Clone> {
 
     // Internal
     rng: StdRng,
+    seed: u64,
 
     // Generation state
     /// `nodes[node_index * self.rules.models_count() + model_index]` is true (1) if model with index `model_index` is still allowed on node with index `node_index`
@@ -95,6 +98,12 @@ impl<T: DirectionSet + Clone> Generator<T> {
         let models_count = rules.models_count();
         let nodes_count = grid.total_size();
         let direction_count = grid.directions().len();
+
+        let seed = match rng_mode {
+            RngMode::Seeded(seed) => seed,
+            RngMode::RandomSeed => rand::thread_rng().gen::<u64>(),
+        };
+
         let mut generator = Self {
             grid,
             rules,
@@ -102,10 +111,8 @@ impl<T: DirectionSet + Clone> Generator<T> {
             node_selection_heuristic,
             model_selection_heuristic,
 
-            rng: match rng_mode {
-                RngMode::Seeded(seed) => StdRng::seed_from_u64(seed),
-                RngMode::Random => StdRng::from_entropy(),
-            },
+            rng: StdRng::seed_from_u64(seed),
+            seed,
 
             nodes: bitvec![1; nodes_count * models_count],
             possible_models_count: vec![models_count; nodes_count],
@@ -116,6 +123,10 @@ impl<T: DirectionSet + Clone> Generator<T> {
         };
         generator.initialize_supports_count();
         generator
+    }
+
+    pub fn get_seed(&self) -> u64 {
+        self.seed
     }
 
     fn reinitialize(&mut self) {
