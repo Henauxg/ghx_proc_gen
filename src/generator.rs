@@ -51,12 +51,22 @@ pub enum RngMode {
     RandomSeed,
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq, Debug)]
 pub enum GenerationStatus {
     /// The generation has not ended yet.
     Ongoing,
     /// The generation ended succesfully. The whole grid is generated.
     Done,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum InternalGeneratorStatus {
+    /// Generation has not finished.
+    Ongoing,
+    /// Generation ended succesfully.
+    Done,
+    /// Generation failed due to a contradiction.
+    Failed,
 }
 
 struct PropagationEntry {
@@ -79,6 +89,7 @@ pub struct Generator<T: DirectionSet + Clone> {
     seed: u64,
 
     // === Generation state ===
+    status: InternalGeneratorStatus,
     /// `nodes[node_index * self.rules.models_count() + model_index]` is true (1) if model with index `model_index` is still allowed on node with index `node_index`
     nodes: BitVec<usize>,
     /// Stores how many models are still possible for a given node
@@ -125,6 +136,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
             rng: StdRng::seed_from_u64(seed),
             seed,
 
+            status: InternalGeneratorStatus::Ongoing,
             nodes: bitvec![1; nodes_count * models_count],
             possible_models_count: vec![models_count; nodes_count],
             observers: Vec::new(),
@@ -142,7 +154,11 @@ impl<T: DirectionSet + Clone> Generator<T> {
     }
 
     fn reinitialize(&mut self) {
-        self.nodes = bitvec![1;self.rules.models_count()* self.grid.total_size() ];
+        #[cfg(feature = "debug-traces")]
+        info!("Reinitializing generator, state was {:?}", self.status);
+
+        self.status = InternalGeneratorStatus::Ongoing;
+        self.nodes = bitvec![1;self.rules.models_count() * self.grid.total_size() ];
         self.possible_models_count = vec![self.rules.models_count(); self.grid.total_size()];
         self.propagation_stack = Vec::new();
         self.initialize_supports_count();
@@ -165,14 +181,32 @@ impl<T: DirectionSet + Clone> Generator<T> {
         }
     }
 
-    /// Tries to generate the whole grid. If the generation fails due to a contradiction, it will retry `max_retry_count` times before returning a `ProcGenError::GenerationFailure` error
+    /// Tries to generate the whole grid. If the generation fails due to a contradiction, it will retry `max_retry_count` times before returning `ProcGenError::GenerationFailure`
+    ///
+    /// If the generation has ended (successful or not), calling `generate` will reinitialize the generator before starting the generation.
+    /// If the generation was already started by previous calls to [`Generator::select_and_propagate`], this will simply continue the generation.
     pub fn generate(&mut self) -> Result<GridData<T, GeneratedNode>, ProcGenError> {
+        self.generate_without_output()?;
+        Ok(self.to_grid_data())
+    }
+
+    /// Same as [`generate`] but does dot return a filled [`GridData`] when the genration is done. You can still retrieve a filled [`GridData`] by calling [`to_grid_data`].
+    ///
+    /// This can be usefull if you retrieve the data via other means (observers, ...)
+    pub fn generate_without_output(&mut self) -> Result<(), ProcGenError> {
         for _i in 1..self.max_retry_count + 1 {
+            match self.status {
+                InternalGeneratorStatus::Ongoing => (),
+                InternalGeneratorStatus::Done | InternalGeneratorStatus::Failed => {
+                    self.reinitialize()
+                }
+            };
+
             // TODO Split generation in multiple blocks
             match self.generate_all_nodes() {
-                Ok(_) => return Ok(self.to_grid_data()),
+                Ok(_) => return Ok(()),
                 Err(ProcGenError::GenerationFailure) => {
-                    self.reinitialize();
+                    self.status = InternalGeneratorStatus::Failed; // Should already be set by callee.
                 }
             }
         }
@@ -180,6 +214,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
     }
 
     fn generate_all_nodes(&mut self) -> Result<(), ProcGenError> {
+        // Grid total size is an upper limit to the number of iterations. We avoid an unnecessary while loop.
         for _i in 0..self.grid.total_size() {
             match self.select_and_propagate() {
                 Ok(GenerationStatus::Done) => break,
@@ -192,11 +227,21 @@ impl<T: DirectionSet + Clone> Generator<T> {
 
     /// Advances the generation by one "step". Returns the `GenerationStatus` and a `ProcGenError` if the generation fails due to a contradiction.
     ///
-    /// Note: This can lead to more than 1 node generated if the propagation phase forces some nodes into a definite state (1 possible model remainng)
+    /// Note: This can lead to more than 1 node generated if the propagation phase forces some other node(s) into a definite state (1 possible model remaining on a node)
+    ///
+    /// If the generation has ended (successful or not), calling `select_and_propagate` will reinitialize the [`Generator`] before starting the generation.
     pub fn select_and_propagate(&mut self) -> Result<GenerationStatus, ProcGenError> {
+        match self.status {
+            InternalGeneratorStatus::Ongoing => (),
+            InternalGeneratorStatus::Done | InternalGeneratorStatus::Failed => self.reinitialize(),
+        };
+
         let node_index = match self.select_node_to_generate() {
             Some(index) => index,
-            None => return Ok(GenerationStatus::Done),
+            None => {
+                self.status = InternalGeneratorStatus::Done;
+                return Ok(GenerationStatus::Done);
+            }
         };
         // We found a node not yet generated. "Observe/collapse" the node: select a model for the node
         let selected_model_index = self.select_model(node_index);
@@ -239,7 +284,10 @@ impl<T: DirectionSet + Clone> Generator<T> {
 
         self.signal_observers(node_index, selected_model_index);
 
-        self.propagate()?;
+        if let Err(err) = self.propagate() {
+            self.status = InternalGeneratorStatus::Failed;
+            return Err(err);
+        };
 
         Ok(GenerationStatus::Ongoing)
     }
@@ -366,6 +414,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
         }
     }
 
+    /// There should at least be one possible model for this node index. May panic otherwise.
     fn select_model(&mut self, node_index: usize) -> usize {
         match self.model_selection_heuristic {
             ModelSelectionHeuristic::WeightedProbability => {
