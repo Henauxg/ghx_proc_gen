@@ -219,11 +219,11 @@ impl<T: DirectionSet + Clone> GridDefinition<T> {
 }
 
 /// Holds a [`GridDefinition`] and generic data in a linear buffer that can be accessed through the grid definition to represent the grid content.
-/// # Example
+/// ### Example
 ///
 /// Create a default `GridData` from a `GridDefinition`
 /// ```
-///  use ghx_proc_gen::grid::GridDefinition;
+/// use ghx_proc_gen::grid::GridDefinition;
 ///
 /// let grid = GridDefinition::new_cartesian_2d(10, 10, false);
 /// let grid_data = grid.default_grid_data::<u64>();
