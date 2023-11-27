@@ -7,7 +7,7 @@ use ghx_proc_gen::{
     generator::{
         node::{GeneratedNode, SocketsCartesian2D},
         observer::QueuedStatefulObserver,
-        ModelSelectionHeuristic,
+        GenerationStatus, ModelSelectionHeuristic,
     },
     grid::{direction::Cartesian2D, GridData},
 };
@@ -18,6 +18,14 @@ use {
     },
     ghx_proc_gen::grid::Grid,
 };
+
+pub enum GenerationViewMode {
+    StepByStep(u64),
+    StepByStepPaused,
+    Final,
+}
+
+const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::Final;
 
 const ICONES: &'static [&str] = &["🗻", "🌲", "🌳", "🟩", "🟨", "🟦"]; // ,
 
@@ -51,24 +59,39 @@ fn main() {
     ];
     let rules = Rules::new_cartesian_2d(models, sockets_connections);
     let grid = Grid::new_cartesian_2d(30, 15, false);
-    let size = grid.total_size();
     let mut generator = GeneratorBuilder::new()
         .with_rules(rules)
         .with_grid(grid)
         .with_max_retry_count(750)
-        .with_rng(RngMode::Random)
+        .with_rng(RngMode::RandomSeed)
         .with_node_heuristic(NodeSelectionHeuristic::MinimumRemainingValue)
         .with_model_heuristic(ModelSelectionHeuristic::WeightedProbability)
         .build();
     let mut observer = QueuedStatefulObserver::new(&mut generator);
 
-    for i in 1..=size {
-        generator.select_and_propagate().unwrap();
-        observer.update();
-        println!("Grid at step {}:", i);
-        display_grid(observer.grid_data());
-        // pause();
-        // thread::sleep(time::Duration::from_millis(400));
+    match GENERATION_VIEW_MODE {
+        GenerationViewMode::Final => {
+            generator.generate().unwrap();
+            observer.update();
+            println!("Final grid:");
+            display_grid(observer.grid_data());
+        }
+        _ => {
+            let mut step = 0;
+            while GenerationStatus::Ongoing == generator.select_and_propagate().unwrap() {
+                observer.update();
+                println!("Grid at step {}:", step);
+                display_grid(observer.grid_data());
+                step += 1;
+                match GENERATION_VIEW_MODE {
+                    GenerationViewMode::StepByStep(delay) => {
+                        thread::sleep(time::Duration::from_millis(delay));
+                    }
+                    GenerationViewMode::StepByStepPaused => pause(),
+                    _ => (),
+                }
+            }
+        }
     }
 }
 
