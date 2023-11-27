@@ -28,7 +28,7 @@ pub mod node;
 pub mod observer;
 pub mod rules;
 
-const MAX_NOISE_VALUE: f32 = 1E-6;
+const MAX_NOISE_VALUE: f32 = 1E-2;
 
 pub enum NodeSelectionHeuristic {
     MinimumRemainingValue,
