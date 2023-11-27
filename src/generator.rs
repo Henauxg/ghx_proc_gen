@@ -65,26 +65,28 @@ struct PropagationEntry {
 }
 
 /// Model synthesis/WFC generator.
+/// Use a [`GeneratorBuilder`] to get an instance of a [`Generator`].
 pub struct Generator<T: DirectionSet + Clone> {
-    // Read-only configuration
+    // === Read-only configuration ===
     grid: GridDefinition<T>,
     rules: Rc<Rules<T>>,
     max_retry_count: u32,
     node_selection_heuristic: NodeSelectionHeuristic,
     model_selection_heuristic: ModelSelectionHeuristic,
 
-    // Internal
+    // === Internal ===
     rng: StdRng,
     seed: u64,
 
-    // Generation state
+    // === Generation state ===
     /// `nodes[node_index * self.rules.models_count() + model_index]` is true (1) if model with index `model_index` is still allowed on node with index `node_index`
     nodes: BitVec<usize>,
     /// Stores how many models are still possible for a given node
     possible_models_count: Vec<usize>,
+    /// Vector of observers currently being signaled with updates of the nodes.
     observers: Vec<mpsc::Sender<GenerationUpdate>>,
 
-    // Constraint satisfaction algorithm data
+    // === Constraint satisfaction algorithm data ===
     /// Stack of bans to propagate
     propagation_stack: Vec<PropagationEntry>,
     /// The value at `support_count[node_index][model_index][direction]` represents the number of supports of a `model_index` at `node_index` from `direction`
