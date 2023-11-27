@@ -46,6 +46,7 @@ pub enum RngMode {
     RandomSeed,
 }
 
+#[derive(Eq, PartialEq)]
 pub enum GenerationStatus {
     Ongoing,
     Done,
