@@ -11,7 +11,7 @@ use tracing::info;
 use crate::{
     grid::{
         direction::{Cartesian2D, DirectionSet},
-        Grid, GridData,
+        GridData, GridDefinition,
     },
     ProcGenError,
 };
@@ -30,12 +30,17 @@ pub mod rules;
 
 const MAX_NOISE_VALUE: f32 = 1E-2;
 
+/// Defines a heuristic for the choice of a node to generate.
 pub enum NodeSelectionHeuristic {
+    /// The node with with the minimum count of possible models remaining will be chosen at each selection iteration. If multiple nodes have the same value, a random one is picked.
     MinimumRemainingValue,
+    /// A random node with no special features (except not being generated yet) will be chosen at each selection iteration.
     Random,
 }
 
+/// Defines a heuristic for the choice of a model among the possible ones when a node has been selected for generation.
 pub enum ModelSelectionHeuristic {
+    /// Choses a random model among the possible ones, weighted by each model weight.
     WeightedProbability,
 }
 
@@ -48,7 +53,9 @@ pub enum RngMode {
 
 #[derive(Eq, PartialEq)]
 pub enum GenerationStatus {
+    /// The generation has not ended yet.
     Ongoing,
+    /// The generation ended succesfully. The whole grid is generated.
     Done,
 }
 
@@ -57,9 +64,10 @@ struct PropagationEntry {
     model_index: ModelIndex,
 }
 
+/// Model synthesis/WFC generator.
 pub struct Generator<T: DirectionSet + Clone> {
     // Read-only configuration
-    grid: Grid<T>,
+    grid: GridDefinition<T>,
     rules: Rc<Rules<T>>,
     max_retry_count: u32,
     node_selection_heuristic: NodeSelectionHeuristic,
@@ -90,7 +98,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
 
     fn new(
         rules: Rc<Rules<T>>,
-        grid: Grid<T>,
+        grid: GridDefinition<T>,
         max_retry_count: u32,
         node_selection_heuristic: NodeSelectionHeuristic,
         model_selection_heuristic: ModelSelectionHeuristic,
@@ -126,6 +134,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
         generator
     }
 
+    /// Returns the seed that was used to initialize the generator RNG.
     pub fn get_seed(&self) -> u64 {
         self.seed
     }
@@ -154,6 +163,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
         }
     }
 
+    /// Tries to generate the whole grid. If the generation fails due to a contradiction, it will retry `max_retry_count` times before returning a `ProcGenError::GenerationFailure` error
     pub fn generate(&mut self) -> Result<GridData<T, GeneratedNode>, ProcGenError> {
         for _i in 1..self.max_retry_count + 1 {
             // TODO Split generation in multiple blocks
@@ -178,6 +188,9 @@ impl<T: DirectionSet + Clone> Generator<T> {
         Ok(())
     }
 
+    /// Advances the generation by one "step". Returns the `GenerationStatus` and a `ProcGenError` if the generation fails due to a contradiction.
+    ///
+    /// Note: This can lead to more than 1 node generated if the propagation phase forces some nodes into a definite state (1 possible model remainng)
     pub fn select_and_propagate(&mut self) -> Result<GenerationStatus, ProcGenError> {
         let node_index = match self.select_node_to_generate() {
             Some(index) => index,

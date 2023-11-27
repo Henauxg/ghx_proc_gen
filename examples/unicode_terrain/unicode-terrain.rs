@@ -16,7 +16,7 @@ use {
     ghx_proc_gen::generator::{
         builder::GeneratorBuilder, rules::Rules, NodeSelectionHeuristic, RngMode,
     },
-    ghx_proc_gen::grid::Grid,
+    ghx_proc_gen::grid::GridDefinition,
 };
 
 pub enum GenerationViewMode {
@@ -58,7 +58,7 @@ fn main() {
         (SEA, vec![SEA]),
     ];
     let rules = Rules::new_cartesian_2d(models, sockets_connections);
-    let grid = Grid::new_cartesian_2d(30, 15, false);
+    let grid = GridDefinition::new_cartesian_2d(30, 15, false);
     let mut generator = GeneratorBuilder::new()
         .with_rules(rules)
         .with_grid(grid)

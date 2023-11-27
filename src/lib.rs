@@ -17,7 +17,7 @@ mod tests {
             node::{NodeRotation, SocketId, SocketsCartesian2D},
             rules::Rules,
         },
-        grid::Grid,
+        grid::GridDefinition,
     };
 
     const VOID: SocketId = 0;
@@ -49,7 +49,7 @@ mod tests {
         ];
         let sockets_connections = vec![(VOID, vec![VOID]), (PIPE, vec![PIPE])];
         let rules = Rules::new_cartesian_2d(models, sockets_connections);
-        let grid = Grid::new_cartesian_2d(5, 5, false);
+        let grid = GridDefinition::new_cartesian_2d(5, 5, false);
         let mut generator = GeneratorBuilder::new()
             .with_rules(rules)
             .with_grid(grid)

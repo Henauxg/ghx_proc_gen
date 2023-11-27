@@ -2,7 +2,7 @@ use std::{marker::PhantomData, rc::Rc};
 
 use crate::grid::{
     direction::{Cartesian2D, Cartesian3D, DirectionSet},
-    Grid,
+    GridDefinition,
 };
 
 use super::{rules::Rules, Generator, ModelSelectionHeuristic, NodeSelectionHeuristic, RngMode};
@@ -14,7 +14,7 @@ pub enum Unset {}
 
 pub struct GeneratorBuilder<G, R, T: DirectionSet + Clone> {
     rules: Option<Rc<Rules<T>>>,
-    grid: Option<Grid<T>>,
+    grid: Option<GridDefinition<T>>,
     max_retry_count: u32,
     node_selection_heuristic: NodeSelectionHeuristic,
     model_selection_heuristic: ModelSelectionHeuristic,
@@ -63,7 +63,10 @@ impl<T: DirectionSet + Clone> GeneratorBuilder<Unset, Unset, T> {
 }
 
 impl GeneratorBuilder<Unset, Set, Cartesian2D> {
-    pub fn with_grid(self, grid: Grid<Cartesian2D>) -> GeneratorBuilder<Set, Set, Cartesian2D> {
+    pub fn with_grid(
+        self,
+        grid: GridDefinition<Cartesian2D>,
+    ) -> GeneratorBuilder<Set, Set, Cartesian2D> {
         GeneratorBuilder {
             grid: Some(grid),
             rules: self.rules,
@@ -77,7 +80,10 @@ impl GeneratorBuilder<Unset, Set, Cartesian2D> {
 }
 
 impl GeneratorBuilder<Unset, Set, Cartesian3D> {
-    pub fn with_grid(self, grid: Grid<Cartesian3D>) -> GeneratorBuilder<Set, Set, Cartesian3D> {
+    pub fn with_grid(
+        self,
+        grid: GridDefinition<Cartesian3D>,
+    ) -> GeneratorBuilder<Set, Set, Cartesian3D> {
         GeneratorBuilder {
             grid: Some(grid),
             rules: self.rules,
