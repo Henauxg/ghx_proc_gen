@@ -140,11 +140,9 @@ impl<T: DirectionSet> Rules<T> {
                             // `sockets_to_models` may not have an entry for `compatible_socket` depending on user input data (socket present in sockets_connections but not in a model)
                             if let Some(entry) = sockets_to_models.get(compatible_socket) {
                                 for allowed_model in &entry[direction as usize] {
-                                    match unique_models.insert(*allowed_model) {
-                                        true => allowed_neighbours
-                                            [(model_index, direction as usize)]
-                                            .push(*allowed_model),
-                                        false => (),
+                                    if unique_models.insert(*allowed_model) {
+                                        allowed_neighbours[(model_index, direction as usize)]
+                                            .push(*allowed_model);
                                     }
                                 }
                             }
@@ -188,24 +186,35 @@ impl<T: DirectionSet> Rules<T> {
 }
 
 /// Expand sockets connections. Returns `socket_to_sockets`: from a socket, get all sockets that are compatible for connection
-fn expand_sockets_connections(
-    sockets_connections: Vec<(u32, Vec<u32>)>,
-) -> HashMap<u32, HashSet<u32>> {
+fn expand_sockets_connections(sockets_connections: Vec<(u32, Vec<u32>)>) -> HashMap<u32, Vec<u32>> {
+    // 2 collections. One temporary to filter for uniqueness, one with a Vec for iteration determinism while generating later.
     let mut socket_to_sockets = HashMap::new();
+    let mut unique_socket_to_sockets = HashMap::new();
     for (socket, connections) in sockets_connections {
-        {
-            let connectable_sockets = socket_to_sockets.entry(socket).or_insert(HashSet::new());
-            for other_socket in &connections {
-                connectable_sockets.insert(*other_socket);
+        let connectable_sockets = unique_socket_to_sockets
+            .entry(socket)
+            .or_insert(HashSet::new());
+        for other_socket in &connections {
+            if connectable_sockets.insert(*other_socket) {
+                socket_to_sockets
+                    .entry(socket)
+                    .or_insert(Vec::new())
+                    .push(*other_socket);
             }
         }
-        // Register the connection from the other socket too.
+
+        // Register the connection from the other socket too. (Doing it with a second iteration because unique_socket_to_sockets is already borrowed)
         for other_socket in &connections {
             if *other_socket != socket {
-                let other_connectable_sockets = socket_to_sockets
+                let other_connectable_sockets = unique_socket_to_sockets
                     .entry(*other_socket)
                     .or_insert(HashSet::new());
-                other_connectable_sockets.insert(socket);
+                if other_connectable_sockets.insert(socket) {
+                    socket_to_sockets
+                        .entry(*other_socket)
+                        .or_insert(Vec::new())
+                        .push(socket);
+                }
             }
         }
     }
