@@ -27,6 +27,27 @@ pub struct Rules<T: DirectionSet> {
 }
 
 impl Rules<Cartesian2D> {
+    /// Used to create Rules for a 2d cartesian grid.
+    ///
+    /// Will only return [`ProcGenError::InvalidRules`] if `models` or `sockets_connections` are empty.
+    ///
+    /// For `sockets_connections`, there is no need to specify a connection in both directions: `[0, vec![1]]` means that socket `0` can be connected to a socket `1`, so `[1, vec![0]]` is implied.
+    ///
+    /// ### Example
+    ///
+    /// Create simple `Rules` for a chess-like pattern
+    /// ```
+    /// use ghx_proc_gen::generator::{node::SocketsCartesian2D, rules::Rules};
+    ///
+    /// const WHITE: u32 = 0;
+    /// const BLACK: u32 = 1;
+    /// let models = vec![
+    ///     SocketsCartesian2D::Mono(WHITE).new_model(),
+    ///     SocketsCartesian2D::Mono(BLACK).new_model(),
+    /// ];
+    /// let sockets_connections = vec![(WHITE, vec![BLACK]), (BLACK, vec![WHITE])];
+    /// let rules = Rules::new_cartesian_2d(models, sockets_connections).unwrap();
+    /// ```
     pub fn new_cartesian_2d(
         models: Vec<NodeModel<Cartesian2D>>,
         sockets_connections: Vec<SocketConnections>,
@@ -36,6 +57,37 @@ impl Rules<Cartesian2D> {
 }
 
 impl Rules<Cartesian3D> {
+    /// Used to create Rules for a 3d cartesian grid.
+    ///
+    /// Will only return [`ProcGenError::InvalidRules`] if `models` or `sockets_connections` are empty.
+    ///
+    /// For `sockets_connections`, there is no need to specify a connection in both directions: `[0, vec![1]]` means that socket `0` can be connected to a socket `1`, so `[1, vec![0]]` is implied.
+    ///
+    /// ### Example
+    ///
+    /// Create simple `Rules` to describe an empty room with variable length pillars.
+    /// ```
+    /// use ghx_proc_gen::grid::GridDefinition;
+    ///
+    /// const VOID: SocketId = 0;
+    /// const PILLAR_BASE_TOP: SocketId = 1;
+    /// const PILLAR_CORE_BOTTOM: SocketId = 2;
+    /// const PILLAR_CORE_TOP: SocketId = 3;
+    /// const PILLAR_CAP_BOTTOM: SocketId = 4;
+    /// let models = vec![
+    ///     SocketsCartesian3D::Mono(VOID).new_model(),
+    ///     SocketsCartesian3D::Simple(VOID, VOID, VOID, VOID, PILLAR_BASE_TOP, VOID).new_model(),
+    ///     SocketsCartesian3D::Simple(VOID, VOID, VOID, VOID, PILLAR_CORE_TOP, PILLAR_CORE_BOTTOM)
+    ///         .new_model(),
+    ///     SocketsCartesian3D::Simple(VOID, VOID, VOID, VOID, VOID, PILLAR_CAP_BOTTOM).new_model(),
+    /// ];
+    /// let sockets_connections = vec![
+    ///     (VOID, vec![VOID]),
+    ///     (PILLAR_BASE_TOP, vec![PILLAR_CORE_BOTTOM]),
+    ///     (PILLAR_CORE_TOP, vec![PILLAR_CAP_BOTTOM]),
+    /// ];
+    /// let rules = Rules::new_cartesian_3d(models, sockets_connections).unwrap();
+    /// ```
     pub fn new_cartesian_3d(
         models: Vec<NodeModel<Cartesian3D>>,
         sockets_connections: Vec<SocketConnections>,
