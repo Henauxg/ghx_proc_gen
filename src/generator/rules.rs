@@ -116,6 +116,7 @@ impl<T: DirectionSet> Rules<T> {
         self.models[model_index].weight()
     }
 
+    /// Returns the count of models (expanded from the input models) present in the rules
     #[inline]
     pub fn models_count(&self) -> usize {
         self.models.len()
@@ -127,7 +128,7 @@ impl<T: DirectionSet> Rules<T> {
     }
 }
 
-/// Expand sockets connections. `socket_to_sockets`: from a socket, get all sockets that are compatible for connection
+/// Expand sockets connections. Returns `socket_to_sockets`: from a socket, get all sockets that are compatible for connection
 fn expand_sockets_connections(
     sockets_connections: Vec<(u32, Vec<u32>)>,
 ) -> HashMap<u32, HashSet<u32>> {
