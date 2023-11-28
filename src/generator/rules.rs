@@ -84,7 +84,7 @@ impl Rules<Cartesian3D> {
     /// let sockets_connections = vec![
     ///     (VOID, vec![VOID]),
     ///     (PILLAR_BASE_TOP, vec![PILLAR_CORE_BOTTOM]),
-    ///     (PILLAR_CORE_TOP, vec![PILLAR_CAP_BOTTOM]),
+    ///     (PILLAR_CORE_TOP, vec![PILLAR_CORE_BOTTOM, PILLAR_CAP_BOTTOM]),
     /// ];
     /// let rules = Rules::new_cartesian_3d(models, sockets_connections).unwrap();
     /// ```
