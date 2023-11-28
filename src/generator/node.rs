@@ -42,9 +42,9 @@ pub struct NodeModel<T: DirectionSet> {
 pub enum SocketsCartesian2D {
     /// The model has only 1 socket, and its is the same in all directions.
     Mono(SocketId),
-    /// The model has 1 socket per side. Sides order is: up, left, right, down.
+    /// The model has 1 socket per side. Sides order is: up, left, down, right.
     Simple(SocketId, SocketId, SocketId, SocketId),
-    /// The model has multiple sockets per side. Sides order is: up, left, right, down.
+    /// The model has multiple sockets per side. Sides order is: up, left, down, right.
     Multiple(Vec<SocketId>, Vec<SocketId>, Vec<SocketId>, Vec<SocketId>),
 }
 
@@ -53,9 +53,9 @@ impl Into<Vec<Vec<SocketId>>> for SocketsCartesian2D {
         match self {
             SocketsCartesian2D::Mono(socket) => vec![vec![socket]; 4],
             SocketsCartesian2D::Simple(up, left, down, right) => {
-                vec![vec![up], vec![left], vec![down], vec![right]]
+                vec![vec![right], vec![left], vec![up], vec![down]]
             }
-            SocketsCartesian2D::Multiple(up, left, down, right) => vec![up, left, down, right],
+            SocketsCartesian2D::Multiple(up, left, down, right) => vec![right, left, up, down],
         }
     }
 }
@@ -107,16 +107,16 @@ impl Into<Vec<Vec<SocketId>>> for SocketsCartesian3D {
             SocketsCartesian3D::Mono(socket) => vec![vec![socket]; 6],
             SocketsCartesian3D::Simple(up, left, down, right, top, bottom) => {
                 vec![
-                    vec![up],
-                    vec![left],
-                    vec![down],
                     vec![right],
+                    vec![left],
+                    vec![up],
+                    vec![down],
                     vec![top],
                     vec![bottom],
                 ]
             }
             SocketsCartesian3D::Multiple(up, left, down, right, top, bottom) => {
-                vec![up, left, down, right, top, bottom]
+                vec![right, left, up, down, top, bottom]
             }
         }
     }
