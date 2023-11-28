@@ -2,8 +2,8 @@
 #[derive(Clone, Copy, Debug)]
 pub enum Direction {
     XForward = 0,
-    XBackward = 1,
-    YForward = 2,
+    YForward = 1,
+    XBackward = 2,
     YBackward = 3,
     ZForward = 4,
     ZBackward = 5,
@@ -77,15 +77,15 @@ pub const CARTESIAN_2D_DELTAS: &'static [GridDelta] = &[
         dz: 0,
     },
     GridDelta {
-        // XBackward
-        dx: -1,
-        dy: 0,
-        dz: 0,
-    },
-    GridDelta {
         // YForward
         dx: 0,
         dy: 1,
+        dz: 0,
+    },
+    GridDelta {
+        // XBackward
+        dx: -1,
+        dy: 0,
         dz: 0,
     },
     GridDelta {
@@ -113,15 +113,15 @@ pub const CARTESIAN_3D_DELTAS: &'static [GridDelta] = &[
         dz: 0,
     },
     GridDelta {
-        // XBackward
-        dx: -1,
-        dy: 0,
-        dz: 0,
-    },
-    GridDelta {
         // YForward
         dx: 0,
         dy: 1,
+        dz: 0,
+    },
+    GridDelta {
+        // XBackward
+        dx: -1,
+        dy: 0,
         dz: 0,
     },
     GridDelta {

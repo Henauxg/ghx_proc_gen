@@ -56,9 +56,9 @@ impl Into<Vec<Vec<SocketId>>> for SocketsCartesian2D {
         match self {
             SocketsCartesian2D::Mono(socket) => vec![vec![socket]; 4],
             SocketsCartesian2D::Simple(up, left, down, right) => {
-                vec![vec![right], vec![left], vec![up], vec![down]]
+                vec![vec![right], vec![up], vec![left], vec![down]]
             }
-            SocketsCartesian2D::Multiple(up, left, down, right) => vec![right, left, up, down],
+            SocketsCartesian2D::Multiple(up, left, down, right) => vec![right, up, left, down],
         }
     }
 }
@@ -111,15 +111,15 @@ impl Into<Vec<Vec<SocketId>>> for SocketsCartesian3D {
             SocketsCartesian3D::Simple(up, left, down, right, top, bottom) => {
                 vec![
                     vec![right],
-                    vec![left],
                     vec![up],
+                    vec![left],
                     vec![down],
                     vec![top],
                     vec![bottom],
                 ]
             }
             SocketsCartesian3D::Multiple(up, left, down, right, top, bottom) => {
-                vec![right, left, up, down, top, bottom]
+                vec![right, up, left, down, top, bottom]
             }
         }
     }
