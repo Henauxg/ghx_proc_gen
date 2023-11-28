@@ -57,7 +57,7 @@ fn main() {
         (BEACH, vec![BEACH, SEA]),
         (SEA, vec![SEA]),
     ];
-    let rules = Rules::new_cartesian_2d(models, sockets_connections);
+    let rules = Rules::new_cartesian_2d(models, sockets_connections).unwrap();
     let grid = GridDefinition::new_cartesian_2d(30, 15, false);
     let mut generator = GeneratorBuilder::new()
         .with_rules(rules)

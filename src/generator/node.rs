@@ -123,7 +123,7 @@ impl Into<Vec<Vec<SocketId>>> for SocketsCartesian3D {
 }
 
 impl SocketsCartesian3D {
-    /// Create a [`NodeModel`] from its sockets definition, with default values for the other members.
+    /// Create a [`NodeModel`] from its sockets definition, with default values for the other members: weight is 1.0 and the model will not be rotated.
     pub fn new_model(self) -> NodeModel<Cartesian3D> {
         NodeModel {
             sockets: self.into(),
@@ -135,7 +135,7 @@ impl SocketsCartesian3D {
 }
 
 impl NodeModel<Cartesian3D> {
-    /// Create a [`NodeModel`] from a [`SocketsCartesian3D`] definition, with default values for the other members.
+    /// Create a [`NodeModel`] from a [`SocketsCartesian3D`] definition, with default values for the other members: weight is 1.0 and the model will not be rotated.
     pub fn new_cartesian_3d(sockets: SocketsCartesian3D) -> NodeModel<Cartesian3D> {
         Self {
             sockets: sockets.into(),

@@ -5,7 +5,10 @@ use std::{
 
 use ndarray::{Array, Ix1, Ix2};
 
-use crate::grid::direction::{Cartesian2D, Cartesian3D, Direction, DirectionSet};
+use crate::{
+    grid::direction::{Cartesian2D, Cartesian3D, Direction, DirectionSet},
+    ProcGenError,
+};
 
 use super::node::{expand_models, ExpandedNodeModel, ModelIndex, NodeModel, SocketId};
 
@@ -27,7 +30,7 @@ impl Rules<Cartesian2D> {
     pub fn new_cartesian_2d(
         models: Vec<NodeModel<Cartesian2D>>,
         sockets_connections: Vec<SocketConnections>,
-    ) -> Rules<Cartesian2D> {
+    ) -> Result<Rules<Cartesian2D>, ProcGenError> {
         Self::new(models, sockets_connections, Cartesian2D {})
     }
 }
@@ -36,7 +39,7 @@ impl Rules<Cartesian3D> {
     pub fn new_cartesian_3d(
         models: Vec<NodeModel<Cartesian3D>>,
         sockets_connections: Vec<SocketConnections>,
-    ) -> Rules<Cartesian3D> {
+    ) -> Result<Rules<Cartesian3D>, ProcGenError> {
         Self::new(models, sockets_connections, Cartesian3D {})
     }
 }
@@ -46,7 +49,11 @@ impl<T: DirectionSet> Rules<T> {
         models: Vec<NodeModel<T>>,
         sockets_connections: Vec<SocketConnections>,
         direction_set: T,
-    ) -> Rules<T> {
+    ) -> Result<Rules<T>, ProcGenError> {
+        if models.len() == 0 || sockets_connections.len() == 0 {
+            return Err(ProcGenError::InvalidRules);
+        }
+
         let expanded_models = expand_models(models);
         let socket_to_sockets = expand_sockets_connections(sockets_connections);
 
@@ -95,11 +102,11 @@ impl<T: DirectionSet> Rules<T> {
             }
         }
 
-        Rules {
+        Ok(Rules {
             models: expanded_models,
             allowed_neighbours,
             typestate: PhantomData,
-        }
+        })
     }
 
     #[inline]

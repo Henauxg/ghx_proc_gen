@@ -6,6 +6,8 @@ pub mod grid;
 pub enum ProcGenError {
     #[error("Failed to generate")]
     GenerationFailure,
+    #[error("Rules are invalid")]
+    InvalidRules,
 }
 
 #[cfg(test)]
@@ -48,7 +50,7 @@ mod tests {
                 .with_all_rotations(),
         ];
         let sockets_connections = vec![(VOID, vec![VOID]), (PIPE, vec![PIPE])];
-        let rules = Rules::new_cartesian_2d(models, sockets_connections);
+        let rules = Rules::new_cartesian_2d(models, sockets_connections).unwrap();
         let grid = GridDefinition::new_cartesian_2d(5, 5, false);
         let mut generator = GeneratorBuilder::new()
             .with_rules(rules)

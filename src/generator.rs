@@ -205,7 +205,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
             // TODO Split generation in multiple blocks
             match self.generate_all_nodes() {
                 Ok(_) => return Ok(()),
-                Err(ProcGenError::GenerationFailure) => {
+                Err(_) => {
                     self.status = InternalGeneratorStatus::Failed; // Should already be set by callee.
                 }
             }
