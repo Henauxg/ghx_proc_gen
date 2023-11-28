@@ -10,15 +10,18 @@ pub type ModelIndex = usize;
 pub(crate) fn expand_models<T: DirectionSet>(models: Vec<NodeModel<T>>) -> Vec<ExpandedNodeModel> {
     let mut expanded_models = Vec::new();
     for (index, model) in models.iter().enumerate() {
-        for rotation in &model.allowed_rotations {
-            let mut sockets = model.sockets.clone();
-            rotation.rotate_sockets(&mut sockets);
-            expanded_models.push(ExpandedNodeModel {
-                sockets,
-                weight: model.weight,
-                original_index: index,
-                rotation: *rotation,
-            });
+        // Iterate on all possible node rotations and filter to be deterministic
+        for rotation in ALL_NODE_ROTATIONS {
+            if model.allowed_rotations.contains(rotation) {
+                let mut sockets = model.sockets.clone();
+                rotation.rotate_sockets(&mut sockets);
+                expanded_models.push(ExpandedNodeModel {
+                    sockets,
+                    weight: model.weight,
+                    original_index: index,
+                    rotation: *rotation,
+                });
+            }
         }
     }
     expanded_models
