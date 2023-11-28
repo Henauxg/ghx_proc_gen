@@ -195,6 +195,9 @@ impl<T: DirectionSet + Clone> Generator<T> {
     /// This can be usefull if you retrieve the data via other means (observers, ...)
     pub fn generate_without_output(&mut self) -> Result<(), ProcGenError> {
         for _i in 1..self.max_retry_count + 1 {
+            #[cfg(feature = "debug-traces")]
+            info!("Try n°{}", _i);
+
             match self.status {
                 InternalGeneratorStatus::Ongoing => (),
                 InternalGeneratorStatus::Done | InternalGeneratorStatus::Failed => {
@@ -256,10 +259,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
             }
 
             // Enqueue removal for propagation
-            self.propagation_stack.push(PropagationEntry {
-                node_index,
-                model_index,
-            });
+            self.enqueue_removal_to_propagate(node_index, model_index);
 
             // None of these model are possible on this node now, set their support to 0
             for dir in self.grid.directions() {
@@ -282,7 +282,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
         );
         self.possible_models_count[node_index] = 1;
 
-        self.signal_observers(node_index, selected_model_index);
+        self.signal_selection_to_observers(node_index, selected_model_index);
 
         if let Err(err) = self.propagate() {
             self.status = InternalGeneratorStatus::Failed;
@@ -292,7 +292,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
         Ok(GenerationStatus::Ongoing)
     }
 
-    fn signal_observers(&mut self, node_index: usize, model_index: ModelIndex) {
+    fn signal_selection_to_observers(&mut self, node_index: usize, model_index: ModelIndex) {
         #[cfg(feature = "debug-traces")]
         info!(
             "Select model {} for node {} at position {:?}",
@@ -339,6 +339,18 @@ impl<T: DirectionSet + Clone> Generator<T> {
         Ok(())
     }
 
+    fn enqueue_removal_to_propagate(&mut self, node_index: usize, model_index: ModelIndex) {
+        #[cfg(feature = "debug-traces")]
+        info!(
+            "Enqueue removal for propagation node {} model {}",
+            node_index, model_index
+        );
+        self.propagation_stack.push(PropagationEntry {
+            node_index,
+            model_index,
+        });
+    }
+
     fn ban_model_from_node(
         &mut self,
         node_index: usize,
@@ -353,10 +365,8 @@ impl<T: DirectionSet + Clone> Generator<T> {
         );
 
         // Enqueue removal for propagation
-        self.propagation_stack.push(PropagationEntry {
-            node_index,
-            model_index,
-        });
+        self.enqueue_removal_to_propagate(node_index, model_index);
+
         // Update the supports
         for dir in self.grid.directions() {
             let supports_count = &mut self.supports_count[(node_index, model_index, *dir as usize)];
@@ -372,7 +382,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
             0 => Err(ProcGenError::GenerationFailure),
             1 => {
                 // This node has collapsed into a specific model
-                self.signal_observers(node_index, self.get_model_index(node_index));
+                self.signal_selection_to_observers(node_index, self.get_model_index(node_index));
                 Ok(())
             }
             _ => Ok(()),
