@@ -1,34 +1,12 @@
-[package]
-name = "ghx_proc_gen"
-version = "0.1.0"
-description = "2D & 3D procedural generation with WFC/Model synthesis"
-repository = "https://github.com/Henauxg/ghx_proc_gen"
-documentation = "https://docs.rs/ghx_proc_gen"
-edition = "2021"
-license = "MIT OR Apache-2.0"
-keywords = ["gamedev", "procedural", "wfc", "model synthesis"]
-categories = ["game-development", "algorithms"]
-readme = "README.md"
-exclude = ["assets/"]
+[workspace]
+resolver = "2"
 
-[features]
-debug-traces = []
+members = ["ghx_proc_gen", "ghx_bevy_utilities", "examples"]
 
-[dependencies]
-bitvec = "1.0.1"
-ndarray = "0.15.6"
-rand = "0.8.5"
-thiserror = "1.0.50"
-tracing = "0.1.40"
+# Enable a small amount of optimization in debug mode
+[profile.dev]
+opt-level = 1
 
-[dev-dependencies]
-tracing-subscriber = "0.3.18"
-bevy = { version = "0.12.0", default-features = false, features = [] }
-
-[[example]]
-name = "unicode-terrain"
-path = "examples/unicode_terrain/unicode-terrain.rs"
-
-[[example]]
-name = "3d-terrain"
-path = "examples/3d_terrain/3d-terrain.rs"
+# Enable high optimizations for dependencies (incl. Bevy), but not for our code:
+[profile.dev.package."*"]
+opt-level = 3
