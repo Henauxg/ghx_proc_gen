@@ -1,0 +1,14 @@
+[package]
+name = "examples"
+version = "0.1.0"
+publish = false
+edition = "2021"
+
+[dev-dependencies]
+ghx_proc_gen = { path = "../ghx_proc_gen" }
+
+tracing-subscriber = "0.3.18"
+
+[[example]]
+name = "unicode-terrain"
+path = "unicode-terrain.rs"
