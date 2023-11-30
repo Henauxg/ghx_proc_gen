@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 
-members = ["ghx_proc_gen", "ghx_bevy_utilities", "examples"]
+members = ["ghx_proc_gen", "ghx_bevy_utilities", "examples", "bevy_examples"]
 
 # Enable a small amount of optimization in debug mode
 [profile.dev]
