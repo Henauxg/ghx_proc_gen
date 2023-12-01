@@ -39,12 +39,15 @@ impl<T: DirectionSet + Clone> QueuedStatefulObserver<T> {
         }
     }
 
-    pub fn update_one_step(&mut self) {
+    /// Returns true if there was as update to process.
+    pub fn update_one_step(&mut self) -> bool {
         match self.receiver.try_recv() {
-            Ok(update) => self
-                .grid_data
-                .set(update.node_index, Some(update.generated_node)),
-            Err(_) => (),
+            Ok(update) => {
+                self.grid_data
+                    .set(update.node_index, Some(update.generated_node));
+                true
+            }
+            Err(_) => false,
         }
     }
 }
