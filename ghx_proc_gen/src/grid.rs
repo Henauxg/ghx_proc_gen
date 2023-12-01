@@ -146,7 +146,9 @@ impl<T: DirectionSet + Clone> GridDefinition<T> {
 
     /// Returns the next position in the grid when moving `delta` unit(s) in `direction` from `grid_position`.
     ///
-    /// NO CHECK is done to verify that the given position is a valid position for this grid.
+    /// Returns `None` if the destination is not in the grid.
+    ///
+    /// NO CHECK is done to verify that the given `grid_position` is a valid position for this grid.
     pub fn get_next_pos(
         &self,
         grid_position: &GridPosition,
@@ -183,7 +185,9 @@ impl<T: DirectionSet + Clone> GridDefinition<T> {
 
     /// Returns the index of the next position in the grid when moving 1 unit in `direction` from `grid_position`.
     ///
-    /// NO CHECK is done to verify that the given position is a valid position for this grid.
+    /// Returns `None` if the destination is not in the grid.
+    ///
+    /// NO CHECK is done to verify that the given `grid_position` is a valid position for this grid.
     pub fn get_next_index(
         &self,
         grid_position: &GridPosition,
