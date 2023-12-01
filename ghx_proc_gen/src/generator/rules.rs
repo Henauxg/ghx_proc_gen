@@ -160,12 +160,12 @@ impl<T: DirectionSet> Rules<T> {
     }
 
     #[inline]
-    pub(crate) fn supported_models(
+    pub(crate) fn allowed_models(
         &self,
-        model_index: ModelIndex,
+        model: ModelIndex,
         direction: Direction,
     ) -> &Vec<ModelIndex> {
-        &self.allowed_neighbours[(model_index, direction as usize)]
+        &self.allowed_neighbours[(model, direction as usize)]
     }
 
     #[inline]

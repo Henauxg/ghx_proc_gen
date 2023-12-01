@@ -61,6 +61,8 @@ pub enum GenerationStatus {
 
 #[derive(Debug, Clone, Copy)]
 enum InternalGeneratorStatus {
+    /// Initial state.
+    Init,
     /// Generation has not finished.
     Ongoing,
     /// Generation ended succesfully.
@@ -126,7 +128,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
             RngMode::RandomSeed => rand::thread_rng().gen::<u64>(),
         };
 
-        let mut generator = Self {
+        let generator = Self {
             grid,
             rules,
             max_retry_count,
@@ -136,7 +138,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
             rng: StdRng::seed_from_u64(seed),
             seed,
 
-            status: InternalGeneratorStatus::Ongoing,
+            status: InternalGeneratorStatus::Init,
             nodes: bitvec![1; nodes_count * models_count],
             possible_models_count: vec![models_count; nodes_count],
             observers: Vec::new(),
@@ -144,7 +146,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
             propagation_stack: Vec::new(),
             supports_count: Array::zeros((nodes_count, models_count, direction_count)),
         };
-        generator.initialize_supports_count();
+        // We don't do `initialize_supports_count` yet since it may generate some node(s).
         generator
     }
 
@@ -153,7 +155,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
         self.seed
     }
 
-    fn reinitialize(&mut self) {
+    fn reinitialize(&mut self) -> Result<(), ProcGenError> {
         #[cfg(feature = "debug-traces")]
         info!("Reinitializing generator, state was {:?}", self.status);
 
@@ -161,24 +163,44 @@ impl<T: DirectionSet + Clone> Generator<T> {
         self.nodes = bitvec![1;self.rules.models_count() * self.grid.total_size() ];
         self.possible_models_count = vec![self.rules.models_count(); self.grid.total_size()];
         self.propagation_stack = Vec::new();
-        self.initialize_supports_count();
+        self.initialize_supports_count()
     }
 
-    fn initialize_supports_count(&mut self) {
+    fn initialize_supports_count(&mut self) -> Result<(), ProcGenError> {
+        // For a given `node`, `neighbours[direction]` will hold the optionnal index of the neighbour node in direction
+        let mut neighbours = vec![None; self.grid.directions().len()];
         for node in 0..self.grid.total_size() {
+            for direction in self.grid.directions() {
+                let grid_pos = self.grid.get_position(node);
+                neighbours[*direction as usize] = self.grid.get_next_index(&grid_pos, *direction);
+            }
+
             for model in 0..self.rules.models_count() {
                 for direction in self.grid.directions() {
                     let opposite_dir = direction.opposite();
-                    let grid_pos = self.grid.get_position(node);
-                    // During initialization, the support count for a model from a direction is simply his total count of allowed adjacent models in the opposite direction (or 0 for a non-looping border).
-                    self.supports_count[(node, model, *direction as usize)] =
-                        match self.grid.get_next_index(&grid_pos, opposite_dir) {
-                            Some(_) => self.rules.supported_models(model, opposite_dir).len(),
-                            None => 0,
-                        };
+                    // During initialization, the support count for a model "from" a direction is simply the count of allowed adjacent models when looking in the opposite direction (or 0 for a non-looping border).
+                    match neighbours[opposite_dir as usize] {
+                        Some(_) => {
+                            let allowed_models_count =
+                                self.rules.allowed_models(model, opposite_dir).len();
+                            self.supports_count[(node, model, *direction as usize)] =
+                                allowed_models_count;
+                            if allowed_models_count == 0 && self.is_model_possible(node, model) {
+                                // Ban model for node since it would 100% lead to a contradiction at some point during the generation.
+                                if let Err(err) = self.ban_model_from_node(node, model) {
+                                    self.status = InternalGeneratorStatus::Failed;
+                                    return Err(err);
+                                }
+                                // We don't need to process the remaining directions, iterate on the next model.
+                                break;
+                            }
+                        }
+                        None => self.supports_count[(node, model, *direction as usize)] = 0,
+                    };
                 }
             }
         }
+        Ok(())
     }
 
     /// Tries to generate the whole grid. If the generation fails due to a contradiction, it will retry `max_retry_count` times before returning `ProcGenError::GenerationFailure`
@@ -199,9 +221,10 @@ impl<T: DirectionSet + Clone> Generator<T> {
             info!("Try n°{}", _i);
 
             match self.status {
+                InternalGeneratorStatus::Init => self.initialize_supports_count()?,
                 InternalGeneratorStatus::Ongoing => (),
                 InternalGeneratorStatus::Done | InternalGeneratorStatus::Failed => {
-                    self.reinitialize()
+                    self.reinitialize()?
                 }
             };
 
@@ -228,15 +251,18 @@ impl<T: DirectionSet + Clone> Generator<T> {
         Ok(())
     }
 
-    /// Advances the generation by one "step". Returns the `GenerationStatus` and a `ProcGenError` if the generation fails due to a contradiction.
+    /// Advances the generation by one "step". Returns the [`GenerationStatus`] if the step executed successfully and [`ProcGenError::GenerationFailure`] if the generation fails due to a contradiction.
     ///
-    /// Note: This can lead to more than 1 node generated if the propagation phase forces some other node(s) into a definite state (1 possible model remaining on a node)
+    /// If the generation has ended (successfully or not), calling `select_and_propagate` again will reinitialize the [`Generator`] before starting a new² generation.
     ///
-    /// If the generation has ended (successful or not), calling `select_and_propagate` will reinitialize the [`Generator`] before starting the generation.
+    /// **Note**: One call to `select_and_propagate` can lead to more than 1 node generated if the propagation phase forces some other node(s) into a definite state (1 possible model remaining on a node)
     pub fn select_and_propagate(&mut self) -> Result<GenerationStatus, ProcGenError> {
         match self.status {
+            InternalGeneratorStatus::Init => self.initialize_supports_count()?,
             InternalGeneratorStatus::Ongoing => (),
-            InternalGeneratorStatus::Done | InternalGeneratorStatus::Failed => self.reinitialize(),
+            InternalGeneratorStatus::Done | InternalGeneratorStatus::Failed => {
+                self.reinitialize()?
+            }
         };
 
         let node_index = match self.select_node_to_generate() {
@@ -248,6 +274,8 @@ impl<T: DirectionSet + Clone> Generator<T> {
         };
         // We found a node not yet generated. "Observe/collapse" the node: select a model for the node
         let selected_model_index = self.select_model(node_index);
+
+        self.signal_selection_to_observers(node_index, selected_model_index);
 
         // Iterate all the possible models because we don't have an easy way to iterate only the models possible at node_index. But we'll filter impossible models right away. TODO: iter_ones ?
         for model_index in 0..self.rules.models_count() {
@@ -282,8 +310,6 @@ impl<T: DirectionSet + Clone> Generator<T> {
         );
         self.possible_models_count[node_index] = 1;
 
-        self.signal_selection_to_observers(node_index, selected_model_index);
-
         if let Err(err) = self.propagate() {
             self.status = InternalGeneratorStatus::Failed;
             return Err(err);
@@ -310,24 +336,34 @@ impl<T: DirectionSet + Clone> Generator<T> {
         }
     }
 
+    /// Returns [`ProcGenError::GenerationFailure`] if a node has no possible models left. Else, returns `Ok`.
+    ///
+    /// Does not modify the generator internal status.
     fn propagate(&mut self) -> Result<(), ProcGenError> {
         // Clone the Rc to allow for mutability in the interior loops
         let rules = Rc::clone(&self.rules);
 
         while let Some(from) = self.propagation_stack.pop() {
             let from_position = self.grid.get_position(from.node_index);
+
+            #[cfg(feature = "debug-traces")]
+            info!(
+                "Propagate removal of model {} for node {}",
+                from.model_index, from.node_index
+            );
+
             // We want to update all the adjacent nodes (= in all directions)
             for dir in self.grid.directions() {
                 // Get the adjacent node in this direction, it may not exist.
                 if let Some(to_node_index) = self.grid.get_next_index(&from_position, *dir) {
                     // Decrease the support count of all models previously supported by "from"
-                    for &model in rules.supported_models(from.model_index, *dir) {
+                    for &model in rules.allowed_models(from.model_index, *dir) {
                         let supports_count =
                             &mut self.supports_count[(to_node_index, model, *dir as usize)];
                         if *supports_count > 0 {
                             *supports_count -= 1;
                             // When we find a model which is now unsupported, we queue a ban
-                            // We check for == because we only want to queue the event once.
+                            // We check > 0  and for == because we only want to queue the event once.
                             if *supports_count == 0 {
                                 self.ban_model_from_node(to_node_index, model)?;
                             }
@@ -342,8 +378,8 @@ impl<T: DirectionSet + Clone> Generator<T> {
     fn enqueue_removal_to_propagate(&mut self, node_index: usize, model_index: ModelIndex) {
         #[cfg(feature = "debug-traces")]
         info!(
-            "Enqueue removal for propagation node {} model {}",
-            node_index, model_index
+            "Enqueue removal for propagation: model {} from node {}",
+            model_index, node_index
         );
         self.propagation_stack.push(PropagationEntry {
             node_index,
@@ -351,38 +387,39 @@ impl<T: DirectionSet + Clone> Generator<T> {
         });
     }
 
-    fn ban_model_from_node(
-        &mut self,
-        node_index: usize,
-        model_index: usize,
-    ) -> Result<(), ProcGenError> {
+    /// Returns [`ProcGenError::GenerationFailure`] if the node has no possible models left. Else, returns `Ok`.
+    ///
+    /// Does not modify the generator internal status.
+    ///
+    /// Should only be called a model that is still possible for this node
+    fn ban_model_from_node(&mut self, node: usize, model: usize) -> Result<(), ProcGenError> {
         #[cfg(feature = "debug-traces")]
         info!(
-            "Ban model {} for node {} at position {:?}",
-            model_index,
-            node_index,
-            self.grid.get_position(node_index)
+            "Ban model {} from node {} at position {:?}",
+            model,
+            node,
+            self.grid.get_position(node)
         );
 
         // Enqueue removal for propagation
-        self.enqueue_removal_to_propagate(node_index, model_index);
+        self.enqueue_removal_to_propagate(node, model);
 
         // Update the supports
         for dir in self.grid.directions() {
-            let supports_count = &mut self.supports_count[(node_index, model_index, *dir as usize)];
+            let supports_count = &mut self.supports_count[(node, model, *dir as usize)];
             *supports_count = 0;
         }
         // Update the state
         self.nodes
-            .set(node_index * self.rules.models_count() + model_index, false);
+            .set(node * self.rules.models_count() + model, false);
 
-        let number_of_models_left = &mut self.possible_models_count[node_index];
+        let number_of_models_left = &mut self.possible_models_count[node];
         *number_of_models_left = number_of_models_left.saturating_sub(1);
         match *number_of_models_left {
             0 => Err(ProcGenError::GenerationFailure),
             1 => {
                 // This node has collapsed into a specific model
-                self.signal_selection_to_observers(node_index, self.get_model_index(node_index));
+                self.signal_selection_to_observers(node, self.get_model_index(node));
                 Ok(())
             }
             _ => Ok(()),
@@ -445,8 +482,8 @@ impl<T: DirectionSet + Clone> Generator<T> {
     }
 
     #[inline]
-    fn is_model_possible(&self, node_index: usize, model_index: usize) -> bool {
-        self.nodes[node_index * self.rules.models_count() + model_index] == true
+    fn is_model_possible(&self, node: usize, model: usize) -> bool {
+        self.nodes[node * self.rules.models_count() + model] == true
     }
 
     /// Should only be called when the nodes are fully generated
