@@ -1,9 +1,6 @@
 use std::{marker::PhantomData, rc::Rc};
 
-use crate::grid::{
-    direction::{Cartesian2D, DirectionSet},
-    GridDefinition,
-};
+use crate::grid::{direction::DirectionSet, GridDefinition};
 
 use super::{rules::Rules, Generator, ModelSelectionHeuristic, NodeSelectionHeuristic, RngMode};
 
@@ -38,10 +35,8 @@ pub struct GeneratorBuilder<G, R, T: DirectionSet + Clone> {
     typestate: PhantomData<(G, R)>,
 }
 
-impl GeneratorBuilder<Unset, Unset, Cartesian2D> {
+impl<T: DirectionSet + Clone> GeneratorBuilder<Unset, Unset, T> {
     /// Creates a [`GeneratorBuilder`] with its values set to their default.
-    ///
-    /// (Sidenote: T is set to Cartesian2D by default but will still be set to its desired value when adding the [`Rules`])
     pub fn new() -> Self {
         Self {
             rules: None,
