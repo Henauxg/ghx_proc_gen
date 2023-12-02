@@ -3,7 +3,7 @@ use ndarray::{Array, Ix3};
 use rand::{
     distributions::Distribution, distributions::WeightedIndex, rngs::StdRng, Rng, SeedableRng,
 };
-use std::{rc::Rc, sync::mpsc};
+use std::sync::{mpsc, Arc};
 
 #[cfg(feature = "debug-traces")]
 use tracing::info;
@@ -81,7 +81,7 @@ struct PropagationEntry {
 pub struct Generator<T: DirectionSet + Clone> {
     // === Read-only configuration ===
     grid: GridDefinition<T>,
-    rules: Rc<Rules<T>>,
+    rules: Arc<Rules<T>>,
     max_retry_count: u32,
     node_selection_heuristic: NodeSelectionHeuristic,
     model_selection_heuristic: ModelSelectionHeuristic,
@@ -112,7 +112,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
     }
 
     fn new(
-        rules: Rc<Rules<T>>,
+        rules: Arc<Rules<T>>,
         grid: GridDefinition<T>,
         max_retry_count: u32,
         node_selection_heuristic: NodeSelectionHeuristic,
@@ -340,8 +340,8 @@ impl<T: DirectionSet + Clone> Generator<T> {
     ///
     /// Does not modify the generator internal status.
     fn propagate(&mut self) -> Result<(), ProcGenError> {
-        // Clone the Rc to allow for mutability in the interior loops
-        let rules = Rc::clone(&self.rules);
+        // Clone the ref to allow for mutability of other members in the interior loops
+        let rules = Arc::clone(&self.rules);
 
         while let Some(from) = self.propagation_stack.pop() {
             let from_position = self.grid.get_position(from.node_index);

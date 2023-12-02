@@ -1,4 +1,4 @@
-use std::{marker::PhantomData, rc::Rc};
+use std::{marker::PhantomData, sync::Arc};
 
 use crate::grid::{direction::DirectionSet, GridDefinition};
 
@@ -26,7 +26,7 @@ pub enum Unset {}
 ///    .build();
 /// ```
 pub struct GeneratorBuilder<G, R, T: DirectionSet + Clone> {
-    rules: Option<Rc<Rules<T>>>,
+    rules: Option<Arc<Rules<T>>>,
     grid: Option<GridDefinition<T>>,
     max_retry_count: u32,
     node_selection_heuristic: NodeSelectionHeuristic,
@@ -55,7 +55,7 @@ impl<T: DirectionSet + Clone> GeneratorBuilder<Unset, Unset, T> {
     pub fn with_rules(self, rules: Rules<T>) -> GeneratorBuilder<Unset, Set, T> {
         GeneratorBuilder {
             grid: self.grid,
-            rules: Some(Rc::new(rules)),
+            rules: Some(Arc::new(rules)),
             max_retry_count: self.max_retry_count,
             node_selection_heuristic: self.node_selection_heuristic,
             model_selection_heuristic: self.model_selection_heuristic,
@@ -65,7 +65,7 @@ impl<T: DirectionSet + Clone> GeneratorBuilder<Unset, Unset, T> {
     }
 
     /// Set the [`Rules`] to be used by the [`Generator`]. The `Generator` will hold a read-only Rc onto those `Rules` which can be safely shared by multiple `Generator`.
-    pub fn with_shared_rules(self, rules: Rc<Rules<T>>) -> GeneratorBuilder<Unset, Set, T> {
+    pub fn with_shared_rules(self, rules: Arc<Rules<T>>) -> GeneratorBuilder<Unset, Set, T> {
         GeneratorBuilder {
             grid: self.grid,
             rules: Some(rules),
