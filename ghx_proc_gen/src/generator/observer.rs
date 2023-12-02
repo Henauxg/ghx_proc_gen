@@ -8,6 +8,16 @@ pub struct GenerationUpdate {
     pub(crate) generated_node: GeneratedNode,
 }
 
+impl GenerationUpdate {
+    pub fn node_index(&self) -> usize {
+        self.node_index
+    }
+
+    pub fn node(&self) -> GeneratedNode {
+        self.generated_node
+    }
+}
+
 pub struct QueuedStatefulObserver<T: DirectionSet + Clone> {
     grid_data: GridData<T, Option<GeneratedNode>>,
     receiver: crossbeam_channel::Receiver<GenerationUpdate>,

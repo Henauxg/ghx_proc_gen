@@ -155,6 +155,10 @@ impl<T: DirectionSet + Clone> Generator<T> {
         self.seed
     }
 
+    pub fn grid(&self) -> &GridDefinition<T> {
+        &self.grid
+    }
+
     fn reinitialize(&mut self) -> Result<(), ProcGenError> {
         #[cfg(feature = "debug-traces")]
         info!("Reinitializing generator, state was {:?}", self.status);
