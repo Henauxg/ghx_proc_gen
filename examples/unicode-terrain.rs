@@ -107,7 +107,7 @@ fn display_grid(data_grid: &GridData<Cartesian2D, Option<GeneratedNode>>) {
         for x in 0..data_grid.grid().size_x() {
             match data_grid.get_2d(x, y) {
                 None => print!("❓"),
-                Some(node) => print!("{}", ICONES[node.index]),
+                Some(node) => print!("{}", ICONES[node.model_index]),
             }
         }
         println!();

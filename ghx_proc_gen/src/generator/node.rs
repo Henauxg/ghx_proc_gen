@@ -212,7 +212,7 @@ impl ExpandedNodeModel {
 
     pub(crate) fn to_generated(&self) -> GeneratedNode {
         GeneratedNode {
-            index: self.original_index,
+            model_index: self.original_index,
             rotation: self.rotation,
         }
     }
@@ -222,7 +222,7 @@ impl ExpandedNodeModel {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct GeneratedNode {
     /// Index of the [`NodeModel`] this was expanded from
-    pub index: ModelIndex,
+    pub model_index: ModelIndex,
     /// Rotation of the [`NodeModel`]
     pub rotation: NodeRotation,
 }
