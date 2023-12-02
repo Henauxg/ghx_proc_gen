@@ -9,7 +9,7 @@ use bevy::{
 use ghx_bevy_utilities::{pan_orbit_camera, PanOrbitCamera};
 use ghx_proc_gen::{
     generator::{
-        builder::GeneratorBuilder, observer::QueuedStatefulObserver, rules::Rules,
+        builder::GeneratorBuilder, node::GeneratedNode, observer::QueuedObserver, rules::Rules,
         GenerationStatus, Generator, ModelSelectionHeuristic, NodeSelectionHeuristic, RngMode,
     },
     grid::{direction::Cartesian3D, GridDefinition},
@@ -28,16 +28,16 @@ enum GenerationViewMode {
 
 #[derive(Resource)]
 struct Generation {
+    models_assets: HashMap<usize, Handle<Scene>>,
     generator: Generator<Cartesian3D>,
-    observer: QueuedStatefulObserver<Cartesian3D>,
-    // timer: Timer,
+    observer: QueuedObserver,
 }
 
 #[derive(Resource)]
 struct GenerationTimer(Timer);
 
 /// Change this value to change the way the generation is visualized
-const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::Final;
+const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::StepByStep(500);
 
 const SCALE_FACTOR: f32 = 1. / 40.; // Models are 40 voxels wide
 const MODEL_SCALE: Vec3 = Vec3::new(SCALE_FACTOR, SCALE_FACTOR, SCALE_FACTOR);
@@ -79,8 +79,10 @@ fn setup_scene(mut commands: Commands) {
 }
 
 fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
+    // Load rules
     let (models_asset_paths, models, sockets_connections) = rules_and_assets();
 
+    // Create generator
     let rules = Rules::new_cartesian_3d(models, sockets_connections).unwrap();
     let grid = GridDefinition::new_cartesian_3d(35, 35, 5, false);
     let mut generator = GeneratorBuilder::new()
@@ -91,7 +93,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         .with_node_heuristic(NodeSelectionHeuristic::MinimumRemainingValue)
         .with_model_heuristic(ModelSelectionHeuristic::WeightedProbability)
         .build();
-    let mut observer = QueuedStatefulObserver::new(&mut generator);
+    let observer = QueuedObserver::new(&mut generator);
     info!("Seed: {}", generator.get_seed());
 
     // Load assets
@@ -111,80 +113,98 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
             Timer::new(Duration::from_millis(interval), TimerMode::Repeating),
         )),
         GenerationViewMode::Final => {
-            generator.generate_without_output().unwrap();
-            observer.update();
-            let data_grid = observer.grid_data();
-            let x_offset = data_grid.grid().size_x() as f32 / 2.;
-            let z_offset = data_grid.grid().size_y() as f32 / 2.;
-            for z in (0..data_grid.grid().size_y()).rev() {
-                for x in 0..data_grid.grid().size_x() {
-                    for y in 0..data_grid.grid().size_z() {
-                        match data_grid.get_3d(x, z, y) {
-                            None => (),
-                            Some(node) => {
-                                if let Some(asset) = models_assets.get(&node.index) {
-                                    commands.spawn(SceneBundle {
-                                        scene: asset.clone(),
-                                        // Y is up in Bevy.
-                                        transform: Transform::from_xyz(
-                                            (x as f32) - x_offset,
-                                            y as f32,
-                                            z_offset - (z as f32),
-                                        )
-                                        .with_scale(MODEL_SCALE)
-                                        .with_rotation(Quat::from_rotation_y(f32::to_radians(
-                                            node.rotation.value() as f32,
-                                        ))),
-                                        ..default()
-                                    });
-                                }
-                            }
-                        }
-                    }
-                }
+            let output = generator.generate().unwrap();
+            for (node_index, node) in output.nodes().iter().enumerate() {
+                spawn_node(
+                    &mut commands,
+                    &models_assets,
+                    generator.grid(),
+                    node,
+                    node_index,
+                );
             }
         }
     }
 
     commands.insert_resource(Generation {
+        models_assets,
         generator,
         observer,
     });
 }
 
-fn select_and_propagate(generation: &mut ResMut<Generation>) {
-    match generation.generator.select_and_propagate() {
-        Ok(status) => match status {
-            GenerationStatus::Ongoing => {
-                generation.observer.update();
-                // TODO Stateless observer
-            }
-            GenerationStatus::Done => {
-                // TODO
-            }
-        },
-        Err(_) => info!("Generation failed"),
+fn spawn_node(
+    commands: &mut Commands,
+    models_assets: &HashMap<usize, Handle<Scene>>,
+    grid: &GridDefinition<Cartesian3D>,
+    node: &GeneratedNode,
+    node_index: usize,
+) {
+    if let Some(asset) = models_assets.get(&node.model_index) {
+        let x_offset = grid.size_x() as f32 / 2.;
+        let z_offset = grid.size_y() as f32 / 2.;
+        let pos = grid.get_position(node_index);
+        commands.spawn(SceneBundle {
+            scene: asset.clone(),
+            // Y is up in Bevy.
+            transform: Transform::from_xyz(
+                (pos.x as f32) - x_offset,
+                pos.z as f32,
+                z_offset - (pos.y as f32),
+            )
+            .with_scale(MODEL_SCALE)
+            .with_rotation(Quat::from_rotation_y(f32::to_radians(
+                node.rotation.value() as f32,
+            ))),
+            ..default()
+        });
     }
 }
 
-fn step_by_step_input_update(keys: Res<Input<KeyCode>>, mut generation: ResMut<Generation>) {
-    let should_iterate = keys.just_pressed(KeyCode::NumpadEnter);
+fn select_and_propagate(commands: &mut Commands, generation: &mut ResMut<Generation>) {
+    match generation.generator.select_and_propagate() {
+        Ok(status) => {
+            let updates = generation.observer.update();
+            for update in updates {
+                spawn_node(
+                    commands,
+                    &generation.models_assets,
+                    generation.generator.grid(),
+                    &update.node(),
+                    update.node_index(),
+                );
+            }
+            match status {
+                GenerationStatus::Ongoing => (),
+                GenerationStatus::Done => info!("Generation done"),
+            }
+        }
+        Err(_) => {
+            info!("Generation failed");
+            // TODO Despawn all models
+        }
+    }
+}
 
-    if should_iterate {
-        select_and_propagate(&mut generation);
+fn step_by_step_input_update(
+    mut commands: Commands,
+    keys: Res<Input<KeyCode>>,
+    mut generation: ResMut<Generation>,
+) {
+    if keys.just_pressed(KeyCode::NumpadEnter) {
+        select_and_propagate(&mut commands, &mut generation);
     }
 }
 
 fn step_by_step_timed_update(
+    mut commands: Commands,
     mut generation: ResMut<Generation>,
     mut timer: ResMut<GenerationTimer>,
     time: Res<Time>,
 ) {
     timer.0.tick(time.delta());
-    let should_iterate = timer.0.finished();
-
-    if should_iterate {
-        select_and_propagate(&mut generation);
+    if timer.0.finished() {
+        select_and_propagate(&mut commands, &mut generation);
     }
 }
 
@@ -198,10 +218,10 @@ fn main() {
 
     match GENERATION_VIEW_MODE {
         GenerationViewMode::StepByStep(_) => {
-            app.add_systems(Startup, step_by_step_timed_update);
+            app.add_systems(Update, step_by_step_timed_update);
         }
         GenerationViewMode::StepByStepPaused => {
-            app.add_systems(Startup, step_by_step_input_update);
+            app.add_systems(Update, step_by_step_input_update);
         }
         GenerationViewMode::Final => (),
     };
