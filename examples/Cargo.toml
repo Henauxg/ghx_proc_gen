@@ -8,6 +8,7 @@ edition = "2021"
 ghx_proc_gen = { path = "../ghx_proc_gen" }
 
 tracing-subscriber = "0.3.18"
+tracing = "0.1.40"
 
 [[example]]
 name = "unicode-terrain"

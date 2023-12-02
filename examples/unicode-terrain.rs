@@ -37,7 +37,9 @@ const SEA: u32 = 4;
 const DEEP_SEA: u32 = 5;
 
 fn main() {
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .init();
 
     let models = vec![
         SocketsCartesian2D::Mono(MOUNTAIN).new_model(),
