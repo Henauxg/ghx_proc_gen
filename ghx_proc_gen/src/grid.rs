@@ -1,12 +1,14 @@
+use std::ops::Range;
+
 use self::direction::{Cartesian2D, Cartesian3D, Direction, DirectionSet, GridDelta};
 
 pub mod direction;
 
 #[derive(Debug)]
 pub struct GridPosition {
-    x: u32,
-    y: u32,
-    z: u32,
+    pub x: u32,
+    pub y: u32,
+    pub z: u32,
 }
 impl GridPosition {
     fn get_delta_position(&self, delta: &GridDelta) -> (i64, i64, i64) {
@@ -120,6 +122,10 @@ impl<T: DirectionSet + Clone> GridDefinition<T> {
             .unwrap()
     }
 
+    pub fn indexes(&self) -> Range<usize> {
+        0..self.total_size()
+    }
+
     /// Returns the index from a grid position.
     ///
     ///  NO CHECK is done to verify that the given position is a valid position for this grid.
@@ -135,7 +141,7 @@ impl<T: DirectionSet + Clone> GridDefinition<T> {
         self.get_index(grid_position.x, grid_position.y, grid_position.z)
     }
 
-    pub(crate) fn get_position(&self, grid_index: usize) -> GridPosition {
+    pub fn get_position(&self, grid_index: usize) -> GridPosition {
         let index = u32::try_from(grid_index).unwrap();
         GridPosition {
             x: index % self.size_x,
@@ -268,6 +274,10 @@ impl<T: DirectionSet + Clone, D> GridData<T, D> {
     /// NO CHECK is done to verify that the given index is a valid index for this grid.
     pub fn get_mut(&mut self, index: usize) -> &mut D {
         &mut self.data[index]
+    }
+
+    pub fn nodes(&self) -> &Vec<D> {
+        &self.data
     }
 }
 
