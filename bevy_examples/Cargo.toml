@@ -16,4 +16,4 @@ bevy = { version = "0.12.0", default-features = true, features = [
 
 [[example]]
 name = "3d-terrain"
-path = "3d-terrain.rs"
+path = "3d-terrain/3d-terrain.rs"
