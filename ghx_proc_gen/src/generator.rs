@@ -3,7 +3,7 @@ use ndarray::{Array, Ix3};
 use rand::{
     distributions::Distribution, distributions::WeightedIndex, rngs::StdRng, Rng, SeedableRng,
 };
-use std::sync::{mpsc, Arc};
+use std::sync::Arc;
 
 #[cfg(feature = "debug-traces")]
 use tracing::info;
@@ -97,7 +97,7 @@ pub struct Generator<T: DirectionSet + Clone> {
     /// Stores how many models are still possible for a given node
     possible_models_count: Vec<usize>,
     /// Vector of observers currently being signaled with updates of the nodes.
-    observers: Vec<mpsc::Sender<GenerationUpdate>>,
+    observers: Vec<crossbeam_channel::Sender<GenerationUpdate>>,
 
     // === Constraint satisfaction algorithm data ===
     /// Stack of bans to propagate
@@ -505,7 +505,10 @@ impl<T: DirectionSet + Clone> Generator<T> {
             .unwrap_or(0)
     }
 
-    fn add_observer_queue(&mut self, sender: mpsc::Sender<GenerationUpdate>) {
+    fn add_observer_queue(&mut self) -> crossbeam_channel::Receiver<GenerationUpdate> {
+        // We can't simply bound to the number of nodes since we might retry some generations. (and send more than number_of_nodes updates)
+        let (sender, receiver) = crossbeam_channel::unbounded();
         self.observers.push(sender);
+        receiver
     }
 }

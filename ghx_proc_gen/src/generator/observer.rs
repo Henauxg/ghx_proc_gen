@@ -1,5 +1,3 @@
-use std::sync::mpsc;
-
 use crate::grid::{direction::DirectionSet, GridData};
 
 use super::{node::GeneratedNode, Generator};
@@ -12,13 +10,12 @@ pub struct GenerationUpdate {
 
 pub struct QueuedStatefulObserver<T: DirectionSet + Clone> {
     grid_data: GridData<T, Option<GeneratedNode>>,
-    receiver: mpsc::Receiver<GenerationUpdate>,
+    receiver: crossbeam_channel::Receiver<GenerationUpdate>,
 }
 
 impl<T: DirectionSet + Clone> QueuedStatefulObserver<T> {
     pub fn new(generator: &mut Generator<T>) -> Self {
-        let (sender, receiver) = mpsc::channel();
-        generator.add_observer_queue(sender);
+        let receiver = generator.add_observer_queue();
         QueuedStatefulObserver {
             grid_data: GridData::new(
                 generator.grid.clone(),
