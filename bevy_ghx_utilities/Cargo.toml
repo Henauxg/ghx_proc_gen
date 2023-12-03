@@ -1,5 +1,5 @@
 [package]
-name = "ghx_bevy_utilities"
+name = "bevy_ghx_utilities"
 version = "0.1.0"
 publish = false
 description = "Internal utilities for examples"
