@@ -6,7 +6,7 @@ use bevy::{
     utils::HashMap,
 };
 
-use ghx_bevy_utilities::{pan_orbit_camera, PanOrbitCamera};
+use bevy_ghx_utilities::camera::{pan_orbit_camera, PanOrbitCamera};
 use ghx_proc_gen::{
     generator::{
         builder::GeneratorBuilder, node::GeneratedNode, observer::QueuedObserver, rules::Rules,
