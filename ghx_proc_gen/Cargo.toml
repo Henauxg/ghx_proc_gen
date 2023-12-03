@@ -8,8 +8,7 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 keywords = ["gamedev", "procedural", "wfc", "model synthesis"]
 categories = ["game-development", "algorithms"]
-readme = "README.md"
-exclude = ["assets/"]
+readme = "../README.md"
 
 [features]
 # Enables some debug traces (via tracing)
