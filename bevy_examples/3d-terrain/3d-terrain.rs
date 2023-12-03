@@ -29,7 +29,7 @@ enum GenerationViewMode {
 #[derive(Resource)]
 struct Generation {
     models_assets: HashMap<usize, Handle<Scene>>,
-    generator: Generator<Cartesian3D>,
+    gen: Generator<Cartesian3D>,
     observer: QueuedObserver,
 }
 
@@ -37,7 +37,7 @@ struct Generation {
 struct GenerationTimer(Timer);
 
 /// Change this value to change the way the generation is visualized
-const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::StepByStep(500);
+const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::StepByStepPaused;
 
 const SCALE_FACTOR: f32 = 1. / 40.; // Models are 40 voxels wide
 const MODEL_SCALE: Vec3 = Vec3::new(SCALE_FACTOR, SCALE_FACTOR, SCALE_FACTOR);
@@ -64,7 +64,7 @@ fn setup_scene(mut commands: Commands) {
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
             shadows_enabled: true,
-            illuminance: 1000.,
+            illuminance: 10000.,
             color: Color::SEA_GREEN,
             ..default()
         },
@@ -128,10 +128,13 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     commands.insert_resource(Generation {
         models_assets,
-        generator,
+        gen: generator,
         observer,
     });
 }
+
+#[derive(Component)]
+struct SpawnedNode;
 
 fn spawn_node(
     commands: &mut Commands,
@@ -144,32 +147,43 @@ fn spawn_node(
         let x_offset = grid.size_x() as f32 / 2.;
         let z_offset = grid.size_y() as f32 / 2.;
         let pos = grid.get_position(node_index);
-        commands.spawn(SceneBundle {
-            scene: asset.clone(),
-            // Y is up in Bevy.
-            transform: Transform::from_xyz(
-                (pos.x as f32) - x_offset,
-                pos.z as f32,
-                z_offset - (pos.y as f32),
-            )
-            .with_scale(MODEL_SCALE)
-            .with_rotation(Quat::from_rotation_y(f32::to_radians(
-                node.rotation.value() as f32,
-            ))),
-            ..default()
-        });
+        commands.spawn((
+            SceneBundle {
+                scene: asset.clone(),
+                // Y is up in Bevy.
+                transform: Transform::from_xyz(
+                    (pos.x as f32) - x_offset,
+                    pos.z as f32,
+                    z_offset - (pos.y as f32),
+                )
+                .with_scale(MODEL_SCALE)
+                .with_rotation(Quat::from_rotation_y(f32::to_radians(
+                    node.rotation.value() as f32,
+                ))),
+                ..default()
+            },
+            SpawnedNode,
+        ));
     }
 }
 
-fn select_and_propagate(commands: &mut Commands, generation: &mut ResMut<Generation>) {
-    match generation.generator.select_and_propagate() {
+#[derive(Event)]
+struct GenerationFailedEvent;
+
+fn select_and_propagate(
+    commands: &mut Commands,
+    generation_failed_events: &mut EventWriter<GenerationFailedEvent>,
+    generation: &mut ResMut<Generation>,
+) {
+    match generation.gen.select_and_propagate() {
         Ok(status) => {
             let updates = generation.observer.update();
+            info!("Spawning {} node(s)", updates.len());
             for update in updates {
                 spawn_node(
                     commands,
                     &generation.models_assets,
-                    generation.generator.grid(),
+                    generation.gen.grid(),
                     &update.node(),
                     update.node_index(),
                 );
@@ -180,8 +194,20 @@ fn select_and_propagate(commands: &mut Commands, generation: &mut ResMut<Generat
             }
         }
         Err(_) => {
-            info!("Generation failed");
-            // TODO Despawn all models
+            generation_failed_events.send(GenerationFailedEvent);
+        }
+    }
+}
+
+fn clear_nodes(
+    mut commands: Commands,
+    mut generation_failed_events: EventReader<GenerationFailedEvent>,
+    nodes: Query<(Entity, &SpawnedNode)>,
+) {
+    for _event in generation_failed_events.read() {
+        info!("Generation failed");
+        for (entity, _node) in nodes.iter() {
+            commands.entity(entity).despawn_recursive();
         }
     }
 }
@@ -189,22 +215,32 @@ fn select_and_propagate(commands: &mut Commands, generation: &mut ResMut<Generat
 fn step_by_step_input_update(
     mut commands: Commands,
     keys: Res<Input<KeyCode>>,
+    mut generation_failed_events: EventWriter<GenerationFailedEvent>,
     mut generation: ResMut<Generation>,
 ) {
-    if keys.just_pressed(KeyCode::NumpadEnter) {
-        select_and_propagate(&mut commands, &mut generation);
+    if keys.just_pressed(KeyCode::Space) {
+        select_and_propagate(
+            &mut commands,
+            &mut generation_failed_events,
+            &mut generation,
+        );
     }
 }
 
 fn step_by_step_timed_update(
     mut commands: Commands,
     mut generation: ResMut<Generation>,
+    mut generation_failed_events: EventWriter<GenerationFailedEvent>,
     mut timer: ResMut<GenerationTimer>,
     time: Res<Time>,
 ) {
     timer.0.tick(time.delta());
     if timer.0.finished() {
-        select_and_propagate(&mut commands, &mut generation);
+        select_and_propagate(
+            &mut commands,
+            &mut generation_failed_events,
+            &mut generation,
+        );
     }
 }
 
@@ -212,9 +248,10 @@ fn main() {
     let mut app = App::new();
     app.insert_resource(DirectionalLightShadowMap { size: 4096 });
     app.add_plugins(DefaultPlugins);
-    app.add_systems(Startup, setup_generator)
-        .add_systems(Startup, setup_scene)
-        .add_systems(Update, pan_orbit_camera);
+    app.add_event::<GenerationFailedEvent>();
+    app.add_systems(Startup, (setup_generator, setup_scene))
+        .add_systems(Update, pan_orbit_camera)
+        .add_systems(PostUpdate, clear_nodes);
 
     match GENERATION_VIEW_MODE {
         GenerationViewMode::StepByStep(_) => {
