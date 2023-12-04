@@ -5,28 +5,22 @@ use std::{
 
 use ndarray::{Array, Ix1, Ix2};
 
+use super::node::{expand_models, ExpandedNodeModel, ModelIndex, NodeModel, SocketId};
 use crate::{
     grid::direction::{Cartesian2D, Cartesian3D, Direction, DirectionSet},
     ProcGenError,
 };
 
-use super::node::{expand_models, ExpandedNodeModel, ModelIndex, NodeModel, SocketId};
-
 pub type SocketConnections = (SocketId, Vec<SocketId>);
 
-pub struct Rules<T: DirectionSet> {
-    /// All the models in this ruleset. Expanded from a given set of a base models with generated variations of rotations around the Z axis.
-    models: Vec<ExpandedNodeModel>,
-    /// The vector `allowed_neighbours[model_index][direction]` holds all the allowed adjacent models (indexes) to `model_index` in `direction`.
-    ///
-    /// Calculated from expanded models.
-    ///
-    /// Note: this cannot be a simple 3d array since the third dimension is different for each element.
-    allowed_neighbours: Array<Vec<usize>, Ix2>,
-    typestate: PhantomData<T>,
+pub struct RulesBuilder<T: DirectionSet + Clone> {
+    models: Vec<NodeModel<T>>,
+    sockets_connections: Vec<SocketConnections>,
+    rotation_axis: Direction,
+    direction_set: T,
 }
 
-impl Rules<Cartesian2D> {
+impl RulesBuilder<Cartesian2D> {
     /// Used to create Rules for a 2d cartesian grid.
     ///
     /// Will only return [`ProcGenError::InvalidRules`] if `models` or `sockets_connections` are empty.
@@ -51,12 +45,16 @@ impl Rules<Cartesian2D> {
     pub fn new_cartesian_2d(
         models: Vec<NodeModel<Cartesian2D>>,
         sockets_connections: Vec<SocketConnections>,
-    ) -> Result<Rules<Cartesian2D>, ProcGenError> {
-        Self::new(models, sockets_connections, Cartesian2D {})
+    ) -> Self {
+        Self {
+            models,
+            sockets_connections,
+            rotation_axis: Direction::ZForward,
+            direction_set: Cartesian2D {},
+        }
     }
 }
-
-impl Rules<Cartesian3D> {
+impl RulesBuilder<Cartesian3D> {
     /// Used to create Rules for a 3d cartesian grid.
     ///
     /// Will only return [`ProcGenError::InvalidRules`] if `models` or `sockets_connections` are empty.
@@ -65,7 +63,7 @@ impl Rules<Cartesian3D> {
     ///
     /// ### Example
     ///
-    /// Create simple `Rules` to describe an empty room with variable length pillars.
+    /// Create simple `Rules` to describe an empty room with variable length pillars (with Y up in a right-handed cooridnate system).
     /// ```
     /// use ghx_proc_gen::grid::GridDefinition;
     /// use ghx_proc_gen::generator::{node::{SocketsCartesian3D, SocketId}, rules::Rules};
@@ -78,10 +76,9 @@ impl Rules<Cartesian3D> {
     ///
     /// let models = vec![
     ///     SocketsCartesian3D::Mono(VOID).new_model(),
-    ///     SocketsCartesian3D::Simple(VOID, VOID, VOID, VOID, PILLAR_BASE_TOP, VOID).new_model(),
-    ///     SocketsCartesian3D::Simple(VOID, VOID, VOID, VOID, PILLAR_CORE_TOP, PILLAR_CORE_BOTTOM)
-    ///         .new_model(),
-    ///     SocketsCartesian3D::Simple(VOID, VOID, VOID, VOID, VOID, PILLAR_CAP_BOTTOM).new_model(),
+    ///     SocketsCartesian3D::Simple(VOID, PILLAR_BASE_TOP, VOID, VOID, VOID, VOID).new_model(),
+    ///     SocketsCartesian3D::Simple(VOID, PILLAR_CORE_TOP, VOID, PILLAR_CORE_BOTTOM, VOID, VOID).new_model(),
+    ///     SocketsCartesian3D::Simple(VOID, VOID, VOID, PILLAR_CAP_BOTTOM, VOID, VOID).new_model(),
     /// ];
     /// let sockets_connections = vec![
     ///     (VOID, vec![VOID]),
@@ -93,22 +90,59 @@ impl Rules<Cartesian3D> {
     pub fn new_cartesian_3d(
         models: Vec<NodeModel<Cartesian3D>>,
         sockets_connections: Vec<SocketConnections>,
-    ) -> Result<Rules<Cartesian3D>, ProcGenError> {
-        Self::new(models, sockets_connections, Cartesian3D {})
+    ) -> Self {
+        Self {
+            models,
+            sockets_connections,
+            rotation_axis: Direction::YForward,
+            direction_set: Cartesian3D {},
+        }
     }
+}
+
+impl RulesBuilder<Cartesian3D> {
+    /// Sets the [`Direction`] to be used in the [`Rules`] as the rotation axis for the models
+    pub fn with_rotation_axis(mut self, rotation_axis: Direction) -> RulesBuilder<Cartesian3D> {
+        self.rotation_axis = rotation_axis;
+        self
+    }
+}
+
+impl<T: DirectionSet + Clone> RulesBuilder<T> {
+    pub fn build(self) -> Result<Rules<T>, ProcGenError> {
+        Rules::new(
+            self.models,
+            self.sockets_connections,
+            self.rotation_axis,
+            self.direction_set,
+        )
+    }
+}
+
+pub struct Rules<T: DirectionSet> {
+    /// All the models in this ruleset. Expanded from a given set of a base models with generated variations of rotations around the Z axis.
+    models: Vec<ExpandedNodeModel>,
+    /// The vector `allowed_neighbours[model_index][direction]` holds all the allowed adjacent models (indexes) to `model_index` in `direction`.
+    ///
+    /// Calculated from expanded models.
+    ///
+    /// Note: this cannot be a simple 3d array since the third dimension is different for each element.
+    allowed_neighbours: Array<Vec<usize>, Ix2>,
+    typestate: PhantomData<T>,
 }
 
 impl<T: DirectionSet> Rules<T> {
     fn new(
         models: Vec<NodeModel<T>>,
         sockets_connections: Vec<SocketConnections>,
+        rotation_axis: Direction,
         direction_set: T,
     ) -> Result<Rules<T>, ProcGenError> {
         if models.len() == 0 || sockets_connections.len() == 0 {
             return Err(ProcGenError::InvalidRules);
         }
 
-        let expanded_models = expand_models(models);
+        let expanded_models = expand_models(models, rotation_axis);
         let socket_to_sockets = expand_sockets_connections(sockets_connections);
 
         // Temporary collection to reverse the relation: sockets_to_models.get(socket)[direction] will hold all the models that have 'socket' from 'direction'

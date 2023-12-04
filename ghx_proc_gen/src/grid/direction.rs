@@ -9,7 +9,7 @@ pub enum Direction {
     ZBackward = 5,
 }
 impl Direction {
-    pub(crate) fn opposite(&self) -> Direction {
+    pub fn opposite(&self) -> Direction {
         match self {
             Direction::XForward => Direction::XBackward,
             Direction::XBackward => Direction::XForward,
@@ -18,6 +18,66 @@ impl Direction {
             Direction::ZForward => Direction::ZBackward,
             Direction::ZBackward => Direction::ZForward,
         }
+    }
+
+    pub(crate) fn rotation_basis(&self) -> &'static [Direction] {
+        match self {
+            Direction::XForward => X_POS_AXIS,
+            Direction::XBackward => X_NEG_AXIS,
+            Direction::YForward => Y_POS_AXIS,
+            Direction::YBackward => Y_NEG_AXIS,
+            Direction::ZForward => Z_POS_AXIS,
+            Direction::ZBackward => Z_NEG_AXIS,
+        }
+    }
+}
+
+pub(crate) const X_POS_AXIS: &'static [Direction] = &[
+    Direction::YForward,
+    Direction::ZForward,
+    Direction::YBackward,
+    Direction::ZBackward,
+];
+pub(crate) const X_NEG_AXIS: &'static [Direction] = &[
+    Direction::ZForward,
+    Direction::YForward,
+    Direction::ZBackward,
+    Direction::YBackward,
+];
+pub(crate) const Y_POS_AXIS: &'static [Direction] = &[
+    Direction::ZForward,
+    Direction::XForward,
+    Direction::ZBackward,
+    Direction::XBackward,
+];
+pub(crate) const Y_NEG_AXIS: &'static [Direction] = &[
+    Direction::XForward,
+    Direction::ZForward,
+    Direction::XBackward,
+    Direction::ZBackward,
+];
+pub(crate) const Z_POS_AXIS: &'static [Direction] = &[
+    Direction::XForward,
+    Direction::YForward,
+    Direction::XBackward,
+    Direction::YBackward,
+];
+pub(crate) const Z_NEG_AXIS: &'static [Direction] = &[
+    Direction::YForward,
+    Direction::XForward,
+    Direction::YBackward,
+    Direction::XBackward,
+];
+
+pub struct GridDelta {
+    pub(crate) dx: i32,
+    pub(crate) dy: i32,
+    pub(crate) dz: i32,
+}
+
+impl GridDelta {
+    pub fn new(dx: i32, dy: i32, dz: i32) -> Self {
+        Self { dx, dy, dz }
     }
 }
 
@@ -52,23 +112,10 @@ impl DirectionSet for Cartesian3D {
 
 pub const CARTESIAN_2D_DIRECTIONS: &'static [Direction] = &[
     Direction::XForward,
-    Direction::XBackward,
     Direction::YForward,
+    Direction::XBackward,
     Direction::YBackward,
 ];
-
-pub struct GridDelta {
-    pub(crate) dx: i32,
-    pub(crate) dy: i32,
-    pub(crate) dz: i32,
-}
-
-impl GridDelta {
-    pub fn new(dx: i32, dy: i32, dz: i32) -> Self {
-        Self { dx, dy, dz }
-    }
-}
-
 pub const CARTESIAN_2D_DELTAS: &'static [GridDelta] = &[
     GridDelta {
         // XForward
@@ -98,13 +145,12 @@ pub const CARTESIAN_2D_DELTAS: &'static [GridDelta] = &[
 
 pub const CARTESIAN_3D_DIRECTIONS: &'static [Direction] = &[
     Direction::XForward,
-    Direction::XBackward,
     Direction::YForward,
+    Direction::XBackward,
     Direction::YBackward,
     Direction::ZForward,
     Direction::ZBackward,
 ];
-
 pub const CARTESIAN_3D_DELTAS: &'static [GridDelta] = &[
     GridDelta {
         // XForward

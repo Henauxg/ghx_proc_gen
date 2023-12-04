@@ -1,20 +1,22 @@
 use std::{collections::HashSet, marker::PhantomData};
 
-use crate::grid::direction::{Cartesian2D, Cartesian3D, DirectionSet};
+use crate::grid::direction::{Cartesian2D, Cartesian3D, Direction, DirectionSet};
 
 /// Id of a possible connection type
 pub type SocketId = u32;
 /// Index of a model
 pub type ModelIndex = usize;
 
-pub(crate) fn expand_models<T: DirectionSet>(models: Vec<NodeModel<T>>) -> Vec<ExpandedNodeModel> {
+pub(crate) fn expand_models<T: DirectionSet>(
+    models: Vec<NodeModel<T>>,
+    rotation_axis: Direction,
+) -> Vec<ExpandedNodeModel> {
     let mut expanded_models = Vec::new();
     for (index, model) in models.iter().enumerate() {
-        // Iterate on all possible node rotations and filter to be deterministic
+        // Iterate on a vec of all possible node rotations and filter with the set to have a deterministic insertion order of expanded nodes.
         for rotation in ALL_NODE_ROTATIONS {
-            if model.allowed_rotations.contains(rotation) {
-                let mut sockets = model.sockets.clone();
-                rotation.rotate_sockets(&mut sockets);
+            if model.allowed_rotations.contains(&rotation) {
+                let sockets = model.rotated_sockets(*rotation, rotation_axis);
                 expanded_models.push(ExpandedNodeModel {
                     sockets,
                     weight: model.weight,
@@ -45,20 +47,42 @@ pub struct NodeModel<T: DirectionSet> {
 pub enum SocketsCartesian2D {
     /// The model has only 1 socket, and its is the same in all directions.
     Mono(SocketId),
-    /// The model has 1 socket per side. Sides order is: up, left, down, right.
-    Simple(SocketId, SocketId, SocketId, SocketId),
-    /// The model has multiple sockets per side. Sides order is: up, left, down, right.
-    Multiple(Vec<SocketId>, Vec<SocketId>, Vec<SocketId>, Vec<SocketId>),
+    /// The model has 1 socket per side.
+    Simple {
+        x_pos: SocketId,
+        x_neg: SocketId,
+        y_pos: SocketId,
+        y_neg: SocketId,
+    },
+    /// The model has multiple sockets per side.
+    Multiple {
+        x_pos: Vec<SocketId>,
+        x_neg: Vec<SocketId>,
+        y_pos: Vec<SocketId>,
+        y_neg: Vec<SocketId>,
+    },
 }
 
 impl Into<Vec<Vec<SocketId>>> for SocketsCartesian2D {
     fn into(self) -> Vec<Vec<SocketId>> {
         match self {
             SocketsCartesian2D::Mono(socket) => vec![vec![socket]; 4],
-            SocketsCartesian2D::Simple(up, left, down, right) => {
-                vec![vec![right], vec![up], vec![left], vec![down]]
+            SocketsCartesian2D::Simple {
+                x_pos,
+                y_pos,
+                x_neg,
+                y_neg,
+            } => {
+                vec![vec![x_pos], vec![y_pos], vec![x_neg], vec![y_neg]]
             }
-            SocketsCartesian2D::Multiple(up, left, down, right) => vec![right, up, left, down],
+            SocketsCartesian2D::Multiple {
+                x_pos,
+                y_pos,
+                x_neg,
+                y_neg,
+            } => {
+                vec![x_pos, y_pos, x_neg, y_neg]
+            }
         }
     }
 }
@@ -91,35 +115,56 @@ impl NodeModel<Cartesian2D> {
 pub enum SocketsCartesian3D {
     /// The model has only 1 socket, and its is the same in all directions.
     Mono(SocketId),
-    /// The model has 1 socket per side. Sides order is: up, left, down, right, top, bottom.
-    Simple(SocketId, SocketId, SocketId, SocketId, SocketId, SocketId),
-    /// The model has multiple sockets per side. Sides order is: up, left, down, right, top, bottom.
-    Multiple(
-        Vec<SocketId>,
-        Vec<SocketId>,
-        Vec<SocketId>,
-        Vec<SocketId>,
-        Vec<SocketId>,
-        Vec<SocketId>,
-    ),
+    /// The model has 1 socket per side.
+    Simple {
+        x_pos: SocketId,
+        x_neg: SocketId,
+        z_pos: SocketId,
+        z_neg: SocketId,
+        y_pos: SocketId,
+        y_neg: SocketId,
+    },
+    /// The model has multiple sockets per side.
+    Multiple {
+        x_pos: Vec<SocketId>,
+        x_neg: Vec<SocketId>,
+        z_pos: Vec<SocketId>,
+        z_neg: Vec<SocketId>,
+        y_pos: Vec<SocketId>,
+        y_neg: Vec<SocketId>,
+    },
 }
 
 impl Into<Vec<Vec<SocketId>>> for SocketsCartesian3D {
     fn into(self) -> Vec<Vec<SocketId>> {
         match self {
             SocketsCartesian3D::Mono(socket) => vec![vec![socket]; 6],
-            SocketsCartesian3D::Simple(up, left, down, right, top, bottom) => {
+            SocketsCartesian3D::Simple {
+                x_pos,
+                y_pos,
+                x_neg,
+                y_neg,
+                z_pos,
+                z_neg,
+            } => {
                 vec![
-                    vec![right],
-                    vec![up],
-                    vec![left],
-                    vec![down],
-                    vec![top],
-                    vec![bottom],
+                    vec![x_pos],
+                    vec![y_pos],
+                    vec![x_neg],
+                    vec![y_neg],
+                    vec![z_pos],
+                    vec![z_neg],
                 ]
             }
-            SocketsCartesian3D::Multiple(up, left, down, right, top, bottom) => {
-                vec![right, up, left, down, top, bottom]
+            SocketsCartesian3D::Multiple {
+                x_pos,
+                y_pos,
+                x_neg,
+                y_neg,
+                z_pos,
+                z_neg,
+            } => {
+                vec![x_pos, y_pos, x_neg, y_neg, z_pos, z_neg]
             }
         }
     }
@@ -182,6 +227,26 @@ impl<T: DirectionSet> NodeModel<T> {
         self.weight = weight.into();
         self
     }
+
+    fn rotated_sockets(&self, rotation: NodeRotation, axis: Direction) -> Vec<Vec<SocketId>> {
+        let mut rotated_sockets = vec![Vec::new(); self.sockets.len()];
+
+        // Not pretty: Check if the node sockets contain the rotation axis.
+        if self.sockets.len() > axis as usize {
+            for fixed_axis in [axis, axis.opposite()] {
+                rotated_sockets[fixed_axis as usize].extend(&self.sockets[fixed_axis as usize]);
+            }
+        }
+
+        let basis = axis.rotation_basis();
+        let mut rotated_basis = basis.to_vec();
+        rotated_basis.rotate_right(rotation.index());
+
+        for i in 0..basis.len() {
+            rotated_sockets[basis[i] as usize].extend(&self.sockets[rotated_basis[i] as usize]);
+        }
+        rotated_sockets
+    }
 }
 
 #[derive(Debug)]
@@ -227,7 +292,7 @@ pub struct GeneratedNode {
     pub rotation: NodeRotation,
 }
 
-/// Represents a rotation around the Z Axis.
+/// Represents a rotation around an Axis, in the trigonometric(counterclockwise) direction
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum NodeRotation {
     Rot0,
@@ -237,7 +302,7 @@ pub enum NodeRotation {
 }
 
 impl NodeRotation {
-    /// Returns the value of the roation in °(degrees).
+    /// Returns the value of the rotation in °(degrees).
     pub fn value(&self) -> u32 {
         match *self {
             NodeRotation::Rot0 => 0,
@@ -254,11 +319,6 @@ impl NodeRotation {
             NodeRotation::Rot180 => 2,
             NodeRotation::Rot270 => 3,
         }
-    }
-
-    pub(crate) fn rotate_sockets(&self, sockets: &mut [Vec<SocketId>]) {
-        // We only rotate around Z
-        sockets[0..4].rotate_right(self.index());
     }
 }
 
