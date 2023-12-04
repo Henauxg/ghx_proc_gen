@@ -7,15 +7,14 @@ use ghx_proc_gen::{
     generator::{
         node::{GeneratedNode, SocketsCartesian2D},
         observer::QueuedStatefulObserver,
+        rules::RulesBuilder,
         GenerationStatus, ModelSelectionHeuristic,
     },
     grid::{direction::Cartesian2D, GridData},
 };
 
 use {
-    ghx_proc_gen::generator::{
-        builder::GeneratorBuilder, rules::Rules, NodeSelectionHeuristic, RngMode,
-    },
+    ghx_proc_gen::generator::{builder::GeneratorBuilder, NodeSelectionHeuristic, RngMode},
     ghx_proc_gen::grid::GridDefinition,
 };
 
@@ -64,7 +63,9 @@ fn main() {
         (SEA, vec![SEA]),
         (DEEP_SEA, vec![DEEP_SEA, SEA]),
     ];
-    let rules = Rules::new_cartesian_2d(models, sockets_connections).unwrap();
+    let rules = RulesBuilder::new_cartesian_2d(models, sockets_connections)
+        .build()
+        .unwrap();
     let grid = GridDefinition::new_cartesian_2d(35, 12, false);
     let mut generator = GeneratorBuilder::new()
         .with_rules(rules)
