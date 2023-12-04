@@ -89,72 +89,72 @@ pub(crate) fn rules_and_assets() -> (
     ];
     let models = vec![
         // Void
-        SocketsCartesian3D::Multiple(
-            vec![VOID_SIDE],
-            vec![VOID_SIDE],
-            vec![VOID_SIDE],
-            vec![VOID_SIDE],
-            vec![VOID_TOP],
-            vec![VOID_BOTTOM],
-        )
+        SocketsCartesian3D::Multiple {
+            x_pos: vec![VOID_SIDE],
+            x_neg: vec![VOID_SIDE],
+            z_pos: vec![VOID_SIDE],
+            z_neg: vec![VOID_SIDE],
+            y_pos: vec![VOID_TOP],
+            y_neg: vec![VOID_BOTTOM],
+        }
         .new_model()
         .with_weight(0.1),
         // Ground
-        SocketsCartesian3D::Multiple(
-            vec![GROUND_BACK, GROUND_SIDE],
-            vec![GROUND_LEFT, GROUND_SIDE],
-            vec![GROUND_FRONT, GROUND_SIDE],
-            vec![GROUND_RIGHT, GROUND_SIDE],
-            vec![GROUND_TOP],
-            vec![GROUND_BOTTOM],
-        )
+        SocketsCartesian3D::Multiple {
+            x_pos: vec![GROUND_RIGHT, GROUND_SIDE],
+            x_neg: vec![GROUND_LEFT, GROUND_SIDE],
+            z_pos: vec![GROUND_FRONT, GROUND_SIDE],
+            z_neg: vec![GROUND_BACK, GROUND_SIDE],
+            y_pos: vec![GROUND_TOP],
+            y_neg: vec![GROUND_BOTTOM],
+        }
         .new_model()
         .with_all_rotations()
         .with_weight(1.35),
         // Stairs
-        SocketsCartesian3D::Multiple(
-            vec![STAIRS_BACK],
-            vec![STAIRS_LEFT],
-            vec![STAIRS_FRONT],
-            vec![STAIRS_RIGHT],
-            vec![STAIRS_TOP],
-            vec![STAIRS_BOTTOM],
-        )
+        SocketsCartesian3D::Multiple {
+            x_pos: vec![STAIRS_RIGHT],
+            x_neg: vec![STAIRS_LEFT],
+            z_pos: vec![STAIRS_FRONT],
+            z_neg: vec![STAIRS_BACK],
+            y_pos: vec![STAIRS_TOP],
+            y_neg: vec![STAIRS_BOTTOM],
+        }
         .new_model()
         .with_all_rotations()
         .with_weight(0.3),
         // Side Stairs
-        SocketsCartesian3D::Multiple(
-            vec![SIDE_STAIRS_BACK],
-            vec![SIDE_STAIRS_LEFT],
-            vec![SIDE_STAIRS_FRONT],
-            vec![SIDE_STAIRS_RIGHT],
-            vec![SIDE_STAIRS_TOP],
-            vec![SIDE_STAIRS_BOTTOM],
-        )
+        SocketsCartesian3D::Multiple {
+            x_pos: vec![SIDE_STAIRS_RIGHT],
+            x_neg: vec![SIDE_STAIRS_LEFT],
+            z_pos: vec![SIDE_STAIRS_FRONT],
+            z_neg: vec![SIDE_STAIRS_BACK],
+            y_pos: vec![SIDE_STAIRS_TOP],
+            y_neg: vec![SIDE_STAIRS_BOTTOM],
+        }
         .new_model()
         .with_all_rotations()
         .with_weight(0.0),
         // Stairs support
-        SocketsCartesian3D::Multiple(
-            vec![STAIRS_SUPPORT_BACK, STAIRS_SUPPORT_SIDE],
-            vec![STAIRS_SUPPORT_LEFT, STAIRS_SUPPORT_SIDE],
-            vec![STAIRS_SUPPORT_FRONT, STAIRS_SUPPORT_SIDE],
-            vec![STAIRS_SUPPORT_RIGHT, STAIRS_SUPPORT_SIDE],
-            vec![STAIRS_SUPPORT_TOP],
-            vec![STAIRS_SUPPORT_BOTTOM],
-        )
+        SocketsCartesian3D::Multiple {
+            x_pos: vec![STAIRS_SUPPORT_RIGHT, STAIRS_SUPPORT_SIDE],
+            x_neg: vec![STAIRS_SUPPORT_LEFT, STAIRS_SUPPORT_SIDE],
+            z_pos: vec![STAIRS_SUPPORT_FRONT, STAIRS_SUPPORT_SIDE],
+            z_neg: vec![STAIRS_SUPPORT_BACK, STAIRS_SUPPORT_SIDE],
+            y_pos: vec![STAIRS_SUPPORT_TOP],
+            y_neg: vec![STAIRS_SUPPORT_BOTTOM],
+        }
         .new_model()
         .with_weight(0.2),
         // Pyramid top
-        SocketsCartesian3D::Multiple(
-            vec![PYRAMID_TOP_BACK, PYRAMID_TOP_SIDE],
-            vec![PYRAMID_TOP_LEFT, PYRAMID_TOP_SIDE],
-            vec![PYRAMID_TOP_FRONT, PYRAMID_TOP_SIDE],
-            vec![PYRAMID_TOP_RIGHT, PYRAMID_TOP_SIDE],
-            vec![PYRAMID_TOP_TOP, GROUND_TOP],
-            vec![PYRAMID_TOP_BOTTOM],
-        )
+        SocketsCartesian3D::Multiple {
+            x_pos: vec![PYRAMID_TOP_RIGHT, PYRAMID_TOP_SIDE],
+            x_neg: vec![PYRAMID_TOP_LEFT, PYRAMID_TOP_SIDE],
+            z_pos: vec![PYRAMID_TOP_FRONT, PYRAMID_TOP_SIDE],
+            z_neg: vec![PYRAMID_TOP_BACK, PYRAMID_TOP_SIDE],
+            y_pos: vec![PYRAMID_TOP_TOP, GROUND_TOP],
+            y_neg: vec![PYRAMID_TOP_BOTTOM],
+        }
         .new_model()
         // .with_all_rotations()
         .with_weight(0.001),

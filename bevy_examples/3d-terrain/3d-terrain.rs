@@ -9,8 +9,9 @@ use bevy::{
 use bevy_ghx_utilities::camera::{pan_orbit_camera, PanOrbitCamera};
 use ghx_proc_gen::{
     generator::{
-        builder::GeneratorBuilder, node::GeneratedNode, observer::QueuedObserver, rules::Rules,
-        GenerationStatus, Generator, ModelSelectionHeuristic, NodeSelectionHeuristic, RngMode,
+        builder::GeneratorBuilder, node::GeneratedNode, observer::QueuedObserver,
+        rules::RulesBuilder, GenerationStatus, Generator, ModelSelectionHeuristic,
+        NodeSelectionHeuristic, RngMode,
     },
     grid::{direction::Cartesian3D, GridDefinition},
 };
@@ -26,6 +27,9 @@ enum GenerationViewMode {
     Final,
 }
 
+/// Change this value to change the way the generation is visualized
+const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::Final;
+
 #[derive(Resource)]
 struct Generation {
     models_assets: HashMap<usize, Handle<Scene>>,
@@ -35,9 +39,6 @@ struct Generation {
 
 #[derive(Resource)]
 struct GenerationTimer(Timer);
-
-/// Change this value to change the way the generation is visualized
-const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::StepByStepPaused;
 
 const SCALE_FACTOR: f32 = 1. / 40.; // Models are 40 voxels wide
 const MODEL_SCALE: Vec3 = Vec3::new(SCALE_FACTOR, SCALE_FACTOR, SCALE_FACTOR);
@@ -83,8 +84,10 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
     let (models_asset_paths, models, sockets_connections) = rules_and_assets();
 
     // Create generator
-    let rules = Rules::new_cartesian_3d(models, sockets_connections).unwrap();
-    let grid = GridDefinition::new_cartesian_3d(35, 35, 5, false);
+    let rules = RulesBuilder::new_cartesian_3d(models, sockets_connections)
+        .build()
+        .unwrap();
+    let grid = GridDefinition::new_cartesian_3d(35, 5, 35, false);
     let mut generator = GeneratorBuilder::new()
         .with_rules(rules)
         .with_grid(grid)
@@ -145,16 +148,15 @@ fn spawn_node(
 ) {
     if let Some(asset) = models_assets.get(&node.model_index) {
         let x_offset = grid.size_x() as f32 / 2.;
-        let z_offset = grid.size_y() as f32 / 2.;
+        let z_offset = grid.size_z() as f32 / 2.;
         let pos = grid.get_position(node_index);
         commands.spawn((
             SceneBundle {
                 scene: asset.clone(),
-                // Y is up in Bevy.
                 transform: Transform::from_xyz(
                     (pos.x as f32) - x_offset,
-                    pos.z as f32,
-                    z_offset - (pos.y as f32),
+                    pos.y as f32,
+                    z_offset - (pos.z as f32),
                 )
                 .with_scale(MODEL_SCALE)
                 .with_rotation(Quat::from_rotation_y(f32::to_radians(
