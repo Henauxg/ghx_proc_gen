@@ -16,10 +16,12 @@ pub enum Unset {}
 ///
 /// Create a `Generator` from a `GeneratorBuilder`.
 /// ```
-/// use ghx_proc_gen::{grid::GridDefinition, generator::{builder::GeneratorBuilder, rules::Rules}};
+/// use ghx_proc_gen::{grid::GridDefinition, generator::{builder::GeneratorBuilder, rules::Rules, node::SocketsCartesian2D}};
 ///
 /// let grid = GridDefinition::new_cartesian_2d(10, 10, false);
-/// let rules = Rules::new_cartesian_2d(vec![], vec![]);
+/// let rules = Rules::new_cartesian_2d(
+///     vec![SocketsCartesian2D::Mono(0).new_model()],
+///     vec![(0, vec![0])]).unwrap();
 /// let mut generator = GeneratorBuilder::new()
 ///    .with_rules(rules)
 ///    .with_grid(grid)

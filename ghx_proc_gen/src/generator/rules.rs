@@ -45,7 +45,7 @@ impl Rules<Cartesian2D> {
     ///     SocketsCartesian2D::Mono(WHITE).new_model(),
     ///     SocketsCartesian2D::Mono(BLACK).new_model(),
     /// ];
-    /// let sockets_connections = vec![(WHITE, vec![BLACK]), (BLACK, vec![WHITE])];
+    /// let sockets_connections = vec![(WHITE, vec![BLACK])];
     /// let rules = Rules::new_cartesian_2d(models, sockets_connections).unwrap();
     /// ```
     pub fn new_cartesian_2d(
@@ -68,12 +68,14 @@ impl Rules<Cartesian3D> {
     /// Create simple `Rules` to describe an empty room with variable length pillars.
     /// ```
     /// use ghx_proc_gen::grid::GridDefinition;
+    /// use ghx_proc_gen::generator::{node::{SocketsCartesian3D, SocketId}, rules::Rules};
     ///
     /// const VOID: SocketId = 0;
     /// const PILLAR_BASE_TOP: SocketId = 1;
     /// const PILLAR_CORE_BOTTOM: SocketId = 2;
     /// const PILLAR_CORE_TOP: SocketId = 3;
     /// const PILLAR_CAP_BOTTOM: SocketId = 4;
+    ///
     /// let models = vec![
     ///     SocketsCartesian3D::Mono(VOID).new_model(),
     ///     SocketsCartesian3D::Simple(VOID, VOID, VOID, VOID, PILLAR_BASE_TOP, VOID).new_model(),
