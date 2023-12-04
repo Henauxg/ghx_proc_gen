@@ -21,7 +21,7 @@ use crate::rules::rules_and_assets;
 mod rules;
 
 #[derive(PartialEq, Eq)]
-enum GenerationViewMode {
+pub enum GenerationViewMode {
     StepByStep(u64),
     StepByStepPaused,
     Final,
