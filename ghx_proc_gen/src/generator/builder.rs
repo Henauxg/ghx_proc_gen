@@ -53,7 +53,7 @@ impl<T: DirectionSet + Clone> GeneratorBuilder<Unset, Unset, T> {
 }
 
 impl<T: DirectionSet + Clone> GeneratorBuilder<Unset, Unset, T> {
-    /// Set the [`Rules`] to be used by the [`Generator`]
+    /// Sets the [`Rules`] to be used by the [`Generator`]
     pub fn with_rules(self, rules: Rules<T>) -> GeneratorBuilder<Unset, Set, T> {
         GeneratorBuilder {
             grid: self.grid,
@@ -66,7 +66,7 @@ impl<T: DirectionSet + Clone> GeneratorBuilder<Unset, Unset, T> {
         }
     }
 
-    /// Set the [`Rules`] to be used by the [`Generator`]. The `Generator` will hold a read-only Rc onto those `Rules` which can be safely shared by multiple `Generator`.
+    /// Sets the [`Rules`] to be used by the [`Generator`]. The `Generator` will hold a read-only Rc onto those `Rules` which can be safely shared by multiple `Generator`.
     pub fn with_shared_rules(self, rules: Arc<Rules<T>>) -> GeneratorBuilder<Unset, Set, T> {
         GeneratorBuilder {
             grid: self.grid,
