@@ -75,11 +75,6 @@ impl GridDefinition<Cartesian3D> {
             Cartesian3D {},
         )
     }
-
-    /// Returns the size of the grid in the Z axis.
-    pub fn size_z(&self) -> u32 {
-        self.size_z
-    }
 }
 
 impl<T: DirectionSet + Clone> GridDefinition<T> {
@@ -113,6 +108,11 @@ impl<T: DirectionSet + Clone> GridDefinition<T> {
     /// Returns the size of the grid in the Y axis.
     pub fn size_y(&self) -> u32 {
         self.size_y
+    }
+
+    /// Returns the size of the grid in the Z axis.
+    pub fn size_z(&self) -> u32 {
+        self.size_z
     }
 
     /// Returns the total size of the grid
