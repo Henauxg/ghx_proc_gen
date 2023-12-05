@@ -80,17 +80,24 @@ fn main() {
     match GENERATION_VIEW_MODE {
         GenerationViewMode::Final => {
             generator.generate_without_output().unwrap();
-            observer.update();
+            observer.dequeue_all();
             println!("Final grid:");
             display_grid(observer.grid_data());
         }
         _ => {
             let mut step = 0;
-            while GenerationStatus::Ongoing == generator.select_and_propagate().unwrap() {
-                observer.update();
-                println!("Grid at step {}:", step);
+            let mut done = false;
+            while !done {
+                match generator.select_and_propagate() {
+                    Ok(status) => match status {
+                        GenerationStatus::Ongoing => (),
+                        GenerationStatus::Done => done = true,
+                    },
+                    Err(_) => (),
+                }
+                observer.dequeue_all();
+                println!("Grid at iteration n°{}:", step);
                 display_grid(observer.grid_data());
-                step += 1;
                 match GENERATION_VIEW_MODE {
                     GenerationViewMode::StepByStep(delay) => {
                         thread::sleep(time::Duration::from_millis(delay));
@@ -98,6 +105,7 @@ fn main() {
                     GenerationViewMode::StepByStepPaused => pause(),
                     _ => (),
                 }
+                step += 1;
             }
         }
     }
