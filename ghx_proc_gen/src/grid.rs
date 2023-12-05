@@ -258,8 +258,8 @@ impl<T: DirectionSet + Clone, D> GridData<T, D> {
     /// Sets the value of the element at `index` in the grid.
     ///
     /// NO CHECK is done to verify that the given index is a valid index for this grid.
-    pub fn set(&mut self, index: usize, val: D) {
-        self.data[index] = val;
+    pub fn set(&mut self, index: usize, value: D) {
+        self.data[index] = value;
     }
 
     /// Returns a reference to the element at this index.
@@ -276,8 +276,18 @@ impl<T: DirectionSet + Clone, D> GridData<T, D> {
         &mut self.data[index]
     }
 
+    /// Returns a reference to the undelying data buffer.
     pub fn nodes(&self) -> &Vec<D> {
         &self.data
+    }
+}
+
+impl<T: DirectionSet + Clone, D: Copy> GridData<T, D> {
+    /// Resets the whole grid buffer by setting the value of each element to `value`
+    pub fn reset(&mut self, value: D) {
+        for d in self.data.iter_mut() {
+            *d = value;
+        }
     }
 }
 
