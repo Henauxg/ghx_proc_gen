@@ -6,15 +6,19 @@ use bevy::{
     utils::HashMap,
 };
 
-use bevy_ghx_utilities::camera::{pan_orbit_camera, PanOrbitCamera};
-use ghx_proc_gen::{
-    generator::{
-        builder::GeneratorBuilder, node::GeneratedNode, observer::QueuedObserver,
-        rules::RulesBuilder, GenerationStatus, Generator, ModelSelectionHeuristic,
-        NodeSelectionHeuristic, RngMode,
+use bevy_ghx_proc_gen::{
+    grid::{spawn_debug_grids, DebugGridView, Grid},
+    lines::LineMaterial,
+    proc_gen::{
+        generator::{
+            builder::GeneratorBuilder, node::GeneratedNode, observer::QueuedObserver,
+            rules::RulesBuilder, GenerationStatus, Generator, ModelSelectionHeuristic,
+            NodeSelectionHeuristic, RngMode,
+        },
+        grid::{direction::Cartesian3D, GridDefinition},
     },
-    grid::{direction::Cartesian3D, GridDefinition},
 };
+use bevy_ghx_utilities::camera::{pan_orbit_camera, PanOrbitCamera};
 
 use crate::rules::rules_and_assets;
 
@@ -40,8 +44,17 @@ struct Generation {
 #[derive(Resource)]
 struct GenerationTimer(Timer);
 
-const SCALE_FACTOR: f32 = 1. / 40.; // Models are 40 voxels wide
-const MODEL_SCALE: Vec3 = Vec3::new(SCALE_FACTOR, SCALE_FACTOR, SCALE_FACTOR);
+/// Size of a block in world units
+const NODE_SIZE: f32 = 1.;
+const HALF_NODE_SIZE: f32 = NODE_SIZE / 2.;
+const NODE_SCALE: Vec3 = Vec3::new(NODE_SIZE, NODE_SIZE, NODE_SIZE);
+
+const ASSETS_SCALE_FACTOR: f32 = NODE_SIZE / 40.; // Models are 40 voxels wide
+const ASSETS_SCALE: Vec3 = Vec3::new(
+    ASSETS_SCALE_FACTOR,
+    ASSETS_SCALE_FACTOR,
+    ASSETS_SCALE_FACTOR,
+);
 
 fn setup_scene(mut commands: Commands) {
     // Camera
@@ -90,7 +103,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
     let grid = GridDefinition::new_cartesian_3d(35, 5, 35, false);
     let mut generator = GeneratorBuilder::new()
         .with_rules(rules)
-        .with_grid(grid)
+        .with_grid(grid.clone())
         .with_max_retry_count(250)
         .with_rng(RngMode::RandomSeed)
         .with_node_heuristic(NodeSelectionHeuristic::MinimumRemainingValue)
@@ -134,6 +147,19 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         gen: generator,
         observer,
     });
+
+    commands.spawn((
+        SpatialBundle::from_transform(Transform::from_translation(Vec3 {
+            x: -(grid.size_x() as f32) / 2.,
+            y: 0.,
+            z: grid.size_z() as f32 / 2.,
+        })),
+        Grid { def: grid },
+        DebugGridView {
+            node_size: NODE_SCALE,
+            color: Color::GRAY.with_a(0.),
+        },
+    ));
 }
 
 #[derive(Component)]
@@ -154,11 +180,11 @@ fn spawn_node(
             SceneBundle {
                 scene: asset.clone(),
                 transform: Transform::from_xyz(
-                    (pos.x as f32) - x_offset,
+                    (pos.x as f32) - x_offset + HALF_NODE_SIZE,
                     pos.y as f32,
-                    z_offset - (pos.z as f32),
+                    z_offset - (pos.z as f32) - HALF_NODE_SIZE,
                 )
-                .with_scale(MODEL_SCALE)
+                .with_scale(ASSETS_SCALE)
                 .with_rotation(Quat::from_rotation_y(f32::to_radians(
                     node.rotation.value() as f32,
                 ))),
@@ -249,10 +275,11 @@ fn step_by_step_timed_update(
 fn main() {
     let mut app = App::new();
     app.insert_resource(DirectionalLightShadowMap { size: 4096 });
-    app.add_plugins(DefaultPlugins);
+    app.add_plugins((DefaultPlugins, MaterialPlugin::<LineMaterial>::default()));
     app.add_event::<GenerationFailedEvent>();
     app.add_systems(Startup, (setup_generator, setup_scene))
         .add_systems(Update, pan_orbit_camera)
+        .add_systems(Update, spawn_debug_grids::<Cartesian3D>)
         .add_systems(PostUpdate, clear_nodes);
 
     match GENERATION_VIEW_MODE {

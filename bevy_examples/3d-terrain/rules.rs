@@ -1,4 +1,4 @@
-use ghx_proc_gen::{
+use bevy_ghx_proc_gen::proc_gen::{
     generator::{
         node::{NodeModel, SocketsCartesian3D},
         rules::SocketConnections,
