@@ -6,7 +6,7 @@ use rand::{
 use std::sync::Arc;
 
 #[cfg(feature = "debug-traces")]
-use tracing::info;
+use tracing::{debug, info, trace};
 
 use crate::{
     grid::{
@@ -358,9 +358,10 @@ impl<T: DirectionSet + Clone> Generator<T> {
             let from_position = self.grid.get_position(from.node_index);
 
             #[cfg(feature = "debug-traces")]
-            info!(
+            trace!(
                 "Propagate removal of model {} for node {}",
-                from.model_index, from.node_index
+                from.model_index,
+                from.node_index
             );
 
             // We want to update all the adjacent nodes (= in all directions)
@@ -388,9 +389,10 @@ impl<T: DirectionSet + Clone> Generator<T> {
 
     fn enqueue_removal_to_propagate(&mut self, node_index: usize, model_index: ModelIndex) {
         #[cfg(feature = "debug-traces")]
-        info!(
+        trace!(
             "Enqueue removal for propagation: model {} from node {}",
-            model_index, node_index
+            model_index,
+            node_index
         );
         self.propagation_stack.push(PropagationEntry {
             node_index,
@@ -405,7 +407,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
     /// Should only be called a model that is still possible for this node
     fn ban_model_from_node(&mut self, node: usize, model: usize) -> Result<(), ProcGenError> {
         #[cfg(feature = "debug-traces")]
-        info!(
+        debug!(
             "Ban model {} from node {} at position {:?}",
             model,
             node,
