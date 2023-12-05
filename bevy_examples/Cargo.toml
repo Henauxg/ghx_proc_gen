@@ -6,7 +6,7 @@ edition = "2021"
 exclude = ["assets/"]
 
 [dev-dependencies]
-ghx_proc_gen = { path = "../ghx_proc_gen" }
+bevy_ghx_proc_gen = { path = "../bevy_ghx_proc_gen" }
 bevy_ghx_utilities = { path = "../bevy_ghx_utilities" }
 
 tracing-subscriber = "0.3.18"
