@@ -167,9 +167,17 @@ impl<T: DirectionSet + Clone> Generator<T> {
         self.nodes = bitvec![1;self.rules.models_count() * self.grid.total_size() ];
         self.possible_models_count = vec![self.rules.models_count(); self.grid.total_size()];
         self.propagation_stack = Vec::new();
-        self.initialize_supports_count()
+        self.initialize_supports_count()?;
+
+        for obs in &mut self.observers {
+            let _ = obs.send(GenerationUpdate::Reinitialized);
+        }
+        Ok(())
     }
 
+    /// Initialize the supports counts array. This may already start to generate/Ban/... some nodes according to the given constraints.
+    ///
+    /// Returns `Ok` if the initialization went well. Else, sets the internal status to [`InternalGeneratorStatus::Failed`] and return [`ProcGenError::GenerationFailure`]
     fn initialize_supports_count(&mut self) -> Result<(), ProcGenError> {
         // For a given `node`, `neighbours[direction]` will hold the optionnal index of the neighbour node in direction
         let mut neighbours = vec![None; self.grid.directions().len()];
@@ -192,7 +200,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
                             if allowed_models_count == 0 && self.is_model_possible(node, model) {
                                 // Ban model for node since it would 100% lead to a contradiction at some point during the generation.
                                 if let Err(err) = self.ban_model_from_node(node, model) {
-                                    self.status = InternalGeneratorStatus::Failed;
+                                    self.signal_contradiction();
                                     return Err(err);
                                 }
                                 // We don't need to process the remaining directions, iterate on the next model.
@@ -302,20 +310,19 @@ impl<T: DirectionSet + Clone> Generator<T> {
         }
         // Remove eliminated possibilities (after enqueuing the propagation entries)
         // TODO Remove alias ?
-        for mut bit in self.nodes[node_index * self.rules.models_count()
-            ..node_index * self.rules.models_count() + self.rules.models_count()]
+        let models_count = self.rules.models_count();
+        for mut bit in self.nodes
+            [node_index * models_count..node_index * models_count + models_count]
             .iter_mut()
         {
             *bit = false;
         }
-        self.nodes.set(
-            node_index * self.rules.models_count() + selected_model_index,
-            true,
-        );
+        self.nodes
+            .set(node_index * models_count + selected_model_index, true);
         self.possible_models_count[node_index] = 1;
 
         if let Err(err) = self.propagate() {
-            self.status = InternalGeneratorStatus::Failed;
+            self.signal_contradiction();
             return Err(err);
         };
 
@@ -331,7 +338,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
             self.grid.get_position(node_index)
         );
 
-        let update = GenerationUpdate {
+        let update = GenerationUpdate::Generated {
             node_index,
             generated_node: self.rules.model(model_index).to_generated(),
         };
@@ -514,5 +521,12 @@ impl<T: DirectionSet + Clone> Generator<T> {
         let (sender, receiver) = crossbeam_channel::unbounded();
         self.observers.push(sender);
         receiver
+    }
+
+    fn signal_contradiction(&mut self) {
+        self.status = InternalGeneratorStatus::Failed;
+        for obs in &mut self.observers {
+            let _ = obs.send(GenerationUpdate::Failed);
+        }
     }
 }

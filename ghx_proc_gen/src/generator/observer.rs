@@ -3,19 +3,18 @@ use crate::grid::{direction::DirectionSet, GridData};
 use super::{node::GeneratedNode, Generator};
 
 #[derive(Clone, Copy, Debug)]
-pub struct GenerationUpdate {
-    pub(crate) node_index: usize,
-    pub(crate) generated_node: GeneratedNode,
-}
-
-impl GenerationUpdate {
-    pub fn node_index(&self) -> usize {
-        self.node_index
-    }
-
-    pub fn node(&self) -> GeneratedNode {
-        self.generated_node
-    }
+pub enum GenerationUpdate {
+    /// A node has been generated
+    Generated {
+        /// Index of the node in the [`crate::grid::GridDefinition`]
+        node_index: usize,
+        /// Generated node info
+        generated_node: GeneratedNode,
+    },
+    /// The generator has reinitialized from its initial state.
+    Reinitialized,
+    /// The generation failed due to a contradiction.
+    Failed,
 }
 
 pub struct QueuedStatefulObserver<T: DirectionSet + Clone> {
@@ -40,21 +39,33 @@ impl<T: DirectionSet + Clone> QueuedStatefulObserver<T> {
     }
 
     /// Updates the internal state of the observer by dequeuing all queued updates.
-    pub fn update(&mut self) {
+    pub fn dequeue_all(&mut self) {
         while let Ok(update) = self.receiver.try_recv() {
-            self.grid_data
-                .set(update.node_index, Some(update.generated_node))
+            match update {
+                GenerationUpdate::Generated {
+                    node_index,
+                    generated_node,
+                } => self.grid_data.set(node_index, Some(generated_node)),
+                GenerationUpdate::Reinitialized => self.grid_data.reset(None),
+                GenerationUpdate::Failed => self.grid_data.reset(None),
+            }
         }
     }
 
     /// Updates the internal state of the observer by dequeuing 1 queued update.
     ///
     /// Returns [`Some(GenerationUpdate)`] if there was an update to process, else returns `None`.
-    pub fn update_one_step(&mut self) -> Option<GenerationUpdate> {
+    pub fn dequeue_one(&mut self) -> Option<GenerationUpdate> {
         match self.receiver.try_recv() {
             Ok(update) => {
-                self.grid_data
-                    .set(update.node_index, Some(update.generated_node));
+                match update {
+                    GenerationUpdate::Generated {
+                        node_index,
+                        generated_node,
+                    } => self.grid_data.set(node_index, Some(generated_node)),
+                    GenerationUpdate::Reinitialized => self.grid_data.reset(None),
+                    GenerationUpdate::Failed => self.grid_data.reset(None),
+                }
                 Some(update)
             }
             Err(_) => None,
@@ -76,7 +87,7 @@ impl QueuedObserver {
     ///
     /// Returns all retrieved [`GenerationUpdate`] in a `Vec`.
     /// The `Vec` may be empty if no update was queued.
-    pub fn update(&mut self) -> Vec<GenerationUpdate> {
+    pub fn dequeue_all(&mut self) -> Vec<GenerationUpdate> {
         let mut updates = Vec::new();
         while let Ok(update) = self.receiver.try_recv() {
             updates.push(update);
@@ -87,7 +98,7 @@ impl QueuedObserver {
     /// Dequeues 1 queued update.
     ///
     /// Returns [`Some(GenerationUpdate)`] if there was an update to process, else returns `None`.
-    pub fn update_one_step(&mut self) -> Option<GenerationUpdate> {
+    pub fn dequeue_one(&mut self) -> Option<GenerationUpdate> {
         match self.receiver.try_recv() {
             Ok(update) => Some(update),
             Err(_) => None,
