@@ -7,7 +7,7 @@ use bevy::{
 };
 
 use bevy_ghx_proc_gen::{
-    grid::{spawn_debug_grids, DebugGridView, Grid},
+    grid::{spawn_debug_grids, DebugGridView, DebugGridViewConfig, Grid},
     lines::LineMaterial,
     proc_gen::{
         generator::{
@@ -155,7 +155,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
             z: grid.size_z() as f32 / 2.,
         })),
         Grid { def: grid },
-        DebugGridView {
+        DebugGridViewConfig {
             node_size: NODE_SCALE,
             color: Color::GRAY.with_a(0.),
         },
@@ -272,6 +272,21 @@ fn step_by_step_timed_update(
     }
 }
 
+fn toggle_debug_grid_visibility(
+    keys: Res<Input<KeyCode>>,
+    mut debug_grids: Query<&mut Visibility, With<DebugGridView>>,
+) {
+    if keys.just_pressed(KeyCode::F1) {
+        for mut view_visibility in debug_grids.iter_mut() {
+            *view_visibility = match *view_visibility {
+                Visibility::Inherited => Visibility::Hidden,
+                Visibility::Hidden => Visibility::Visible,
+                Visibility::Visible => Visibility::Hidden,
+            }
+        }
+    }
+}
+
 fn main() {
     let mut app = App::new();
     app.insert_resource(DirectionalLightShadowMap { size: 4096 });
@@ -280,6 +295,7 @@ fn main() {
     app.add_systems(Startup, (setup_generator, setup_scene))
         .add_systems(Update, pan_orbit_camera)
         .add_systems(Update, spawn_debug_grids::<Cartesian3D>)
+        .add_systems(Update, toggle_debug_grid_visibility)
         .add_systems(PostUpdate, clear_nodes);
 
     match GENERATION_VIEW_MODE {
