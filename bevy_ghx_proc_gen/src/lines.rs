@@ -1,8 +1,7 @@
 use bevy::{
-    asset::{Asset, Assets},
-    ecs::system::{Commands, ResMut},
+    asset::Asset,
     math::Vec3,
-    pbr::{Material, MaterialMeshBundle, MaterialPipeline, MaterialPipelineKey},
+    pbr::{Material, MaterialPipeline, MaterialPipelineKey},
     reflect::TypePath,
     render::{
         color::Color,
@@ -12,74 +11,19 @@ use bevy::{
             SpecializedMeshPipelineError,
         },
     },
-    transform::components::Transform,
-    utils::default,
 };
 
 // Built on top of https://bevyengine.org/examples/3D%20Rendering/lines/ (on bevy 0.12)
 
-fn draw_debug_grid(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<LineMaterial>>,
-    grid: &GridDefinition,
-    grid_origin: Vec3,
-    node_size: Vec3,
-) {
-
-    // // Spawn a list of lines with start and end points for each lines
-    // commands.spawn(MaterialMeshBundle {
-    //     mesh: meshes.add(Mesh::from(LineList {
-    //         lines: vec![
-    //             (Vec3::ZERO, Vec3::new(1.0, 1.0, 0.0)),
-    //             (Vec3::new(1.0, 1.0, 0.0), Vec3::new(1.0, 0.0, 0.0)),
-    //         ],
-    //     })),
-    //     transform: Transform::from_xyz(-1.5, 0.0, 0.0),
-    //     material: materials.add(LineMaterial {
-    //         color: Color::GREEN,
-    //     }),
-    //     ..default()
-    // });
-
-    // // Spawn a line strip that goes from point to point
-    // commands.spawn(MaterialMeshBundle {
-    //     mesh: meshes.add(Mesh::from(LineStrip {
-    //         points: vec![
-    //             Vec3::ZERO,
-    //             Vec3::new(1.0, 1.0, 0.0),
-    //             Vec3::new(1.0, 0.0, 0.0),
-    //         ],
-    //     })),
-    //     transform: Transform::from_xyz(0.5, 0.0, 0.0),
-    //     material: materials.add(LineMaterial { color: Color::BLUE }),
-    //     ..default()
-    // });
-}
-
 #[derive(Asset, TypePath, Default, AsBindGroup, Debug, Clone)]
-struct LineMaterial {
+pub struct LineMaterial {
     #[uniform(0)]
-    color: Color,
+    pub(crate) color: Color,
 }
 
 impl Material for LineMaterial {
     fn fragment_shader() -> ShaderRef {
-        "#import bevy_pbr::forward_io::VertexOutput
-
-		struct LineMaterial {
-			color: vec4<f32>,
-		};
-		
-		@group(1) @binding(0) var<uniform> material: LineMaterial;
-		
-		@fragment
-		fn fragment(
-			mesh: VertexOutput,
-		) -> @location(0) vec4<f32> {
-			return material.color;
-		}"
-        .into()
+        "shaders/line_material.wgsl".into()
     }
 
     fn specialize(
