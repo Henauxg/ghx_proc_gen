@@ -2,7 +2,7 @@ use crate::grid::{direction::DirectionSet, GridData};
 
 use super::{node::GeneratedNode, Generator};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct GenerationUpdate {
     pub(crate) node_index: usize,
     pub(crate) generated_node: GeneratedNode,

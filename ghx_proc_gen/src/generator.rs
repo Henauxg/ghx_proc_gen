@@ -257,7 +257,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
 
     /// Advances the generation by one "step". Returns the [`GenerationStatus`] if the step executed successfully and [`ProcGenError::GenerationFailure`] if the generation fails due to a contradiction.
     ///
-    /// If the generation has ended (successfully or not), calling `select_and_propagate` again will reinitialize the [`Generator`] before starting a new² generation.
+    /// If the generation has ended (successfully or not), calling `select_and_propagate` again will reinitialize the [`Generator`] before starting a new generation.
     ///
     /// **Note**: One call to `select_and_propagate` can lead to more than 1 node generated if the propagation phase forces some other node(s) into a definite state (1 possible model remaining on a node)
     pub fn select_and_propagate(&mut self) -> Result<GenerationStatus, ProcGenError> {
