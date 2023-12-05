@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use bevy::{
+    log::LogPlugin,
     pbr::{CascadeShadowConfigBuilder, DirectionalLightShadowMap},
     prelude::*,
     utils::HashMap,
@@ -11,9 +12,11 @@ use bevy_ghx_proc_gen::{
     lines::LineMaterial,
     proc_gen::{
         generator::{
-            builder::GeneratorBuilder, node::GeneratedNode, observer::QueuedObserver,
-            rules::RulesBuilder, GenerationStatus, Generator, ModelSelectionHeuristic,
-            NodeSelectionHeuristic, RngMode,
+            builder::GeneratorBuilder,
+            node::GeneratedNode,
+            observer::{GenerationUpdate, QueuedObserver},
+            rules::RulesBuilder,
+            GenerationStatus, Generator, ModelSelectionHeuristic, NodeSelectionHeuristic, RngMode,
         },
         grid::{direction::Cartesian3D, GridDefinition},
     },
@@ -32,7 +35,7 @@ pub enum GenerationViewMode {
 }
 
 /// Change this value to change the way the generation is visualized
-const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::Final;
+const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::StepByStepPaused;
 
 #[derive(Resource)]
 struct Generation {
@@ -100,12 +103,12 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
     let rules = RulesBuilder::new_cartesian_3d(models, sockets_connections)
         .build()
         .unwrap();
-    let grid = GridDefinition::new_cartesian_3d(35, 5, 35, false);
+    let grid = GridDefinition::new_cartesian_3d(12, 3, 12, false);
     let mut generator = GeneratorBuilder::new()
         .with_rules(rules)
         .with_grid(grid.clone())
         .with_max_retry_count(250)
-        .with_rng(RngMode::RandomSeed)
+        .with_rng(RngMode::Seeded(16502219982281812460))
         .with_node_heuristic(NodeSelectionHeuristic::MinimumRemainingValue)
         .with_model_heuristic(ModelSelectionHeuristic::WeightedProbability)
         .build();
@@ -195,80 +198,79 @@ fn spawn_node(
     }
 }
 
-#[derive(Event)]
-struct GenerationFailedEvent;
-
 fn select_and_propagate(
     commands: &mut Commands,
-    generation_failed_events: &mut EventWriter<GenerationFailedEvent>,
     generation: &mut ResMut<Generation>,
+    nodes: Query<Entity, With<SpawnedNode>>,
 ) {
     match generation.gen.select_and_propagate() {
-        Ok(status) => {
-            let updates = generation.observer.update();
-            info!("Spawning {} node(s)", updates.len());
-            for update in updates {
-                spawn_node(
-                    commands,
-                    &generation.models_assets,
-                    generation.gen.grid(),
-                    &update.node(),
-                    update.node_index(),
-                );
-            }
-            match status {
-                GenerationStatus::Ongoing => (),
-                GenerationStatus::Done => info!("Generation done"),
-            }
-        }
+        Ok(status) => match status {
+            GenerationStatus::Ongoing => (),
+            GenerationStatus::Done => info!("Generation done"),
+        },
         Err(_) => {
-            generation_failed_events.send(GenerationFailedEvent);
+            info!("Generation Failed")
         }
     }
-}
-
-fn clear_nodes(
-    mut commands: Commands,
-    mut generation_failed_events: EventReader<GenerationFailedEvent>,
-    nodes: Query<(Entity, &SpawnedNode)>,
-) {
-    for _event in generation_failed_events.read() {
-        info!("Generation failed");
-        for (entity, _node) in nodes.iter() {
+    // Process the observer queue even if generation failed
+    let updates = generation.observer.dequeue_all();
+    // Buffer the nodes to spawn in case a generation failure invalidate some.
+    let mut nodes_to_spawn = vec![];
+    let mut despawn_nodes = false;
+    for update in updates {
+        match update {
+            GenerationUpdate::Generated {
+                node_index,
+                generated_node,
+            } => {
+                nodes_to_spawn.push((node_index, generated_node));
+            }
+            GenerationUpdate::Reinitialized | GenerationUpdate::Failed => {
+                nodes_to_spawn.clear();
+                despawn_nodes = true;
+            }
+        }
+    }
+    if despawn_nodes {
+        for entity in nodes.iter() {
             commands.entity(entity).despawn_recursive();
         }
+    }
+
+    for (node_index, generated_node) in nodes_to_spawn {
+        // info!("Spawning {:?} at node index {}", generated_node, node_index);
+        spawn_node(
+            commands,
+            &generation.models_assets,
+            generation.gen.grid(),
+            &generated_node,
+            node_index,
+        );
     }
 }
 
 fn step_by_step_input_update(
     mut commands: Commands,
     keys: Res<Input<KeyCode>>,
-    mut generation_failed_events: EventWriter<GenerationFailedEvent>,
+    buttons: Res<Input<MouseButton>>,
     mut generation: ResMut<Generation>,
+    nodes: Query<Entity, With<SpawnedNode>>,
 ) {
-    if keys.just_pressed(KeyCode::Space) {
-        select_and_propagate(
-            &mut commands,
-            &mut generation_failed_events,
-            &mut generation,
-        );
+    if keys.pressed(KeyCode::Space) || buttons.just_pressed(MouseButton::Left) {
+        select_and_propagate(&mut commands, &mut generation, nodes);
     }
 }
 
 fn step_by_step_timed_update(
     mut commands: Commands,
     mut generation: ResMut<Generation>,
-    mut generation_failed_events: EventWriter<GenerationFailedEvent>,
     mut timer: ResMut<GenerationTimer>,
     time: Res<Time>,
+    nodes: Query<Entity, With<SpawnedNode>>,
 ) {
     timer.0.tick(time.delta());
     if timer.0.finished() {
-        select_and_propagate(
-            &mut commands,
-            &mut generation_failed_events,
-            &mut generation,
-        );
+        select_and_propagate(&mut commands, &mut generation, nodes);
     }
 }
 
@@ -290,13 +292,17 @@ fn toggle_debug_grid_visibility(
 fn main() {
     let mut app = App::new();
     app.insert_resource(DirectionalLightShadowMap { size: 4096 });
-    app.add_plugins((DefaultPlugins, MaterialPlugin::<LineMaterial>::default()));
-    app.add_event::<GenerationFailedEvent>();
+    app.add_plugins((
+        DefaultPlugins.set(LogPlugin {
+            filter: "info,wgpu_core=warn,wgpu_hal=warn,ghx_proc_gen=info".into(),
+            level: bevy::log::Level::DEBUG,
+        }),
+        MaterialPlugin::<LineMaterial>::default(),
+    ));
     app.add_systems(Startup, (setup_generator, setup_scene))
         .add_systems(Update, pan_orbit_camera)
         .add_systems(Update, spawn_debug_grids::<Cartesian3D>)
-        .add_systems(Update, toggle_debug_grid_visibility)
-        .add_systems(PostUpdate, clear_nodes);
+        .add_systems(Update, toggle_debug_grid_visibility);
 
     match GENERATION_VIEW_MODE {
         GenerationViewMode::StepByStep(_) => {
