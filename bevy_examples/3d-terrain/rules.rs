@@ -85,8 +85,8 @@ pub(crate) fn rules_and_assets() -> (
         SocketsCartesian3D::Multiple {
             x_pos: vec![GROUND_RIGHT, GROUND_SIDE],
             x_neg: vec![GROUND_LEFT, GROUND_SIDE],
-            z_pos: vec![GROUND_BACK, GROUND_SIDE],
-            z_neg: vec![GROUND_FRONT, GROUND_SIDE],
+            z_pos: vec![GROUND_FRONT, GROUND_SIDE],
+            z_neg: vec![GROUND_BACK, GROUND_SIDE],
             y_pos: vec![GROUND_TOP],
             y_neg: vec![GROUND_BOTTOM],
         }
@@ -97,8 +97,8 @@ pub(crate) fn rules_and_assets() -> (
         SocketsCartesian3D::Multiple {
             x_pos: vec![STAIRS_RIGHT],
             x_neg: vec![STAIRS_LEFT],
-            z_pos: vec![STAIRS_BACK],
-            z_neg: vec![STAIRS_FRONT],
+            z_pos: vec![STAIRS_FRONT],
+            z_neg: vec![STAIRS_BACK],
             y_pos: vec![STAIRS_TOP],
             y_neg: vec![STAIRS_BOTTOM],
         }
@@ -109,8 +109,8 @@ pub(crate) fn rules_and_assets() -> (
         SocketsCartesian3D::Multiple {
             x_pos: vec![SIDE_STAIRS_RIGHT],
             x_neg: vec![SIDE_STAIRS_LEFT],
-            z_pos: vec![SIDE_STAIRS_BACK],
-            z_neg: vec![SIDE_STAIRS_FRONT],
+            z_pos: vec![SIDE_STAIRS_FRONT],
+            z_neg: vec![SIDE_STAIRS_BACK],
             y_pos: vec![SIDE_STAIRS_TOP],
             y_neg: vec![SIDE_STAIRS_BOTTOM],
         }
@@ -121,8 +121,8 @@ pub(crate) fn rules_and_assets() -> (
         SocketsCartesian3D::Multiple {
             x_pos: vec![STAIRS_SUPPORT_RIGHT, STAIRS_SUPPORT_SIDE],
             x_neg: vec![STAIRS_SUPPORT_LEFT, STAIRS_SUPPORT_SIDE],
-            z_pos: vec![STAIRS_SUPPORT_BACK, STAIRS_SUPPORT_SIDE],
-            z_neg: vec![STAIRS_SUPPORT_FRONT, STAIRS_SUPPORT_SIDE],
+            z_pos: vec![STAIRS_SUPPORT_FRONT, STAIRS_SUPPORT_SIDE],
+            z_neg: vec![STAIRS_SUPPORT_BACK, STAIRS_SUPPORT_SIDE],
             y_pos: vec![STAIRS_SUPPORT_TOP],
             y_neg: vec![STAIRS_SUPPORT_BOTTOM],
         }
@@ -132,8 +132,8 @@ pub(crate) fn rules_and_assets() -> (
         SocketsCartesian3D::Multiple {
             x_pos: vec![PYRAMID_TOP_RIGHT, PYRAMID_TOP_SIDE],
             x_neg: vec![PYRAMID_TOP_LEFT, PYRAMID_TOP_SIDE],
-            z_pos: vec![PYRAMID_TOP_BACK, PYRAMID_TOP_SIDE],
-            z_neg: vec![PYRAMID_TOP_FRONT, PYRAMID_TOP_SIDE],
+            z_pos: vec![PYRAMID_TOP_FRONT, PYRAMID_TOP_SIDE],
+            z_neg: vec![PYRAMID_TOP_BACK, PYRAMID_TOP_SIDE],
             y_pos: vec![PYRAMID_TOP_TOP, GROUND_TOP],
             y_neg: vec![PYRAMID_TOP_BOTTOM],
         }
