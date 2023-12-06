@@ -177,7 +177,7 @@ pub const CARTESIAN_3D_DELTAS: &'static [GridDelta] = &[
         dz: 0,
     },
     GridDelta {
-        // ZBackward
+        // ZForward
         dx: 0,
         dy: 0,
         dz: 1,
