@@ -179,6 +179,9 @@ impl<T: DirectionSet + Clone> Generator<T> {
     ///
     /// Returns `Ok` if the initialization went well. Else, sets the internal status to [`InternalGeneratorStatus::Failed`] and return [`ProcGenError::GenerationFailure`]
     fn initialize_supports_count(&mut self) -> Result<(), ProcGenError> {
+        #[cfg(feature = "debug-traces")]
+        debug!("Initializing support counts");
+
         // For a given `node`, `neighbours[direction]` will hold the optionnal index of the neighbour node in direction
         let mut neighbours = vec![None; self.grid.directions().len()];
         for node in 0..self.grid.total_size() {
@@ -212,6 +215,11 @@ impl<T: DirectionSet + Clone> Generator<T> {
                 }
             }
         }
+
+        #[cfg(feature = "debug-traces")]
+        debug!("Support counts initialized successfully");
+        self.status = InternalGeneratorStatus::Ongoing;
+
         Ok(())
     }
 
@@ -287,6 +295,13 @@ impl<T: DirectionSet + Clone> Generator<T> {
         // We found a node not yet generated. "Observe/collapse" the node: select a model for the node
         let selected_model_index = self.select_model(node_index);
 
+        #[cfg(feature = "debug-traces")]
+        debug!(
+            "Heuristics selected model {} for node {} at position {:?}",
+            selected_model_index,
+            node_index,
+            self.grid.get_position(node_index)
+        );
         self.signal_selection_to_observers(node_index, selected_model_index);
 
         // Iterate all the possible models because we don't have an easy way to iterate only the models possible at node_index. But we'll filter impossible models right away. TODO: iter_ones ?
@@ -330,14 +345,6 @@ impl<T: DirectionSet + Clone> Generator<T> {
     }
 
     fn signal_selection_to_observers(&mut self, node_index: usize, model_index: ModelIndex) {
-        #[cfg(feature = "debug-traces")]
-        info!(
-            "Select model {} for node {} at position {:?}",
-            model_index,
-            node_index,
-            self.grid.get_position(node_index)
-        );
-
         let update = GenerationUpdate::Generated {
             node_index,
             generated_node: self.rules.model(model_index).to_generated(),
@@ -406,17 +413,6 @@ impl<T: DirectionSet + Clone> Generator<T> {
     ///
     /// Should only be called a model that is still possible for this node
     fn ban_model_from_node(&mut self, node: usize, model: usize) -> Result<(), ProcGenError> {
-        #[cfg(feature = "debug-traces")]
-        debug!(
-            "Ban model {} from node {} at position {:?}",
-            model,
-            node,
-            self.grid.get_position(node)
-        );
-
-        // Enqueue removal for propagation
-        self.enqueue_removal_to_propagate(node, model);
-
         // Update the supports
         for dir in self.grid.directions() {
             let supports_count = &mut self.supports_count[(node, model, *dir as usize)];
@@ -428,15 +424,35 @@ impl<T: DirectionSet + Clone> Generator<T> {
 
         let number_of_models_left = &mut self.possible_models_count[node];
         *number_of_models_left = number_of_models_left.saturating_sub(1);
+
+        #[cfg(feature = "debug-traces")]
+        trace!(
+            "Ban model {} from node {} at position {:?}, {} models left",
+            model,
+            node,
+            self.grid.get_position(node),
+            number_of_models_left
+        );
+
         match *number_of_models_left {
-            0 => Err(ProcGenError::GenerationFailure),
+            0 => return Err(ProcGenError::GenerationFailure),
             1 => {
-                // This node has collapsed into a specific model
+                #[cfg(feature = "debug-traces")]
+                debug!(
+                    "Previous bans force model {} for node {} at position {:?}",
+                    model,
+                    node,
+                    self.grid.get_position(node)
+                );
                 self.signal_selection_to_observers(node, self.get_model_index(node));
-                Ok(())
             }
-            _ => Ok(()),
+            _ => (),
         }
+
+        // Enqueue removal for propagation
+        self.enqueue_removal_to_propagate(node, model);
+
+        Ok(())
     }
 
     fn select_node_to_generate<'a>(&mut self) -> Option<usize> {
@@ -526,6 +542,9 @@ impl<T: DirectionSet + Clone> Generator<T> {
     }
 
     fn signal_contradiction(&mut self) {
+        #[cfg(feature = "debug-traces")]
+        debug!("Generation failed due to a contradiction");
+
         self.status = InternalGeneratorStatus::Failed;
         for obs in &mut self.observers {
             let _ = obs.send(GenerationUpdate::Failed);
