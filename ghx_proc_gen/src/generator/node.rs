@@ -29,15 +29,21 @@ pub(crate) fn expand_models<T: DirectionSet>(
     expanded_models
 }
 
-/// Represents a model to be used by a [`Generator`] as a "building-block" to fill out the generated area.
+/// Represents a model to be used by a [`crate::generator::Generator`] as a "building-block" to fill out the generated area.
 pub struct NodeModel<T: DirectionSet> {
-    /// Allowed connections for this [`NodeModel`] in the output: up, left, bottom, right
+    /// Allowed connections for this [`NodeModel`] in the output.
     sockets: Vec<Vec<SocketId>>,
-    /// Weight factor influencing the density of this [`NodeModel`] in the generated output. Defaults to 1.0
-    weight: f32,
-    /// Allowed rotations of this [`NodeModel`] in the output, around the Z axis. Defaults to only [`NodeRotation::Rot0`].
+    /// Weight factor influencing the density of this [`NodeModel`] in the generated output.
     ///
-    /// Note: In 3d, top and bottom sockets of a model should be invariant to rotation around the Z axis.
+    ///  Defaults to 1.0
+    weight: f32,
+    /// Allowed rotations of this [`NodeModel`] in the output, around the rotation axis specified in the rules.
+    ///
+    /// Defaults to only [`NodeRotation::Rot0`].
+    ///
+    /// Note:
+    /// - In 3d, top and bottom sockets of a model should be invariant to rotation around the chosen rotation axis.
+    /// - In 2d, the rotation axis cannot be modified and is set to [`Direction::ZForward`].
     allowed_rotations: HashSet<NodeRotation>,
 
     typestate: PhantomData<T>,
@@ -231,7 +237,7 @@ impl<T: DirectionSet> NodeModel<T> {
     fn rotated_sockets(&self, rotation: NodeRotation, axis: Direction) -> Vec<Vec<SocketId>> {
         let mut rotated_sockets = vec![Vec::new(); self.sockets.len()];
 
-        // Not pretty: Check if the node sockets contain the rotation axis.
+        // Not pretty: if the node sockets contain the rotation axis, add the unmodified sockets to the rotated_sockets.
         if self.sockets.len() > axis as usize {
             for fixed_axis in [axis, axis.opposite()] {
                 rotated_sockets[fixed_axis as usize].extend(&self.sockets[fixed_axis as usize]);
