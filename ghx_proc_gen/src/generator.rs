@@ -175,16 +175,16 @@ impl<T: DirectionSet + Clone> Generator<T> {
         Ok(())
     }
 
-    /// Initialize the supports counts array. This may already start to generate/Ban/... some nodes according to the given constraints.
+    /// Initialize the supports counts array. This may already start to generate/ban/... some nodes according to the given constraints.
     ///
-    /// Returns `Ok` if the initialization went well. Else, sets the internal status to [`InternalGeneratorStatus::Failed`] and return [`ProcGenError::GenerationFailure`]
+    /// Returns `Ok` if the initialization went well and sets the internal status to [`InternalGeneratorStatus::Ongoing`]. Else, sets the internal status to [`InternalGeneratorStatus::Failed`] and return [`ProcGenError::GenerationFailure`]
     fn initialize_supports_count(&mut self) -> Result<(), ProcGenError> {
         #[cfg(feature = "debug-traces")]
         debug!("Initializing support counts");
 
-        // For a given `node`, `neighbours[direction]` will hold the optionnal index of the neighbour node in direction
         let mut neighbours = vec![None; self.grid.directions().len()];
         for node in 0..self.grid.total_size() {
+            // For a given `node`, `neighbours[direction]` will hold the optionnal index of the neighbour node in `direction`
             for direction in self.grid.directions() {
                 let grid_pos = self.grid.get_position(node);
                 neighbours[*direction as usize] = self.grid.get_next_index(&grid_pos, *direction);
@@ -193,7 +193,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
             for model in 0..self.rules.models_count() {
                 for direction in self.grid.directions() {
                     let opposite_dir = direction.opposite();
-                    // During initialization, the support count for a model "from" a direction is simply the count of allowed adjacent models when looking in the opposite direction (or 0 for a non-looping border).
+                    // During initialization, the support count for a model "from" a direction is simply the count of allowed adjacent models when looking in the opposite direction, or 0 for a non-looping border (no neighbour from this direction).
                     match neighbours[opposite_dir as usize] {
                         Some(_) => {
                             let allowed_models_count =
@@ -216,8 +216,15 @@ impl<T: DirectionSet + Clone> Generator<T> {
             }
         }
 
+        // Propagate the potential bans that occurred during initialization
+        if let Err(err) = self.propagate() {
+            self.signal_contradiction();
+            return Err(err);
+        };
+
         #[cfg(feature = "debug-traces")]
         debug!("Support counts initialized successfully");
+
         self.status = InternalGeneratorStatus::Ongoing;
 
         Ok(())
@@ -232,7 +239,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
         Ok(self.to_grid_data())
     }
 
-    /// Same as [`generate`] but does dot return a filled [`GridData`] when the genration is done. You can still retrieve a filled [`GridData`] by calling [`to_grid_data`].
+    /// Same as [`generate`] but does dot return a filled [`GridData`] when the generation is done. You can still retrieve a filled [`GridData`] by calling [`to_grid_data`].
     ///
     /// This can be usefull if you retrieve the data via other means (observers, ...)
     pub fn generate_without_output(&mut self) -> Result<(), ProcGenError> {
@@ -275,7 +282,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
     ///
     /// If the generation has ended (successfully or not), calling `select_and_propagate` again will reinitialize the [`Generator`] before starting a new generation.
     ///
-    /// **Note**: One call to `select_and_propagate` can lead to more than 1 node generated if the propagation phase forces some other node(s) into a definite state (1 possible model remaining on a node)
+    /// **Note**: One call to `select_and_propagate` can lead to more than 1 node generated if the propagation phase forces some other node(s) into a definite state (due to only 1 possible model remaining on a node)
     pub fn select_and_propagate(&mut self) -> Result<GenerationStatus, ProcGenError> {
         match self.status {
             InternalGeneratorStatus::Init => self.initialize_supports_count()?,
@@ -323,7 +330,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
                 *supports_count = 0;
             }
         }
-        // Remove eliminated possibilities (after enqueuing the propagation entries)
+        // Remove eliminated possibilities (after enqueuing the propagation entries because we currently filter on the possible models)
         // TODO Remove alias ?
         let models_count = self.rules.models_count();
         for mut bit in self.nodes
