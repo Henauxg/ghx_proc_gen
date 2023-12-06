@@ -14,6 +14,9 @@ bevy = { version = "0.12.0", default-features = true, features = [
 	"dynamic_linking",
 ] }
 
+[[example]]
+name = "pillars"
+path = "pillars/pillars.rs"
 
 [[example]]
 name = "3d-terrain"
