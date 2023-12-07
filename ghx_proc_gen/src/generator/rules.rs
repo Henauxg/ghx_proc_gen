@@ -5,6 +5,9 @@ use std::{
 
 use ndarray::{Array, Ix1, Ix2};
 
+#[cfg(feature = "debug-traces")]
+use tracing::trace;
+
 use super::node::{expand_models, ExpandedNodeModel, ModelIndex, NodeModel, SocketId};
 use crate::{
     grid::direction::{Cartesian2D, Cartesian3D, Direction, DirectionSet},
@@ -186,6 +189,14 @@ impl<T: DirectionSet> Rules<T> {
                     }
                 }
             }
+        }
+
+        #[cfg(feature = "debug-traces")]
+        {
+            trace!(
+                "Successfully built rules, allowed_neighbours: {:?}",
+                allowed_neighbours
+            );
         }
 
         Ok(Rules {
