@@ -1,11 +1,6 @@
-use std::time::Duration;
+use std::{f32::consts::PI, time::Duration};
 
-use bevy::{
-    log::LogPlugin,
-    pbr::{CascadeShadowConfigBuilder, DirectionalLightShadowMap},
-    prelude::*,
-    utils::HashMap,
-};
+use bevy::{log::LogPlugin, pbr::DirectionalLightShadowMap, prelude::*, utils::HashMap};
 
 use bevy_ghx_proc_gen::{
     grid::{spawn_debug_grids, DebugGridView, DebugGridViewConfig, Grid},
@@ -82,15 +77,14 @@ fn setup_scene(mut commands: Commands) {
         directional_light: DirectionalLight {
             shadows_enabled: true,
             illuminance: 10000.,
-            color: Color::SEA_GREEN,
+            // color: Color::SEA_GREEN,
             ..default()
         },
-        cascade_shadow_config: CascadeShadowConfigBuilder {
-            num_cascades: 1,
-            maximum_distance: 1.6,
+        transform: Transform {
+            translation: Vec3::new(5.0, 10.0, 2.0),
+            rotation: Quat::from_rotation_x(-PI / 4.),
             ..default()
-        }
-        .into(),
+        },
         ..default()
     });
 }
@@ -103,12 +97,12 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
     let rules = RulesBuilder::new_cartesian_3d(models, sockets_connections)
         .build()
         .unwrap();
-    let grid = GridDefinition::new_cartesian_3d(12, 3, 12, false);
+    let grid = GridDefinition::new_cartesian_3d(20, 4, 20, false);
     let mut generator = GeneratorBuilder::new()
         .with_rules(rules)
         .with_grid(grid.clone())
         .with_max_retry_count(250)
-        .with_rng(RngMode::Seeded(16502219982281812460))
+        .with_rng(RngMode::RandomSeed)
         .with_node_heuristic(NodeSelectionHeuristic::MinimumRemainingValue)
         .with_model_heuristic(ModelSelectionHeuristic::WeightedProbability)
         .build();
@@ -185,7 +179,7 @@ fn spawn_node(
                 transform: Transform::from_xyz(
                     (pos.x as f32) - x_offset + HALF_NODE_SIZE,
                     pos.y as f32,
-                    z_offset - (pos.z as f32) - HALF_NODE_SIZE,
+                    (pos.z as f32) - z_offset + HALF_NODE_SIZE,
                 )
                 .with_scale(ASSETS_SCALE)
                 .with_rotation(Quat::from_rotation_y(f32::to_radians(
@@ -238,7 +232,7 @@ fn select_and_propagate(
     }
 
     for (node_index, generated_node) in nodes_to_spawn {
-        // info!("Spawning {:?} at node index {}", generated_node, node_index);
+        info!("Spawning {:?} at node index {}", generated_node, node_index);
         spawn_node(
             commands,
             &generation.models_assets,
@@ -294,7 +288,7 @@ fn main() {
     app.insert_resource(DirectionalLightShadowMap { size: 4096 });
     app.add_plugins((
         DefaultPlugins.set(LogPlugin {
-            filter: "info,wgpu_core=warn,wgpu_hal=warn,ghx_proc_gen=info".into(),
+            filter: "info,wgpu_core=warn,wgpu_hal=warn,ghx_proc_gen=trace".into(),
             level: bevy::log::Level::DEBUG,
         }),
         MaterialPlugin::<LineMaterial>::default(),

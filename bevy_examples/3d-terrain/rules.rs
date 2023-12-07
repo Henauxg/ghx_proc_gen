@@ -10,14 +10,6 @@ const VOID_SIDE: u32 = 0;
 const VOID_TOP: u32 = 1;
 const VOID_BOTTOM: u32 = 2;
 
-const GROUND_BACK: u32 = 60;
-const GROUND_LEFT: u32 = 61;
-const GROUND_RIGHT: u32 = 62;
-const GROUND_FRONT: u32 = 63;
-const GROUND_TOP: u32 = 64;
-const GROUND_BOTTOM: u32 = 65;
-const GROUND_SIDE: u32 = 66;
-
 const STAIRS_BACK: u32 = 10;
 const STAIRS_LEFT: u32 = 11;
 const STAIRS_RIGHT: u32 = 12;
@@ -50,6 +42,22 @@ const PYRAMID_TOP_TOP: u32 = 44;
 const PYRAMID_TOP_BOTTOM: u32 = 45;
 const PYRAMID_TOP_SIDE: u32 = 46;
 
+const SIDE_STAIRS_L_BACK: u32 = 50;
+const SIDE_STAIRS_L_LEFT: u32 = 51;
+const SIDE_STAIRS_L_RIGHT: u32 = 52;
+const SIDE_STAIRS_L_FRONT: u32 = 53;
+const SIDE_STAIRS_L_TOP: u32 = 54;
+const SIDE_STAIRS_L_BOTTOM: u32 = 55;
+const _SIDE_STAIRS_L_SIDE: u32 = 56;
+
+const GROUND_BACK: u32 = 60;
+const GROUND_LEFT: u32 = 61;
+const GROUND_RIGHT: u32 = 62;
+const GROUND_FRONT: u32 = 63;
+const GROUND_TOP: u32 = 64;
+const GROUND_BOTTOM: u32 = 65;
+const GROUND_SIDE: u32 = 66;
+
 pub(crate) fn rules_and_assets() -> (
     Vec<Option<&'static str>>,
     Vec<NodeModel<Cartesian3D>>,
@@ -59,6 +67,7 @@ pub(crate) fn rules_and_assets() -> (
         None,
         Some("block"),
         Some("stairs"),
+        Some("side_stairs"),
         Some("side_stairs"),
         Some("block"),
         Some("block_wood"),
@@ -80,7 +89,7 @@ pub(crate) fn rules_and_assets() -> (
             y_neg: vec![VOID_BOTTOM],
         }
         .new_model()
-        .with_weight(0.1),
+        .with_weight(1.),
         // Ground
         SocketsCartesian3D::Multiple {
             x_pos: vec![GROUND_RIGHT, GROUND_SIDE],
@@ -91,8 +100,8 @@ pub(crate) fn rules_and_assets() -> (
             y_neg: vec![GROUND_BOTTOM],
         }
         .new_model()
-        .with_all_rotations()
-        .with_weight(1.35),
+        // .with_all_rotations()
+        .with_weight(5.),
         // Stairs
         SocketsCartesian3D::Multiple {
             x_pos: vec![STAIRS_RIGHT],
@@ -104,8 +113,20 @@ pub(crate) fn rules_and_assets() -> (
         }
         .new_model()
         .with_all_rotations()
-        .with_weight(0.3),
-        // Side Stairs
+        .with_weight(1.2),
+        // Side Stairs L
+        SocketsCartesian3D::Multiple {
+            x_pos: vec![SIDE_STAIRS_L_RIGHT],
+            x_neg: vec![SIDE_STAIRS_L_LEFT],
+            z_pos: vec![SIDE_STAIRS_L_FRONT],
+            z_neg: vec![SIDE_STAIRS_L_BACK],
+            y_pos: vec![SIDE_STAIRS_L_TOP],
+            y_neg: vec![SIDE_STAIRS_L_BOTTOM],
+        }
+        .new_model()
+        .with_all_rotations()
+        .with_weight(0.00000001),
+        // Side Stairs R
         SocketsCartesian3D::Multiple {
             x_pos: vec![SIDE_STAIRS_RIGHT],
             x_neg: vec![SIDE_STAIRS_LEFT],
@@ -116,7 +137,7 @@ pub(crate) fn rules_and_assets() -> (
         }
         .new_model()
         .with_all_rotations()
-        .with_weight(0.0),
+        .with_weight(0.00000001),
         // Stairs support
         SocketsCartesian3D::Multiple {
             x_pos: vec![STAIRS_SUPPORT_RIGHT, STAIRS_SUPPORT_SIDE],
@@ -127,7 +148,7 @@ pub(crate) fn rules_and_assets() -> (
             y_neg: vec![STAIRS_SUPPORT_BOTTOM],
         }
         .new_model()
-        .with_weight(0.2),
+        .with_weight(0.3),
         // Pyramid top
         SocketsCartesian3D::Multiple {
             x_pos: vec![PYRAMID_TOP_RIGHT, PYRAMID_TOP_SIDE],
@@ -141,41 +162,56 @@ pub(crate) fn rules_and_assets() -> (
         .with_weight(0.001),
     ];
     let sockets_connections = vec![
-        (GROUND_BACK, vec![GROUND_SIDE]),
-        (GROUND_LEFT, vec![GROUND_SIDE]),
-        (GROUND_RIGHT, vec![VOID_SIDE, GROUND_SIDE]),
-        (GROUND_FRONT, vec![VOID_SIDE, GROUND_SIDE]),
-        (GROUND_TOP, vec![VOID_BOTTOM]),
         (VOID_SIDE, vec![VOID_SIDE]),
         (VOID_TOP, vec![VOID_BOTTOM]),
+        (GROUND_SIDE, vec![GROUND_SIDE]),
+        // (GROUND_BACK, vec![GROUND_SIDE]),
+        // (GROUND_LEFT, vec![GROUND_SIDE]),
+        // (GROUND_RIGHT, vec![VOID_SIDE, GROUND_SIDE]),
+        // (GROUND_FRONT, vec![VOID_SIDE, GROUND_SIDE]),
+        (GROUND_TOP, vec![VOID_BOTTOM]),
         (STAIRS_BACK, vec![STAIRS_SUPPORT_SIDE]),
-        (STAIRS_LEFT, vec![SIDE_STAIRS_RIGHT]),
+        (STAIRS_LEFT, vec![SIDE_STAIRS_L_RIGHT]),
         (STAIRS_RIGHT, vec![SIDE_STAIRS_LEFT]),
         (STAIRS_FRONT, vec![VOID_SIDE]),
         (STAIRS_TOP, vec![VOID_BOTTOM]),
         (STAIRS_BOTTOM, vec![GROUND_TOP]),
         (SIDE_STAIRS_BACK, vec![STAIRS_SUPPORT_SIDE]),
-        (SIDE_STAIRS_LEFT, vec![VOID_SIDE]),
+        // (SIDE_STAIRS_LEFT, vec![VOID_SIDE]),
         (SIDE_STAIRS_RIGHT, vec![VOID_SIDE]),
         (SIDE_STAIRS_FRONT, vec![VOID_SIDE]),
         (SIDE_STAIRS_TOP, vec![VOID_BOTTOM]),
         (SIDE_STAIRS_BOTTOM, vec![GROUND_TOP]),
+        (SIDE_STAIRS_L_BACK, vec![STAIRS_SUPPORT_SIDE]),
+        (SIDE_STAIRS_L_LEFT, vec![VOID_SIDE]),
+        // (SIDE_STAIRS_L_RIGHT, vec![VOID_SIDE]),
+        (SIDE_STAIRS_L_FRONT, vec![VOID_SIDE]),
+        (SIDE_STAIRS_L_TOP, vec![VOID_BOTTOM]),
+        (SIDE_STAIRS_L_BOTTOM, vec![GROUND_TOP]),
         (STAIRS_SUPPORT_SIDE, vec![STAIRS_SUPPORT_SIDE]),
         // (STAIRS_SUPPORT_BACK, vec![VOID_SIDE]),
         (STAIRS_SUPPORT_LEFT, vec![VOID_SIDE]),
         (STAIRS_SUPPORT_RIGHT, vec![VOID_SIDE]),
         (STAIRS_SUPPORT_FRONT, vec![VOID_SIDE]),
         (STAIRS_SUPPORT_BOTTOM, vec![GROUND_TOP]),
-        (STAIRS_SUPPORT_TOP, vec![STAIRS_BOTTOM, SIDE_STAIRS_BOTTOM]),
+        (
+            STAIRS_SUPPORT_TOP,
+            vec![STAIRS_BOTTOM, SIDE_STAIRS_BOTTOM, SIDE_STAIRS_L_BOTTOM],
+        ),
         (
             PYRAMID_TOP_SIDE,
-            vec![PYRAMID_TOP_SIDE, SIDE_STAIRS_BACK, STAIRS_BACK],
+            vec![
+                PYRAMID_TOP_SIDE,
+                SIDE_STAIRS_BACK,
+                SIDE_STAIRS_L_BACK,
+                STAIRS_BACK,
+            ],
         ),
         // (PYRAMID_TOP_BACK, vec![VOID_SIDE]),
         // (PYRAMID_TOP_LEFT, vec![VOID_SIDE]),
         // (PYRAMID_TOP_RIGHT, vec![VOID_SIDE]),
         // (PYRAMID_TOP_FRONT, vec![VOID_SIDE]),
-        (PYRAMID_TOP_BOTTOM, vec![VOID_TOP, GROUND_TOP]),
+        (PYRAMID_TOP_BOTTOM, vec![GROUND_TOP]),
         (PYRAMID_TOP_TOP, vec![VOID_BOTTOM]),
     ];
 
