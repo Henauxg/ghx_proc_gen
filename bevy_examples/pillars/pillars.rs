@@ -37,6 +37,10 @@ pub enum GenerationViewMode {
 /// Change this value to change the way the generation is visualized
 const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::StepByStep(10);
 
+const GRID_HEIGHT: u32 = 7;
+const GRID_X: u32 = 80;
+const GRID_Z: u32 = 80;
+
 #[derive(Resource)]
 struct Generation {
     models_assets: HashMap<usize, Handle<Scene>>,
@@ -59,9 +63,13 @@ const ASSETS_SCALE: Vec3 = Vec3::new(
     ASSETS_SCALE_FACTOR,
 );
 
-fn setup_scene(mut commands: Commands) {
+fn setup_scene(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
     // Camera
-    let camera_position = Vec3::new(-2.5, 4.5, 9.0);
+    let camera_position = Vec3::new(-2.5, 1.5, 9.0);
     let radius = camera_position.length();
     commands.spawn((
         Camera3dBundle {
@@ -69,20 +77,68 @@ fn setup_scene(mut commands: Commands) {
             ..default()
         },
         PanOrbitCamera {
-            radius,
+            focus: camera_position,
+            radius: 0.01,
             ..Default::default()
         },
+        FogSettings {
+            color: Color::rgba(0.2, 0.15, 0.1, 1.0),
+            falloff: FogFalloff::Linear {
+                start: 12.0,
+                end: 30.0,
+            },
+            ..default()
+        },
     ));
+    // Sky
+    commands.spawn(PbrBundle {
+        mesh: meshes.add(Mesh::from(shape::Box::default())),
+        material: materials.add(StandardMaterial {
+            base_color: Color::hex("888888").unwrap(),
+            unlit: true,
+            cull_mode: None,
+            ..default()
+        }),
+        transform: Transform::from_scale(Vec3::splat(1_000_000.0)),
+        ..default()
+    });
+    // Ground
+    commands.spawn(PbrBundle {
+        mesh: meshes.add(Mesh::from(shape::Plane::default())),
+        material: materials.add(StandardMaterial {
+            base_color: Color::hex("888888").unwrap(),
+            // unlit: true,
+            // cull_mode: None,
+            ..default()
+        }),
+        transform: Transform::from_scale(Vec3::splat(100.0)),
+        ..default()
+    });
+    // Ceiling
+    commands.spawn(PbrBundle {
+        mesh: meshes.add(Mesh::from(shape::Plane::default())),
+        material: materials.add(StandardMaterial {
+            base_color: Color::hex("888888").unwrap(),
+            // unlit: true,
+            // cull_mode: None,
+            ..default()
+        }),
+        transform: Transform::from_scale(Vec3::splat(100.0))
+            .with_translation(Vec3::new(0., GRID_HEIGHT as f32, 0.))
+            .with_rotation(Quat::from_rotation_x(f32::to_radians(180.))),
+        ..default()
+    });
+
     // Scene lights
     commands.insert_resource(AmbientLight {
-        color: Color::SEA_GREEN,
-        brightness: 0.1,
+        color: Color::ORANGE_RED,
+        brightness: 0.02,
     });
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
             shadows_enabled: true,
             illuminance: 10000.,
-            color: Color::SEA_GREEN,
+            color: Color::WHITE,
             ..default()
         },
         cascade_shadow_config: CascadeShadowConfigBuilder {
@@ -103,7 +159,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
     let rules = RulesBuilder::new_cartesian_3d(models, sockets_connections)
         .build()
         .unwrap();
-    let grid = GridDefinition::new_cartesian_3d(20, 5, 20, false);
+    let grid = GridDefinition::new_cartesian_3d(GRID_X, GRID_HEIGHT, GRID_Z, false);
     let mut generator = GeneratorBuilder::new()
         .with_rules(rules)
         .with_grid(grid.clone())
@@ -121,7 +177,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         if let Some(path) = path {
             models_assets.insert(
                 index,
-                asset_server.load(format!("3d_terrain/{path}.glb#Scene0")),
+                asset_server.load(format!("pillars/{path}.glb#Scene0")),
             );
         }
     }
@@ -185,7 +241,7 @@ fn spawn_node(
                 transform: Transform::from_xyz(
                     (pos.x as f32) - x_offset + HALF_NODE_SIZE,
                     pos.y as f32,
-                    z_offset - (pos.z as f32) - HALF_NODE_SIZE,
+                    (pos.z as f32) - z_offset + HALF_NODE_SIZE,
                 )
                 .with_scale(ASSETS_SCALE)
                 .with_rotation(Quat::from_rotation_y(f32::to_radians(

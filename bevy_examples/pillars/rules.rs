@@ -31,7 +31,7 @@ pub(crate) fn rules_and_assets() -> (
         Some("pillar_cap"),
     ];
     let models = vec![
-        SocketsCartesian3D::Mono(VOID).new_model().with_weight(30.),
+        SocketsCartesian3D::Mono(VOID).new_model().with_weight(60.),
         SocketsCartesian3D::Simple {
             x_pos: PILLAR_SIDE,
             x_neg: PILLAR_SIDE,
