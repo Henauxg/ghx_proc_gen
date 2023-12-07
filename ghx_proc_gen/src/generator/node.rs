@@ -30,6 +30,7 @@ pub(crate) fn expand_models<T: DirectionSet>(
 }
 
 /// Represents a model to be used by a [`crate::generator::Generator`] as a "building-block" to fill out the generated area.
+#[derive(Clone)]
 pub struct NodeModel<T: DirectionSet> {
     /// Allowed connections for this [`NodeModel`] in the output.
     sockets: Vec<Vec<SocketId>>,
