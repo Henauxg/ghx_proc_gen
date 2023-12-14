@@ -1,14 +1,14 @@
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 
 use bevy::{
     log::LogPlugin,
     pbr::{CascadeShadowConfigBuilder, DirectionalLightShadowMap},
     prelude::*,
-    utils::HashMap,
 };
 
+use bevy_examples::{GenerationTimer, GenerationViewMode};
 use bevy_ghx_proc_gen::{
-    grid::{spawn_debug_grids, DebugGridView, DebugGridViewConfig, Grid},
+    grid::{spawn_debug_grids, DebugGridView, DebugGridViewConfig, Grid, SharableDirectionSet},
     lines::LineMaterial,
     proc_gen::{
         generator::{
@@ -27,29 +27,12 @@ use crate::rules::rules_and_assets;
 
 mod rules;
 
-#[derive(PartialEq, Eq)]
-pub enum GenerationViewMode {
-    StepByStep(u64),
-    StepByStepPaused,
-    Final,
-}
-
 /// Change this value to change the way the generation is visualized
-const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::StepByStep(10);
+const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::Final;
 
 const GRID_HEIGHT: u32 = 7;
 const GRID_X: u32 = 80;
 const GRID_Z: u32 = 80;
-
-#[derive(Resource)]
-struct Generation {
-    models_assets: HashMap<usize, Handle<Scene>>,
-    gen: Generator<Cartesian3D>,
-    observer: QueuedObserver,
-}
-
-#[derive(Resource)]
-struct GenerationTimer(Timer);
 
 /// Size of a block in world units
 const NODE_SIZE: f32 = 1.;
@@ -62,6 +45,15 @@ const ASSETS_SCALE: Vec3 = Vec3::new(
     ASSETS_SCALE_FACTOR,
     ASSETS_SCALE_FACTOR,
 );
+
+#[derive(Resource)]
+pub struct Generation<T: SharableDirectionSet> {
+    pub models_assets: HashMap<usize, Handle<Scene>>,
+    pub gen: Generator<T>,
+    pub observer: QueuedObserver,
+    /// Size of a node in world units
+    pub node_size: f32,
+}
 
 fn setup_scene(
     mut commands: Commands,
@@ -205,6 +197,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         models_assets,
         gen: generator,
         observer,
+        node_size: NODE_SIZE,
     });
 
     commands.spawn((
@@ -224,10 +217,10 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
 #[derive(Component)]
 struct SpawnedNode;
 
-fn spawn_node(
+fn spawn_node<T: SharableDirectionSet>(
     commands: &mut Commands,
     models_assets: &HashMap<usize, Handle<Scene>>,
-    grid: &GridDefinition<Cartesian3D>,
+    grid: &GridDefinition<T>,
     node: &GeneratedNode,
     node_index: usize,
 ) {
@@ -254,9 +247,9 @@ fn spawn_node(
     }
 }
 
-fn select_and_propagate(
+fn select_and_propagate<T: SharableDirectionSet>(
     commands: &mut Commands,
-    generation: &mut ResMut<Generation>,
+    generation: &mut ResMut<Generation<T>>,
     nodes: Query<Entity, With<SpawnedNode>>,
 ) {
     match generation.gen.select_and_propagate() {
@@ -305,11 +298,11 @@ fn select_and_propagate(
     }
 }
 
-fn step_by_step_input_update(
+fn step_by_step_input_update<T: SharableDirectionSet>(
     mut commands: Commands,
     keys: Res<Input<KeyCode>>,
     buttons: Res<Input<MouseButton>>,
-    mut generation: ResMut<Generation>,
+    mut generation: ResMut<Generation<T>>,
     nodes: Query<Entity, With<SpawnedNode>>,
 ) {
     if keys.pressed(KeyCode::Space) || buttons.just_pressed(MouseButton::Left) {
@@ -317,9 +310,9 @@ fn step_by_step_input_update(
     }
 }
 
-fn step_by_step_timed_update(
+fn step_by_step_timed_update<T: SharableDirectionSet>(
     mut commands: Commands,
-    mut generation: ResMut<Generation>,
+    mut generation: ResMut<Generation<T>>,
     mut timer: ResMut<GenerationTimer>,
     time: Res<Time>,
     nodes: Query<Entity, With<SpawnedNode>>,
@@ -362,10 +355,10 @@ fn main() {
 
     match GENERATION_VIEW_MODE {
         GenerationViewMode::StepByStep(_) => {
-            app.add_systems(Update, step_by_step_timed_update);
+            app.add_systems(Update, step_by_step_timed_update::<Cartesian3D>);
         }
         GenerationViewMode::StepByStepPaused => {
-            app.add_systems(Update, step_by_step_input_update);
+            app.add_systems(Update, step_by_step_input_update::<Cartesian3D>);
         }
         GenerationViewMode::Final => (),
     };
