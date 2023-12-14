@@ -2,6 +2,8 @@ use std::{collections::HashSet, marker::PhantomData};
 
 use crate::grid::direction::{Cartesian2D, Cartesian3D, Direction, DirectionSet};
 
+use super::rules::CARTESIAN_2D_ROTATION_AXIS;
+
 /// Id of a possible connection type
 pub type SocketId = u32;
 /// Index of a model
@@ -116,6 +118,16 @@ impl NodeModel<Cartesian2D> {
             typestate: PhantomData,
         }
     }
+
+    /// Returns a clone of the [`NodeModel`] with its sockets rotated by `rotation` around [`CARTESIAN_2D_ROTATION_AXIS`].
+    pub fn rotated(&self, rotation: NodeRotation) -> Self {
+        Self {
+            sockets: self.rotated_sockets(rotation, CARTESIAN_2D_ROTATION_AXIS),
+            weight: self.weight,
+            allowed_rotations: self.allowed_rotations.clone(),
+            typestate: PhantomData,
+        }
+    }
 }
 
 /// Sockets for a model to be used in a 3d cartesian grid.
@@ -196,6 +208,16 @@ impl NodeModel<Cartesian3D> {
             sockets: sockets.into(),
             allowed_rotations: HashSet::from([NodeRotation::Rot0]),
             weight: 1.0,
+            typestate: PhantomData,
+        }
+    }
+
+    /// Returns a clone of the [`NodeModel`] with its sockets rotated by `rotation` around `axis`.
+    pub fn rotated(&self, rotation: NodeRotation, axis: Direction) -> Self {
+        Self {
+            sockets: self.rotated_sockets(rotation, axis),
+            weight: self.weight,
+            allowed_rotations: self.allowed_rotations.clone(),
             typestate: PhantomData,
         }
     }

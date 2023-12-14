@@ -14,6 +14,8 @@ use crate::{
     ProcGenError,
 };
 
+pub const CARTESIAN_2D_ROTATION_AXIS: Direction = Direction::ZForward;
+
 pub type SocketConnections = (SocketId, Vec<SocketId>);
 
 pub struct RulesBuilder<T: DirectionSet + Clone> {
@@ -52,7 +54,7 @@ impl RulesBuilder<Cartesian2D> {
         Self {
             models,
             sockets_connections,
-            rotation_axis: Direction::ZForward,
+            rotation_axis: CARTESIAN_2D_ROTATION_AXIS,
             direction_set: Cartesian2D {},
         }
     }
@@ -123,7 +125,9 @@ impl<T: DirectionSet + Clone> RulesBuilder<T> {
 }
 
 pub struct Rules<T: DirectionSet> {
-    /// All the models in this ruleset. Expanded from a given set of a base models with generated variations of rotations around the Z axis.
+    /// All the models in this ruleset.
+    ///
+    /// Expanded from a given set of base models with added variations of rotations around an axis.
     models: Vec<ExpandedNodeModel>,
     /// The vector `allowed_neighbours[model_index][direction]` holds all the allowed adjacent models (indexes) to `model_index` in `direction`.
     ///
