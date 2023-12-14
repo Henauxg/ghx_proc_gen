@@ -27,12 +27,15 @@ pub struct DebugGridViewConfig {
 #[derive(Component)]
 pub struct DebugGridView;
 
+pub trait SharableDirectionSet: DirectionSet + Clone + Sync + Send + 'static {}
+impl<T: DirectionSet + Clone + Sync + Send + 'static> SharableDirectionSet for T {}
+
 #[derive(Component)]
-pub struct Grid<T: DirectionSet + Clone + Sync + Send> {
+pub struct Grid<T: SharableDirectionSet> {
     pub def: GridDefinition<T>,
 }
 
-pub fn spawn_debug_grids<T: DirectionSet + Clone + Sync + Send + 'static>(
+pub fn spawn_debug_grids<T: SharableDirectionSet>(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<LineMaterial>>,
