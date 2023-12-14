@@ -5,7 +5,7 @@ publish = false
 edition = "2021"
 exclude = ["assets/"]
 
-[dev-dependencies]
+[dependencies]
 bevy_ghx_proc_gen = { path = "../bevy_ghx_proc_gen" }
 bevy_ghx_utilities = { path = "../bevy_ghx_utilities" }
 
@@ -18,6 +18,9 @@ bevy = { version = "0.12.0", default-features = true, features = [
 name = "tiles"
 path = "tiles/tiles.rs"
 
+[[example]]
+name = "tile-layers"
+path = "tile-layers/tile-layers.rs"
 
 [[example]]
 name = "pillars"
