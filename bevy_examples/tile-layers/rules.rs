@@ -91,7 +91,7 @@ pub(crate) fn rules_and_assets() -> (
     }
     .new_model();
 
-    const WATER_WEIGHT: f32 = 0.05;
+    const WATER_WEIGHT: f32 = 0.02;
     let water_corner_out = SocketsCartesian3D::Simple {
         x_pos: VOID_AND_WATER,
         x_neg: VOID,
@@ -299,7 +299,7 @@ pub(crate) fn rules_and_assets() -> (
                 y_neg: WATER,
             }
             .new_model()
-            .with_weight(4. * WATER_WEIGHT),
+            .with_weight(10. * WATER_WEIGHT),
         ),
         (Some("water_corner_out_tl"), water_corner_out.clone()),
         (
