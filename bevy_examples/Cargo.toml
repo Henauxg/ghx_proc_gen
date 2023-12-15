@@ -27,5 +27,9 @@ name = "pillars"
 path = "pillars/pillars.rs"
 
 [[example]]
+name = "canyon"
+path = "canyon/canyon.rs"
+
+[[example]]
 name = "3d-terrain"
 path = "3d-terrain/3d-terrain.rs"
