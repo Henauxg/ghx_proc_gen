@@ -41,6 +41,7 @@ pub fn spawn_debug_grids<T: SharableDirectionSet>(
     mut materials: ResMut<Assets<LineMaterial>>,
     debug_grids: Query<(Entity, &Grid<T>, &DebugGridViewConfig), Added<DebugGridViewConfig>>,
 ) {
+    // TODO Gizmos ? :)
     for (grid_entity, grid, view_config) in debug_grids.iter() {
         let mut lines = vec![];
         for y in 0..=grid.def.size_y() {
@@ -48,7 +49,7 @@ pub fn spawn_debug_grids<T: SharableDirectionSet>(
             let mut to = Vec3::new(
                 0.,
                 y as f32,
-                -(grid.def.size_z() as f32) * view_config.node_size.z,
+                (grid.def.size_z() as f32) * view_config.node_size.z,
             );
             for x in 0..=grid.def.size_x() {
                 from.x = view_config.node_size.x * x as f32;
@@ -62,7 +63,7 @@ pub fn spawn_debug_grids<T: SharableDirectionSet>(
                 0.,
             );
             for z in 0..=grid.def.size_z() {
-                from.z = -(view_config.node_size.z * z as f32);
+                from.z = view_config.node_size.z * z as f32;
                 to.z = from.z;
                 lines.push((from, to));
             }
@@ -75,7 +76,7 @@ pub fn spawn_debug_grids<T: SharableDirectionSet>(
                 0.,
             );
             for z in 0..=grid.def.size_z() {
-                from.z = -(view_config.node_size.z * z as f32);
+                from.z = view_config.node_size.z * z as f32;
                 to.z = from.z;
                 lines.push((from, to));
             }
