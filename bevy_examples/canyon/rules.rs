@@ -35,6 +35,10 @@ const GROUND_ROCK_BORDER: SocketId = 42;
 const GROUND_ROCK_BORDER_TOP: SocketId = 43;
 const GROUND_ROCK_BORDER_BOTTOM: SocketId = 44;
 
+const CACTUS_BORDER: SocketId = 50;
+const CACTUS_BOTTOM: SocketId = 51;
+const CACTUS_TOP: SocketId = 52;
+
 pub(crate) fn _ground_rules_and_assets() -> (
     Vec<Option<&'static str>>,
     Vec<NodeModel<Cartesian3D>>,
@@ -130,6 +134,20 @@ pub(crate) fn rules_and_assets() -> (
             .with_weight(10.25),
         ),
         (
+            Some("cactus"),
+            SocketsCartesian3D::Simple {
+                x_pos: CACTUS_BORDER,
+                x_neg: CACTUS_BORDER,
+                z_pos: CACTUS_BORDER,
+                z_neg: CACTUS_BORDER,
+                y_pos: CACTUS_TOP,
+                y_neg: CACTUS_BOTTOM,
+            }
+            .new_model()
+            .with_all_rotations()
+            .with_weight(0.25),
+        ),
+        (
             Some("ground_rock_corner_in"),
             SocketsCartesian3D::Multiple {
                 x_pos: vec![GROUND_ROCK_BORDER],
@@ -222,6 +240,10 @@ pub(crate) fn rules_and_assets() -> (
         (SAND, vec![SAND]),
         (SAND_TOP, vec![VOID_BOTTOM]),
         (SAND_BORDER, vec![WATER_BORDER]),
+        (SAND_BORDER, vec![WATER_BORDER]),
+        (CACTUS_BORDER, vec![VOID, ROCK_BORDER]),
+        (CACTUS_BOTTOM, vec![SAND_TOP]),
+        (CACTUS_TOP, vec![VOID_BOTTOM]),
         (GROUND_ROCK_BORDER, vec![WATER, SAND]),
         (
             GROUND_ROCK_BORDER_TOP,
