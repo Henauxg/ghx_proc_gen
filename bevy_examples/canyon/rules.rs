@@ -21,11 +21,66 @@ const SAND_TOP: SocketId = 22;
 const SAND_BOTTOM: SocketId = 23;
 
 const ROCK: SocketId = 30;
-const ROCK_BORDER: SocketId = 31;
 const ROCK_BORDER_TOP: SocketId = 32;
 const ROCK_BORDER_BOTTOM: SocketId = 33;
-const ROCK_TOP: SocketId = 34;
-const ROCK_BOTTOM: SocketId = 35;
+const ROCK_BORDER: SocketId = 34;
+const ROCK_TOP: SocketId = 35;
+const ROCK_BOTTOM: SocketId = 36;
+const ROCK_TO_OTHER: SocketId = 37;
+const OTHER_TO_ROCK: SocketId = 38;
+
+const GROUND_ROCK_TO_OTHER: SocketId = 40;
+const OTHER_TO_GROUND_ROCK: SocketId = 41;
+const GROUND_ROCK_BORDER: SocketId = 42;
+const GROUND_ROCK_BORDER_TOP: SocketId = 43;
+const GROUND_ROCK_BORDER_BOTTOM: SocketId = 44;
+
+pub(crate) fn _ground_rules_and_assets() -> (
+    Vec<Option<&'static str>>,
+    Vec<NodeModel<Cartesian3D>>,
+    Vec<SocketConnections>,
+) {
+    let assets_and_models = vec![
+        (
+            Some("water_poly"),
+            SocketsCartesian3D::Multiple {
+                x_pos: vec![WATER],
+                x_neg: vec![WATER, WATER_BORDER],
+                z_pos: vec![WATER],
+                z_neg: vec![WATER, WATER_BORDER],
+                y_pos: vec![WATER_TOP],
+                y_neg: vec![WATER_BOTTOM],
+            }
+            .new_model()
+            .with_all_rotations()
+            .with_weight(1.25),
+        ),
+        (
+            Some("sand"),
+            SocketsCartesian3D::Multiple {
+                x_pos: vec![SAND],
+                x_neg: vec![SAND, SAND_BORDER],
+                z_pos: vec![SAND],
+                z_neg: vec![SAND, SAND_BORDER],
+                y_pos: vec![SAND_TOP],
+                y_neg: vec![SAND_BOTTOM],
+            }
+            .new_model()
+            .with_all_rotations()
+            .with_weight(1.25),
+        ),
+    ];
+    let sockets_connections = vec![
+        (WATER, vec![WATER]),
+        (SAND, vec![SAND]),
+        (SAND_BORDER, vec![WATER_BORDER]),
+    ];
+    (
+        assets_and_models.iter().map(|t| t.0).collect(),
+        assets_and_models.iter().map(|t| t.1.clone()).collect(),
+        sockets_connections,
+    )
+}
 
 pub(crate) fn rules_and_assets() -> (
     Vec<Option<&'static str>>,
@@ -43,10 +98,11 @@ pub(crate) fn rules_and_assets() -> (
                 y_pos: VOID_TOP,
                 y_neg: VOID_BOTTOM,
             }
-            .new_model(),
+            .new_model()
+            .with_weight(10.),
         ),
         (
-            Some("water"),
+            Some("water_poly"),
             SocketsCartesian3D::Multiple {
                 x_pos: vec![WATER],
                 x_neg: vec![WATER, WATER_BORDER],
@@ -57,7 +113,7 @@ pub(crate) fn rules_and_assets() -> (
             }
             .new_model()
             .with_all_rotations()
-            .with_weight(100.25),
+            .with_weight(10.25),
         ),
         (
             Some("sand"),
@@ -71,38 +127,80 @@ pub(crate) fn rules_and_assets() -> (
             }
             .new_model()
             .with_all_rotations()
-            .with_weight(100.25),
+            .with_weight(10.25),
         ),
         (
-            Some("rock_corner_in"),
+            Some("ground_rock_corner_in"),
+            SocketsCartesian3D::Multiple {
+                x_pos: vec![GROUND_ROCK_BORDER],
+                x_neg: vec![OTHER_TO_GROUND_ROCK],
+                z_pos: vec![GROUND_ROCK_BORDER],
+                z_neg: vec![GROUND_ROCK_TO_OTHER],
+                y_pos: vec![GROUND_ROCK_BORDER_TOP],
+                y_neg: vec![GROUND_ROCK_BORDER_BOTTOM],
+            }
+            .new_model()
+            .with_all_rotations()
+            .with_weight(0.5),
+        ),
+        (
+            Some("ground_rock_side"),
+            SocketsCartesian3D::Multiple {
+                x_pos: vec![GROUND_ROCK_BORDER],
+                x_neg: vec![ROCK],
+                z_pos: vec![OTHER_TO_GROUND_ROCK],
+                z_neg: vec![GROUND_ROCK_TO_OTHER],
+                y_pos: vec![GROUND_ROCK_BORDER_TOP],
+                y_neg: vec![GROUND_ROCK_BORDER_BOTTOM],
+            }
+            .new_model()
+            .with_all_rotations()
+            .with_weight(0.5),
+        ),
+        (
+            Some("rock_corner_in_1"),
             SocketsCartesian3D::Multiple {
                 x_pos: vec![ROCK_BORDER],
-                x_neg: vec![ROCK], // TODO May use OTHER_TO_ROCK/ROCK_TO_OTHER
+                x_neg: vec![OTHER_TO_ROCK],
                 z_pos: vec![ROCK_BORDER],
-                z_neg: vec![ROCK],
+                z_neg: vec![ROCK_TO_OTHER],
                 y_pos: vec![ROCK_BORDER_TOP],
                 y_neg: vec![ROCK_BORDER_BOTTOM],
             }
             .new_model()
             .with_all_rotations()
-            .with_weight(0.25),
+            .with_weight(0.05),
         ),
         (
-            Some("rock_side"),
+            Some("rock_corner_in_2"),
             SocketsCartesian3D::Multiple {
-                x_pos: vec![ROCK],
-                x_neg: vec![ROCK],
-                z_pos: vec![ROCK],
-                z_neg: vec![ROCK_BORDER],
+                x_pos: vec![ROCK_BORDER],
+                x_neg: vec![OTHER_TO_ROCK],
+                z_pos: vec![ROCK_BORDER],
+                z_neg: vec![ROCK_TO_OTHER],
                 y_pos: vec![ROCK_BORDER_TOP],
                 y_neg: vec![ROCK_BORDER_BOTTOM],
             }
             .new_model()
             .with_all_rotations()
-            .with_weight(0.25),
+            .with_weight(0.05),
         ),
         (
-            Some("rock_side"), // rock
+            Some("rock_side_1"),
+            SocketsCartesian3D::Multiple {
+                x_pos: vec![ROCK_BORDER],
+                x_neg: vec![ROCK],
+                z_pos: vec![OTHER_TO_ROCK],
+                z_neg: vec![ROCK_TO_OTHER],
+                y_pos: vec![ROCK_BORDER_TOP],
+                y_neg: vec![ROCK_BORDER_BOTTOM],
+            }
+            .new_model()
+            .with_all_rotations()
+            .with_weight(0.05),
+        ),
+        (
+            Some("rock"), // rock
             SocketsCartesian3D::Multiple {
                 x_pos: vec![ROCK],
                 x_neg: vec![ROCK],
@@ -111,8 +209,9 @@ pub(crate) fn rules_and_assets() -> (
                 y_pos: vec![ROCK_TOP],
                 y_neg: vec![ROCK_BOTTOM],
             }
-            .new_model(), // .with_all_rotations()
-                               // .with_weight(0.25),
+            .new_model()
+            .with_weight(0.05), // .with_all_rotations()
+                          // .with_weight(0.25),
         ),
     ];
     let sockets_connections = vec![
@@ -123,9 +222,16 @@ pub(crate) fn rules_and_assets() -> (
         (SAND, vec![SAND]),
         (SAND_TOP, vec![VOID_BOTTOM]),
         (SAND_BORDER, vec![WATER_BORDER]),
-        (ROCK_BORDER, vec![WATER_BORDER, SAND_BORDER, VOID]), // TMP VOID
-        (ROCK_BORDER_TOP, vec![VOID_BOTTOM]),
+        (GROUND_ROCK_BORDER, vec![WATER, SAND]),
+        (
+            GROUND_ROCK_BORDER_TOP,
+            vec![VOID_BOTTOM, ROCK_BORDER_BOTTOM],
+        ),
+        (GROUND_ROCK_TO_OTHER, vec![OTHER_TO_GROUND_ROCK]),
+        (ROCK_BORDER_TOP, vec![VOID_BOTTOM, ROCK_BORDER_BOTTOM]),
         (ROCK, vec![ROCK]),
+        (ROCK_BORDER, vec![VOID]),
+        (ROCK_TO_OTHER, vec![OTHER_TO_ROCK]),
         (ROCK_TOP, vec![ROCK_BOTTOM, ROCK_BORDER_BOTTOM, VOID_BOTTOM]),
     ];
     (
