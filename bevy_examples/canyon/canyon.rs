@@ -53,7 +53,7 @@ fn setup_scene(
     mut _materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // Camera
-    let camera_position = Vec3::new(-2.5, 1.5, 9.0);
+    let camera_position = Vec3::new(0., 3. * GRID_HEIGHT as f32, 1.7 * GRID_Z as f32 / 2.);
     let radius = camera_position.length();
     commands.spawn((
         Camera3dBundle {
@@ -61,7 +61,6 @@ fn setup_scene(
             ..default()
         },
         PanOrbitCamera {
-            focus: camera_position,
             radius,
             ..Default::default()
         },
