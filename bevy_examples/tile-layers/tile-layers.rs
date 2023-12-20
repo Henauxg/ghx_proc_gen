@@ -20,7 +20,6 @@ use bevy_ghx_proc_gen::{
         },
     },
 };
-use bevy_ghx_utilities::camera::PanOrbitCamera;
 
 use crate::rules::rules_and_assets;
 
@@ -44,7 +43,7 @@ const GRID_Z: u32 = 4;
 
 fn setup_scene(mut commands: Commands) {
     // Camera
-    commands.spawn((Camera2dBundle::default(), PanOrbitCamera::default()));
+    commands.spawn(Camera2dBundle::default());
 }
 
 fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {

@@ -8,6 +8,7 @@ use bevy::{
 
 use bevy_examples::{
     anim::{ease_in_cubic, SpawningScaleAnimation},
+    camera::{pan_orbit_camera, PanOrbitCamera},
     plugin::{scene_node_spawner, ProcGenExamplesPlugin},
     utils::toggle_debug_grid_visibility,
     Generation, GenerationViewMode,
@@ -23,7 +24,6 @@ use bevy_ghx_proc_gen::{
         grid::{direction::Cartesian3D, GridDefinition},
     },
 };
-use bevy_ghx_utilities::camera::{pan_orbit_camera, PanOrbitCamera};
 
 use crate::rules::rules_and_assets;
 

@@ -4,6 +4,7 @@ use bevy::{log::LogPlugin, pbr::DirectionalLightShadowMap, prelude::*};
 
 use bevy_examples::{
     anim::{ease_in_cubic, SpawningScaleAnimation},
+    camera::{pan_orbit_camera, PanOrbitCamera},
     plugin::{scene_node_spawner, ProcGenExamplesPlugin},
     utils::toggle_debug_grid_visibility,
     Generation, GenerationViewMode,
@@ -19,18 +20,20 @@ use bevy_ghx_proc_gen::{
         grid::{direction::Cartesian3D, GridDefinition},
     },
 };
-use bevy_ghx_utilities::camera::{pan_orbit_camera, PanOrbitCamera};
 
 use crate::rules::rules_and_assets;
 
 mod rules;
 
+// --------------------------------------------
 /// Change this value to change the way the generation is visualized
 const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::StepByStep(15);
 
+/// Change this to change the map size.
 const GRID_HEIGHT: u32 = 4;
 const GRID_X: u32 = 35;
 const GRID_Z: u32 = 35;
+// --------------------------------------------
 
 const ASSETS_PATH: &str = "canyon";
 /// Size of a block in world units

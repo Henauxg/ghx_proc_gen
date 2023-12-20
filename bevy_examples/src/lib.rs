@@ -13,6 +13,7 @@ use bevy_ghx_proc_gen::{
 };
 
 pub mod anim;
+pub mod camera;
 pub mod plugin;
 pub mod utils;
 

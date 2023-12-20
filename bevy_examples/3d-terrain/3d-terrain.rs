@@ -2,6 +2,7 @@ use std::{f32::consts::PI, time::Duration};
 
 use bevy::{log::LogPlugin, pbr::DirectionalLightShadowMap, prelude::*, utils::HashMap};
 
+use bevy_examples::camera::{pan_orbit_camera, PanOrbitCamera};
 use bevy_ghx_proc_gen::{
     grid::{spawn_debug_grids, DebugGridView, DebugGridViewConfig, Grid},
     lines::LineMaterial,
@@ -16,7 +17,6 @@ use bevy_ghx_proc_gen::{
         grid::{direction::Cartesian3D, GridDefinition},
     },
 };
-use bevy_ghx_utilities::camera::{pan_orbit_camera, PanOrbitCamera};
 
 use crate::rules::rules_and_assets;
 

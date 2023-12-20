@@ -7,7 +7,6 @@ exclude = ["assets/"]
 
 [dependencies]
 bevy_ghx_proc_gen = { path = "../bevy_ghx_proc_gen" }
-bevy_ghx_utilities = { path = "../bevy_ghx_utilities" }
 
 tracing-subscriber = "0.3.18"
 bevy = { version = "0.12.0", default-features = true, features = [

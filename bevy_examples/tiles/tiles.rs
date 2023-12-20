@@ -17,7 +17,6 @@ use bevy_ghx_proc_gen::{
         grid::{direction::Cartesian2D, GridDefinition},
     },
 };
-use bevy_ghx_utilities::camera::PanOrbitCamera;
 
 use crate::rules::rules_and_assets;
 
@@ -39,7 +38,7 @@ const ASSETS_PATH: &str = "tiles";
 
 fn setup_scene(mut commands: Commands) {
     // Camera
-    commands.spawn((Camera2dBundle::default(), PanOrbitCamera::default()));
+    commands.spawn(Camera2dBundle::default());
 }
 
 fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
