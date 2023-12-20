@@ -11,6 +11,8 @@ pub struct PanOrbitCamera {
     pub focus: Vec3,
     pub radius: f32,
     pub upside_down: bool,
+    pub auto_orbit: bool,
+    pub auto_orbit_factor: f32,
 }
 
 impl Default for PanOrbitCamera {
@@ -19,6 +21,8 @@ impl Default for PanOrbitCamera {
             focus: Vec3::ZERO,
             radius: 5.0,
             upside_down: false,
+            auto_orbit: true,
+            auto_orbit_factor: 0.3,
         }
     }
 }
@@ -42,19 +46,24 @@ pub fn pan_orbit_camera(
     let mut scroll = 0.0;
     let mut orbit_button_changed = false;
 
+    let mut orbit_or_pan = false;
     if input_mouse.pressed(orbit_button) {
         for ev in ev_motion.read() {
             rotation_move += ev.delta;
         }
+        orbit_or_pan = true;
     } else if input_mouse.pressed(pan_button) {
         // Pan only if we're not rotating at the moment
         for ev in ev_motion.read() {
             pan += ev.delta;
         }
+        orbit_or_pan = true;
     }
+
     for ev in ev_scroll.read() {
         scroll += ev.y;
     }
+
     if input_mouse.just_released(orbit_button) || input_mouse.just_pressed(orbit_button) {
         orbit_button_changed = true;
     }
@@ -65,6 +74,11 @@ pub fn pan_orbit_camera(
             // if the camera is "upside" down, panning horizontally would be inverted, so invert the input to make it correct
             let up = transform.rotation * Vec3::Y;
             pan_orbit.upside_down = up.y <= 0.0;
+        }
+
+        // Only auto-orbit when there is no user input
+        if pan_orbit.auto_orbit && scroll == 0. && !orbit_or_pan {
+            rotation_move.x += pan_orbit.auto_orbit_factor;
         }
 
         let mut any = false;
