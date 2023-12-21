@@ -5,7 +5,7 @@ use std::{
 
 use ghx_proc_gen::{
     generator::{
-        node::{GeneratedNode, SocketsCartesian2D},
+        node::{ModelInstance, SocketsCartesian2D},
         observer::QueuedStatefulObserver,
         rules::RulesBuilder,
         GenerationStatus, ModelSelectionHeuristic,
@@ -79,7 +79,7 @@ fn main() {
 
     match GENERATION_VIEW_MODE {
         GenerationViewMode::Final => {
-            generator.generate_without_output().unwrap();
+            generator.generate().unwrap();
             observer.dequeue_all();
             println!("Final grid:");
             display_grid(observer.grid_data());
@@ -111,7 +111,7 @@ fn main() {
     }
 }
 
-fn display_grid(data_grid: &GridData<Cartesian2D, Option<GeneratedNode>>) {
+fn display_grid(data_grid: &GridData<Cartesian2D, Option<ModelInstance>>) {
     for y in (0..data_grid.grid().size_y()).rev() {
         for x in 0..data_grid.grid().size_x() {
             match data_grid.get_2d(x, y) {
