@@ -1,16 +1,14 @@
 use crate::grid::{direction::DirectionSet, GridData};
 
-use super::{node::GeneratedNode, Generator};
+use super::{
+    node::{GridNode, ModelInstance},
+    Generator,
+};
 
 #[derive(Clone, Copy, Debug)]
 pub enum GenerationUpdate {
     /// A node has been generated
-    Generated {
-        /// Index of the node in the [`crate::grid::GridDefinition`]
-        node_index: usize,
-        /// Generated node info
-        generated_node: GeneratedNode,
-    },
+    Generated(GridNode),
     /// The generator has reinitialized from its initial state.
     Reinitialized,
     /// The generation failed due to a contradiction.
@@ -18,7 +16,7 @@ pub enum GenerationUpdate {
 }
 
 pub struct QueuedStatefulObserver<T: DirectionSet + Clone> {
-    grid_data: GridData<T, Option<GeneratedNode>>,
+    grid_data: GridData<T, Option<ModelInstance>>,
     receiver: crossbeam_channel::Receiver<GenerationUpdate>,
 }
 
@@ -34,7 +32,7 @@ impl<T: DirectionSet + Clone> QueuedStatefulObserver<T> {
         }
     }
 
-    pub fn grid_data(&self) -> &GridData<T, Option<GeneratedNode>> {
+    pub fn grid_data(&self) -> &GridData<T, Option<ModelInstance>> {
         &self.grid_data
     }
 
@@ -42,10 +40,9 @@ impl<T: DirectionSet + Clone> QueuedStatefulObserver<T> {
     pub fn dequeue_all(&mut self) {
         while let Ok(update) = self.receiver.try_recv() {
             match update {
-                GenerationUpdate::Generated {
-                    node_index,
-                    generated_node,
-                } => self.grid_data.set(node_index, Some(generated_node)),
+                GenerationUpdate::Generated(grid_node) => self
+                    .grid_data
+                    .set(grid_node.node_index, Some(grid_node.model_instance)),
                 GenerationUpdate::Reinitialized => self.grid_data.reset(None),
                 GenerationUpdate::Failed => self.grid_data.reset(None),
             }
@@ -59,10 +56,9 @@ impl<T: DirectionSet + Clone> QueuedStatefulObserver<T> {
         match self.receiver.try_recv() {
             Ok(update) => {
                 match update {
-                    GenerationUpdate::Generated {
-                        node_index,
-                        generated_node,
-                    } => self.grid_data.set(node_index, Some(generated_node)),
+                    GenerationUpdate::Generated(grid_node) => self
+                        .grid_data
+                        .set(grid_node.node_index, Some(grid_node.model_instance)),
                     GenerationUpdate::Reinitialized => self.grid_data.reset(None),
                     GenerationUpdate::Failed => self.grid_data.reset(None),
                 }

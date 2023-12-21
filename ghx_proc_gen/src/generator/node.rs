@@ -304,21 +304,30 @@ impl ExpandedNodeModel {
         self.rotation
     }
 
-    pub(crate) fn to_generated(&self) -> GeneratedNode {
-        GeneratedNode {
+    pub(crate) fn to_instance(&self) -> ModelInstance {
+        ModelInstance {
             model_index: self.original_index,
             rotation: self.rotation,
         }
     }
 }
 
-/// Output of a [`Generator`]. Used to identify a specific variation of an input model.
+/// Used to identify a specific variation of an input model.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct GeneratedNode {
+pub struct ModelInstance {
     /// Index of the [`NodeModel`] this was expanded from
     pub model_index: ModelIndex,
     /// Rotation of the [`NodeModel`]
     pub rotation: NodeRotation,
+}
+
+/// Output of a [`Generator`] in the context of its [`GridDefinition`].
+#[derive(Clone, Copy, Debug)]
+pub struct GridNode {
+    /// Index of the node in the [`crate::grid::GridDefinition`]
+    pub node_index: usize,
+    /// Generated node data
+    pub model_instance: ModelInstance,
 }
 
 /// Represents a rotation around an Axis, in the trigonometric(counterclockwise) direction

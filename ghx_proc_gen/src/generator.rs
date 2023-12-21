@@ -18,7 +18,7 @@ use crate::{
 
 use self::{
     builder::{GeneratorBuilder, Unset},
-    node::{GeneratedNode, ModelIndex},
+    node::{GridNode, ModelIndex, ModelInstance},
     observer::GenerationUpdate,
     rules::Rules,
 };
@@ -159,7 +159,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
         &self.grid
     }
 
-    fn reinitialize(&mut self) -> Result<(), ProcGenError> {
+    fn reinitialize(&mut self, collector: &mut Option<Vec<GridNode>>) -> Result<(), ProcGenError> {
         #[cfg(feature = "debug-traces")]
         info!("Reinitializing generator, state was {:?}", self.status);
 
@@ -167,7 +167,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
         self.nodes = bitvec![1;self.rules.models_count() * self.grid.total_size() ];
         self.possible_models_count = vec![self.rules.models_count(); self.grid.total_size()];
         self.propagation_stack = Vec::new();
-        self.initialize_supports_count()?;
+        self.initialize_supports_count(collector)?;
 
         for obs in &mut self.observers {
             let _ = obs.send(GenerationUpdate::Reinitialized);
@@ -178,7 +178,10 @@ impl<T: DirectionSet + Clone> Generator<T> {
     /// Initialize the supports counts array. This may already start to generate/ban/... some nodes according to the given constraints.
     ///
     /// Returns `Ok` if the initialization went well and sets the internal status to [`InternalGeneratorStatus::Ongoing`]. Else, sets the internal status to [`InternalGeneratorStatus::Failed`] and return [`ProcGenError::GenerationFailure`]
-    fn initialize_supports_count(&mut self) -> Result<(), ProcGenError> {
+    fn initialize_supports_count(
+        &mut self,
+        collector: &mut Option<Vec<GridNode>>,
+    ) -> Result<(), ProcGenError> {
         #[cfg(feature = "debug-traces")]
         debug!("Initializing support counts");
 
@@ -202,7 +205,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
                                 allowed_models_count;
                             if allowed_models_count == 0 && self.is_model_possible(node, model) {
                                 // Ban model for node since it would 100% lead to a contradiction at some point during the generation.
-                                if let Err(err) = self.ban_model_from_node(node, model) {
+                                if let Err(err) = self.ban_model_from_node(node, model, collector) {
                                     self.signal_contradiction();
                                     return Err(err);
                                 }
@@ -217,7 +220,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
         }
 
         // Propagate the potential bans that occurred during initialization
-        if let Err(err) = self.propagate() {
+        if let Err(err) = self.propagate(collector) {
             self.signal_contradiction();
             return Err(err);
         };
@@ -230,37 +233,34 @@ impl<T: DirectionSet + Clone> Generator<T> {
         Ok(())
     }
 
-    /// Tries to generate the whole grid. If the generation fails due to a contradiction, it will retry `max_retry_count` times before returning `ProcGenError::GenerationFailure`
+    /// Tries to generate the whole grid. If the generation fails due to a contradiction, it will retry `max_retry_count` times before returning [`ProcGenError::GenerationFailure`]
     ///
     /// If the generation has ended (successful or not), calling `generate` will reinitialize the generator before starting the generation.
-    /// If the generation was already started by previous calls to [`Generator::select_and_propagate`], this will simply continue the generation.
-    pub fn generate(&mut self) -> Result<GridData<T, GeneratedNode>, ProcGenError> {
-        self.generate_without_output()?;
+    /// If the generation was already started by previous calls to [`select_and_propagate`], this will simply continue the generation.
+    pub fn generate_collected(&mut self) -> Result<GridData<T, ModelInstance>, ProcGenError> {
+        self.generate()?;
         Ok(self.to_grid_data())
     }
 
-    /// Same as [`generate`] but does dot return a filled [`GridData`] when the generation is done. You can still retrieve a filled [`GridData`] by calling [`to_grid_data`].
+    /// Same as [`generate_collected`] but does not return a filled [`GridData`] when the generation is done. You can still retrieve a filled [`GridData`] by calling [`to_grid_data`].
     ///
-    /// This can be usefull if you retrieve the data via other means (observers, ...)
-    pub fn generate_without_output(&mut self) -> Result<(), ProcGenError> {
+    /// This can be usefull if you retrieve the data via other means such as observers.
+    pub fn generate(&mut self) -> Result<(), ProcGenError> {
         for _i in 1..self.max_retry_count + 1 {
             #[cfg(feature = "debug-traces")]
             info!("Try n°{}", _i);
 
             match self.status {
-                InternalGeneratorStatus::Init => self.initialize_supports_count()?,
+                InternalGeneratorStatus::Init => self.initialize_supports_count(&mut None)?,
                 InternalGeneratorStatus::Ongoing => (),
                 InternalGeneratorStatus::Done | InternalGeneratorStatus::Failed => {
-                    self.reinitialize()?
+                    self.reinitialize(&mut None)?
                 }
             };
 
-            // TODO Split generation in multiple blocks
             match self.generate_all_nodes() {
                 Ok(_) => return Ok(()),
-                Err(_) => {
-                    self.status = InternalGeneratorStatus::Failed; // Should already be set by callee.
-                }
+                Err(_) => {}
             }
         }
         Err(ProcGenError::GenerationFailure)
@@ -269,7 +269,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
     fn generate_all_nodes(&mut self) -> Result<(), ProcGenError> {
         // Grid total size is an upper limit to the number of iterations. We avoid an unnecessary while loop.
         for _i in 0..self.grid.total_size() {
-            match self.select_and_propagate() {
+            match self.internal_select_and_propagate(&mut None) {
                 Ok(GenerationStatus::Done) => break,
                 Ok(GenerationStatus::Ongoing) => (),
                 Err(e) => return Err(e),
@@ -278,17 +278,35 @@ impl<T: DirectionSet + Clone> Generator<T> {
         Ok(())
     }
 
-    /// Advances the generation by one "step". Returns the [`GenerationStatus`] if the step executed successfully and [`ProcGenError::GenerationFailure`] if the generation fails due to a contradiction.
+    /// Advances the generation by one "step": select a node and a model and propagate the changes.
+    ///
+    /// Returns the [`GenerationStatus`] if the step executed successfully and [`ProcGenError::GenerationFailure`] if the generation fails due to a contradiction.
     ///
     /// If the generation has ended (successfully or not), calling `select_and_propagate` again will reinitialize the [`Generator`] before starting a new generation.
     ///
-    /// **Note**: One call to `select_and_propagate` can lead to more than 1 node generated if the propagation phase forces some other node(s) into a definite state (due to only 1 possible model remaining on a node)
+    /// **Note**: One call to `select_and_propagate` **can** lead to more than one node generated if the propagation phase forces some other node(s) into a definite state (due to only one possible model remaining on a node)
     pub fn select_and_propagate(&mut self) -> Result<GenerationStatus, ProcGenError> {
+        self.internal_select_and_propagate(&mut None)
+    }
+
+    /// Same as [`select_and_propagate`] but collects and return the generated [`GridNode`] when successful.
+    pub fn select_and_propagate_collected(
+        &mut self,
+    ) -> Result<(GenerationStatus, Vec<GridNode>), ProcGenError> {
+        let mut collector = Some(Vec::new());
+        let res = self.internal_select_and_propagate(&mut collector)?;
+        Ok((res, collector.unwrap()))
+    }
+
+    fn internal_select_and_propagate(
+        &mut self,
+        collector: &mut Option<Vec<GridNode>>,
+    ) -> Result<GenerationStatus, ProcGenError> {
         match self.status {
-            InternalGeneratorStatus::Init => self.initialize_supports_count()?,
+            InternalGeneratorStatus::Init => self.initialize_supports_count(collector)?,
             InternalGeneratorStatus::Ongoing => (),
             InternalGeneratorStatus::Done | InternalGeneratorStatus::Failed => {
-                self.reinitialize()?
+                self.reinitialize(collector)?
             }
         };
 
@@ -309,7 +327,9 @@ impl<T: DirectionSet + Clone> Generator<T> {
             node_index,
             self.grid.get_position(node_index)
         );
-        self.signal_selection_to_observers(node_index, selected_model_index);
+        if !self.observers.is_empty() || collector.is_some() {
+            self.signal_selection(collector, node_index, selected_model_index);
+        }
 
         // Iterate all the possible models because we don't have an easy way to iterate only the models possible at node_index. But we'll filter impossible models right away. TODO: iter_ones ?
         for model_index in 0..self.rules.models_count() {
@@ -343,7 +363,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
             .set(node_index * models_count + selected_model_index, true);
         self.possible_models_count[node_index] = 1;
 
-        if let Err(err) = self.propagate() {
+        if let Err(err) = self.propagate(collector) {
             self.signal_contradiction();
             return Err(err);
         };
@@ -351,20 +371,29 @@ impl<T: DirectionSet + Clone> Generator<T> {
         Ok(GenerationStatus::Ongoing)
     }
 
-    fn signal_selection_to_observers(&mut self, node_index: usize, model_index: ModelIndex) {
-        let update = GenerationUpdate::Generated {
+    fn signal_selection(
+        &mut self,
+        collector: &mut Option<Vec<GridNode>>,
+        node_index: usize,
+        model_index: ModelIndex,
+    ) {
+        let grid_node = GridNode {
             node_index,
-            generated_node: self.rules.model(model_index).to_generated(),
+            model_instance: self.rules.model(model_index).to_instance(),
         };
+        let update = GenerationUpdate::Generated(grid_node);
         for obs in &mut self.observers {
             let _ = obs.send(update);
+        }
+        if let Some(collector) = collector {
+            collector.push(grid_node);
         }
     }
 
     /// Returns [`ProcGenError::GenerationFailure`] if a node has no possible models left. Else, returns `Ok`.
     ///
     /// Does not modify the generator internal status.
-    fn propagate(&mut self) -> Result<(), ProcGenError> {
+    fn propagate(&mut self, collector: &mut Option<Vec<GridNode>>) -> Result<(), ProcGenError> {
         // Clone the ref to allow for mutability of other members in the interior loops
         let rules = Arc::clone(&self.rules);
 
@@ -391,7 +420,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
                             // When we find a model which is now unsupported, we queue a ban
                             // We check > 0  and for == because we only want to queue the event once.
                             if *supports_count == 0 {
-                                self.ban_model_from_node(to_node_index, model)?;
+                                self.ban_model_from_node(to_node_index, model, collector)?;
                             }
                         }
                     }
@@ -419,17 +448,22 @@ impl<T: DirectionSet + Clone> Generator<T> {
     /// Does not modify the generator internal status.
     ///
     /// Should only be called a model that is still possible for this node
-    fn ban_model_from_node(&mut self, node: usize, model: usize) -> Result<(), ProcGenError> {
+    fn ban_model_from_node(
+        &mut self,
+        node_index: usize,
+        model: usize,
+        collector: &mut Option<Vec<GridNode>>,
+    ) -> Result<(), ProcGenError> {
         // Update the supports
         for dir in self.grid.directions() {
-            let supports_count = &mut self.supports_count[(node, model, *dir as usize)];
+            let supports_count = &mut self.supports_count[(node_index, model, *dir as usize)];
             *supports_count = 0;
         }
         // Update the state
         self.nodes
-            .set(node * self.rules.models_count() + model, false);
+            .set(node_index * self.rules.models_count() + model, false);
 
-        let number_of_models_left = &mut self.possible_models_count[node];
+        let number_of_models_left = &mut self.possible_models_count[node_index];
         *number_of_models_left = number_of_models_left.saturating_sub(1);
 
         #[cfg(feature = "debug-traces")]
@@ -451,13 +485,16 @@ impl<T: DirectionSet + Clone> Generator<T> {
                     node,
                     self.grid.get_position(node)
                 );
-                self.signal_selection_to_observers(node, self.get_model_index(node));
+                // Check beforehand to avoid `get_model_index` call
+                if !self.observers.is_empty() || collector.is_some() {
+                    self.signal_selection(collector, node_index, self.get_model_index(node_index));
+                }
             }
             _ => (),
         }
 
         // Enqueue removal for propagation
-        self.enqueue_removal_to_propagate(node, model);
+        self.enqueue_removal_to_propagate(node_index, model);
 
         Ok(())
     }
@@ -523,12 +560,12 @@ impl<T: DirectionSet + Clone> Generator<T> {
     }
 
     /// Should only be called when the nodes are fully generated
-    fn to_grid_data(&self) -> GridData<T, GeneratedNode> {
+    fn to_grid_data(&self) -> GridData<T, ModelInstance> {
         let mut generated_nodes = Vec::with_capacity(self.nodes.len());
         for node_index in 0..self.grid.total_size() {
             let model_index = self.get_model_index(node_index);
             let expanded_model = self.rules.model(model_index);
-            generated_nodes.push(expanded_model.to_generated())
+            generated_nodes.push(expanded_model.to_instance())
         }
 
         GridData::new(self.grid.clone(), generated_nodes)

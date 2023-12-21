@@ -70,6 +70,6 @@ mod tests {
             .with_grid(grid)
             .with_max_retry_count(10)
             .build();
-        let _output = generator.generate().unwrap();
+        let _output = generator.generate_collected().unwrap();
     }
 }
