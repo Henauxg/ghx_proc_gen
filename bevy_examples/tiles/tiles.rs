@@ -11,8 +11,8 @@ use bevy_ghx_proc_gen::{
     grid::Grid,
     proc_gen::{
         generator::{
-            builder::GeneratorBuilder, observer::QueuedObserver, rules::RulesBuilder,
-            ModelSelectionHeuristic, NodeSelectionHeuristic, RngMode,
+            builder::GeneratorBuilder, rules::RulesBuilder, ModelSelectionHeuristic,
+            NodeSelectionHeuristic, RngMode,
         },
         grid::{direction::Cartesian2D, GridDefinition},
     },
@@ -50,15 +50,14 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         .build()
         .unwrap();
     let grid = GridDefinition::new_cartesian_2d(GRID_X, GRID_Y, false);
-    let mut generator = GeneratorBuilder::new()
+    let gen = GeneratorBuilder::new()
         .with_rules(rules)
         .with_grid(grid.clone())
         .with_rng(RngMode::RandomSeed)
         .with_node_heuristic(NodeSelectionHeuristic::MinimumRemainingValue)
         .with_model_heuristic(ModelSelectionHeuristic::WeightedProbability)
         .build();
-    let observer = QueuedObserver::new(&mut generator);
-    info!("Seed: {}", generator.get_seed());
+    info!("Seed: {}", gen.get_seed());
 
     // Load assets
     let mut models_assets = HashMap::new();
@@ -82,17 +81,16 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         ))
         .id();
 
-    commands.insert_resource(Generation {
+    commands.insert_resource(Generation::new(
         models_assets,
-        gen: generator,
-        observer,
-        node_scale: NODE_SIZE,
+        gen,
+        NODE_SIZE,
         grid_entity,
-
-        assets_initial_scale: Vec3::ZERO,
-        bundle_spawner: sprite_node_spawner,
-        spawn_animation: Some(SpawningScaleAnimation::new(0.4, Vec3::ONE, ease_in_cubic)),
-    });
+        Vec3::ZERO,
+        sprite_node_spawner,
+        Some(SpawningScaleAnimation::new(0.4, Vec3::ONE, ease_in_cubic)),
+        true,
+    ));
 }
 
 fn main() {
