@@ -27,7 +27,10 @@ mod rules;
 
 // --------------------------------------------
 /// Change this value to change the way the generation is visualized
-const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::Final;
+const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::StepByStep(5);
+
+/// Change to visualize void nodes with a transparent asset
+const SEE_VOID_NODES: bool = true;
 
 /// Change this to change the map size.
 const GRID_HEIGHT: u32 = 5;

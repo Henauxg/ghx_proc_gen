@@ -6,6 +6,8 @@ use bevy_ghx_proc_gen::proc_gen::{
     grid::direction::Cartesian3D,
 };
 
+use crate::SEE_VOID_NODES;
+
 const VOID: SocketId = 0;
 const VOID_TOP: SocketId = 1;
 const VOID_BOTTOM: SocketId = 2;
@@ -108,7 +110,10 @@ pub(crate) fn rules_and_assets() -> (
 ) {
     let assets_and_models = vec![
         (
-            None,
+            match SEE_VOID_NODES {
+                true => Some("void"),
+                false => None,
+            },
             SocketsCartesian3D::Simple {
                 x_pos: VOID,
                 x_neg: VOID,
