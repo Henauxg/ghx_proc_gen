@@ -39,8 +39,6 @@ pub struct Generation<T: SharableDirectionSet, A: Asset, B: Bundle> {
     pub bundle_spawner: fn(asset: Handle<A>, translation: Vec3, scale: Vec3, rot_rad: f32) -> B,
     /// Animation used by all spawned assets
     pub spawn_animation: Option<SpawningScaleAnimation>,
-    // /// Whether or not the spawning systems should skip over when nodes without assets are generated.
-    // pub skip_void_nodes: bool,
 }
 
 #[derive(Resource)]
@@ -48,7 +46,9 @@ pub struct GenerationControl {
     status: GenerationControlStatus,
     /// Whether or not the spawning systems should skip over when nodes without assets are generated.
     pub skip_void_nodes: bool,
+    /// Whether or not the generation should pause when successful
     pub pause_when_done: bool,
+    /// Whether or not the generation should pause when it fails
     pub pause_on_error: bool,
 }
 

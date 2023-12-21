@@ -6,11 +6,11 @@ use bevy::{
     input::{keyboard::KeyCode, Input},
     render::view::Visibility,
 };
-use bevy_ghx_proc_gen::grid::DebugGridView;
+use bevy_ghx_proc_gen::grid::DebugGridMesh;
 
 pub fn toggle_debug_grid_visibility(
     keys: Res<Input<KeyCode>>,
-    mut debug_grids: Query<&mut Visibility, With<DebugGridView>>,
+    mut debug_grids: Query<&mut Visibility, With<DebugGridMesh>>,
 ) {
     if keys.just_pressed(KeyCode::F1) {
         for mut view_visibility in debug_grids.iter_mut() {

@@ -1,21 +1,20 @@
 use std::{marker::PhantomData, time::Duration};
 
 use bevy::{
-    app::{App, Plugin, Update},
+    app::{App, Plugin, PostUpdate, Update},
     asset::{Asset, Handle},
     ecs::{
         bundle::Bundle,
         entity::Entity,
         event::{Event, EventReader, EventWriter},
         query::With,
-        schedule::IntoSystemConfigs,
         system::{Commands, Query, Res, ResMut},
     },
     hierarchy::{BuildChildren, DespawnRecursiveExt},
     input::{keyboard::KeyCode, mouse::MouseButton, Input},
     log::{error, info},
     math::{Quat, Vec3},
-    render::texture::Image,
+    render::{color::Color, texture::Image},
     scene::{Scene, SceneBundle},
     sprite::SpriteBundle,
     time::{Time, Timer, TimerMode},
@@ -23,14 +22,20 @@ use bevy::{
     utils::default,
 };
 use bevy_ghx_proc_gen::{
-    grid::SharableDirectionSet,
-    proc_gen::generator::{node::ModelInstance, GenerationStatus},
+    grid::{draw_debug_markers, update_debug_markers, MarkerEvent, SharableDirectionSet},
+    proc_gen::{
+        generator::{node::ModelInstance, GenerationStatus},
+        GenerationError,
+    },
 };
 
 use crate::{
     anim::animate_spawning_nodes_scale, Generation, GenerationControl, GenerationControlStatus,
     GenerationTimer, GenerationViewMode, SpawnedNode,
 };
+
+#[derive(Event)]
+pub struct ClearNodeEvent;
 
 pub struct ProcGenExamplesPlugin<T: SharableDirectionSet, A: Asset, B: Bundle> {
     generation_view_mode: GenerationViewMode,
@@ -50,30 +55,25 @@ impl<T: SharableDirectionSet, A: Asset, B: Bundle> Plugin for ProcGenExamplesPlu
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (
-                animate_spawning_nodes_scale,
-                update_generation_control_status.before(clear_nodes),
-                clear_nodes,
-            ),
+            (animate_spawning_nodes_scale, update_generation_control),
         )
+        .add_systems(PostUpdate, clear_nodes)
         .add_event::<ClearNodeEvent>();
+
+        // TODO Move to a GridPlugin
+        app.add_systems(PostUpdate, (update_debug_markers::<T>, draw_debug_markers))
+            .add_event::<MarkerEvent>();
 
         match self.generation_view_mode {
             GenerationViewMode::StepByStep(interval) => {
-                app.add_systems(
-                    Update,
-                    step_by_step_timed_update::<T, A, B>.before(clear_nodes),
-                );
+                app.add_systems(Update, step_by_step_timed_update::<T, A, B>);
                 app.insert_resource(GenerationTimer(Timer::new(
                     Duration::from_millis(interval),
                     TimerMode::Repeating,
                 )));
             }
             GenerationViewMode::StepByStepPaused => {
-                app.add_systems(
-                    Update,
-                    step_by_step_input_update::<T, A, B>.before(clear_nodes),
-                );
+                app.add_systems(Update, step_by_step_input_update::<T, A, B>);
             }
             GenerationViewMode::Final => {
                 app.add_systems(Update, generate_all::<T, A, B>);
@@ -102,15 +102,17 @@ pub fn generate_all<T: SharableDirectionSet, A: Asset, B: Bundle>(
     }
 }
 
-pub fn update_generation_control_status(
+pub fn update_generation_control(
     keys: Res<Input<KeyCode>>,
     mut generation_control: ResMut<GenerationControl>,
     mut clear_events: EventWriter<ClearNodeEvent>,
+    mut marker_events: EventWriter<MarkerEvent>,
 ) {
     if keys.pressed(KeyCode::Space) {
         match generation_control.status {
             GenerationControlStatus::PausedNeedClear => {
                 clear_events.send(ClearNodeEvent);
+                marker_events.send(MarkerEvent::ClearAll);
                 generation_control.status = GenerationControlStatus::Ongoing;
             }
             GenerationControlStatus::Ongoing => (),
@@ -125,6 +127,7 @@ pub fn step_by_step_input_update<T: SharableDirectionSet, A: Asset, B: Bundle>(
     mut generation: ResMut<Generation<T, A, B>>,
     generation_control: ResMut<GenerationControl>,
     clear_events: EventWriter<ClearNodeEvent>,
+    marker_events: EventWriter<MarkerEvent>,
 ) {
     if generation_control.status == GenerationControlStatus::Ongoing
         && (keys.just_pressed(KeyCode::Right)
@@ -135,6 +138,7 @@ pub fn step_by_step_input_update<T: SharableDirectionSet, A: Asset, B: Bundle>(
             &mut commands,
             &mut generation,
             clear_events,
+            marker_events,
             generation_control,
         );
     }
@@ -147,6 +151,7 @@ pub fn step_by_step_timed_update<T: SharableDirectionSet, A: Asset, B: Bundle>(
     mut timer: ResMut<GenerationTimer>,
     time: Res<Time>,
     clear_events: EventWriter<ClearNodeEvent>,
+    marker_events: EventWriter<MarkerEvent>,
 ) {
     timer.0.tick(time.delta());
     if timer.0.finished() && generation_control.status == GenerationControlStatus::Ongoing {
@@ -154,6 +159,7 @@ pub fn step_by_step_timed_update<T: SharableDirectionSet, A: Asset, B: Bundle>(
             &mut commands,
             &mut generation,
             clear_events,
+            marker_events,
             generation_control,
         );
     }
@@ -163,6 +169,7 @@ fn step_generation<T: SharableDirectionSet, A: Asset, B: Bundle>(
     commands: &mut Commands,
     generation: &mut ResMut<Generation<T, A, B>>,
     mut clear_events: EventWriter<ClearNodeEvent>,
+    mut marker_events: EventWriter<MarkerEvent>,
     mut generation_control: ResMut<GenerationControl>,
 ) {
     loop {
@@ -193,10 +200,15 @@ fn step_generation<T: SharableDirectionSet, A: Asset, B: Bundle>(
                 }
             }
 
-            Err(_) => {
-                info!("Generation Failed");
+            Err(GenerationError { node_index }) => {
+                info!("Generation Failed at node {}", node_index);
                 if generation_control.pause_on_error {
                     generation_control.status = GenerationControlStatus::PausedNeedClear;
+                    marker_events.send(MarkerEvent::Add {
+                        color: Color::RED,
+                        grid_entity: generation.grid_entity,
+                        node_index,
+                    });
                 } else {
                     clear_events.send(ClearNodeEvent);
                 }
@@ -204,15 +216,12 @@ fn step_generation<T: SharableDirectionSet, A: Asset, B: Bundle>(
             }
         }
 
-        // Keep looping until we spawn a non-void, or if we want to skip over void nodes.
+        // If we want to skip over void nodes, we eep looping until we spawn a non-void
         if non_void_spawned | !generation_control.skip_void_nodes {
             break;
         }
     }
 }
-
-#[derive(Event)]
-pub struct ClearNodeEvent;
 
 fn clear_nodes(
     mut commands: Commands,
