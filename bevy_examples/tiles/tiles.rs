@@ -5,7 +5,7 @@ use bevy::{log::LogPlugin, prelude::*};
 use bevy_examples::{
     anim::{ease_in_cubic, SpawningScaleAnimation},
     plugin::{sprite_node_spawner, ProcGenExamplesPlugin},
-    Generation, GenerationViewMode,
+    Generation, GenerationControl, GenerationViewMode,
 };
 use bevy_ghx_proc_gen::{
     grid::Grid,
@@ -89,8 +89,9 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         Vec3::ZERO,
         sprite_node_spawner,
         Some(SpawningScaleAnimation::new(0.4, Vec3::ONE, ease_in_cubic)),
-        true,
     ));
+
+    commands.insert_resource(GenerationControl::new(true, true, true));
 }
 
 fn main() {

@@ -11,7 +11,7 @@ use bevy_examples::{
     camera::{pan_orbit_camera, PanOrbitCamera},
     plugin::{scene_node_spawner, ProcGenExamplesPlugin},
     utils::toggle_debug_grid_visibility,
-    Generation, GenerationViewMode,
+    Generation, GenerationControl, GenerationViewMode,
 };
 use bevy_ghx_proc_gen::{
     grid::{spawn_debug_grids, DebugGridViewConfig, Grid},
@@ -195,8 +195,9 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
             ASSETS_SCALE,
             ease_in_cubic,
         )),
-        true,
     ));
+
+    commands.insert_resource(GenerationControl::new(true, true, true));
 }
 
 fn main() {
