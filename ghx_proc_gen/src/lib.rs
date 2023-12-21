@@ -1,14 +1,15 @@
 pub mod generator;
 pub mod grid;
 
-/// Errors that can occur in Ghx_ProcGen
 #[derive(thiserror::Error, Debug)]
-pub enum ProcGenError {
-    #[error("Failed to generate")]
-    GenerationFailure,
-    #[error("Rules are invalid")]
-    InvalidRules,
+#[error("Failed to generate, contradiction at node with index {}", node_index)]
+pub struct GenerationError {
+    pub node_index: usize,
 }
+
+#[derive(thiserror::Error, Debug)]
+#[error("Rules are invalid")]
+pub struct RulesError;
 
 #[cfg(test)]
 mod tests {

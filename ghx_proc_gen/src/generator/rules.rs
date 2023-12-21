@@ -11,7 +11,7 @@ use tracing::trace;
 use super::node::{expand_models, ExpandedNodeModel, ModelIndex, NodeModel, SocketId};
 use crate::{
     grid::direction::{Cartesian2D, Cartesian3D, Direction, DirectionSet},
-    ProcGenError,
+    RulesError,
 };
 
 pub const CARTESIAN_2D_ROTATION_AXIS: Direction = Direction::ZForward;
@@ -114,7 +114,7 @@ impl RulesBuilder<Cartesian3D> {
 }
 
 impl<T: DirectionSet + Clone> RulesBuilder<T> {
-    pub fn build(self) -> Result<Rules<T>, ProcGenError> {
+    pub fn build(self) -> Result<Rules<T>, RulesError> {
         Rules::new(
             self.models,
             self.sockets_connections,
@@ -144,9 +144,9 @@ impl<T: DirectionSet> Rules<T> {
         sockets_connections: Vec<SocketConnections>,
         rotation_axis: Direction,
         direction_set: T,
-    ) -> Result<Rules<T>, ProcGenError> {
+    ) -> Result<Rules<T>, RulesError> {
         if models.len() == 0 || sockets_connections.len() == 0 {
-            return Err(ProcGenError::InvalidRules);
+            return Err(RulesError);
         }
 
         let expanded_models = expand_models(models, rotation_axis);

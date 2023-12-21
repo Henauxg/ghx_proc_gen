@@ -4,7 +4,7 @@ use self::direction::{Cartesian2D, Cartesian3D, Direction, DirectionSet, GridDel
 
 pub mod direction;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct GridPosition {
     pub x: u32,
     pub y: u32,
