@@ -14,8 +14,8 @@ use bevy_ghx_proc_gen::{
     lines::LineMaterial,
     proc_gen::{
         generator::{
-            builder::GeneratorBuilder, observer::QueuedObserver, rules::RulesBuilder,
-            ModelSelectionHeuristic, NodeSelectionHeuristic, RngMode,
+            builder::GeneratorBuilder, rules::RulesBuilder, ModelSelectionHeuristic,
+            NodeSelectionHeuristic, RngMode,
         },
         grid::{direction::Cartesian3D, GridDefinition},
     },
@@ -27,12 +27,12 @@ mod rules;
 
 // --------------------------------------------
 /// Change this value to change the way the generation is visualized
-const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::StepByStep(15);
+const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::StepByStep(5);
 
 /// Change this to change the map size.
-const GRID_HEIGHT: u32 = 4;
-const GRID_X: u32 = 35;
-const GRID_Z: u32 = 35;
+const GRID_HEIGHT: u32 = 5;
+const GRID_X: u32 = 20;
+const GRID_Z: u32 = 20;
 // --------------------------------------------
 
 const ASSETS_PATH: &str = "canyon";
@@ -109,7 +109,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         .build()
         .unwrap();
     let grid = GridDefinition::new_cartesian_3d(GRID_X, GRID_HEIGHT, GRID_Z, false);
-    let mut gen = GeneratorBuilder::new()
+    let gen = GeneratorBuilder::new()
         .with_rules(rules)
         .with_grid(grid.clone())
         .with_max_retry_count(250)
@@ -117,7 +117,6 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         .with_node_heuristic(NodeSelectionHeuristic::MinimumRemainingValue)
         .with_model_heuristic(ModelSelectionHeuristic::WeightedProbability)
         .build();
-    let observer = QueuedObserver::new(&mut gen);
     info!("Seed: {}", gen.get_seed());
 
     // Load assets
@@ -146,20 +145,20 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         ))
         .id();
 
-    commands.insert_resource(Generation {
+    commands.insert_resource(Generation::new(
         models_assets,
         gen,
-        observer,
-        node_scale: NODE_SCALE,
+        NODE_SCALE,
         grid_entity,
-        assets_initial_scale: Vec3::ZERO,
-        spawn_animation: Some(SpawningScaleAnimation::new(
+        Vec3::ZERO,
+        scene_node_spawner,
+        Some(SpawningScaleAnimation::new(
             0.8,
             ASSETS_SCALE,
             ease_in_cubic,
         )),
-        bundle_spawner: scene_node_spawner,
-    });
+        true,
+    ));
 }
 
 fn main() {
