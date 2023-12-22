@@ -8,6 +8,7 @@ use bevy::{
         entity::Entity,
         event::{Event, EventReader, EventWriter},
         query::With,
+        schedule::IntoSystemConfigs,
         system::{Commands, Query, Res, ResMut},
     },
     hierarchy::{BuildChildren, DespawnRecursiveExt},
@@ -24,7 +25,7 @@ use bevy::{
 use bevy_ghx_proc_gen::{
     grid::{draw_debug_markers, update_debug_markers, MarkerEvent, SharableDirectionSet},
     proc_gen::{
-        generator::{node::ModelInstance, GenerationStatus},
+        generator::{node::ModelInstance, observer::GenerationUpdate, GenerationStatus},
         GenerationError,
     },
 };
@@ -66,16 +67,31 @@ impl<T: SharableDirectionSet, A: Asset, B: Bundle> Plugin for ProcGenExamplesPlu
 
         match self.generation_view_mode {
             GenerationViewMode::StepByStep(interval) => {
-                app.add_systems(Update, step_by_step_timed_update::<T, A, B>);
+                app.add_systems(
+                    Update,
+                    (
+                        step_by_step_timed_update::<T, A, B>,
+                        update_generation_view::<T, A, B>,
+                    )
+                        .chain(),
+                );
                 app.insert_resource(GenerationTimer(Timer::new(
                     Duration::from_millis(interval),
                     TimerMode::Repeating,
                 )));
             }
             GenerationViewMode::StepByStepPaused => {
-                app.add_systems(Update, step_by_step_input_update::<T, A, B>);
+                app.add_systems(
+                    Update,
+                    (
+                        step_by_step_input_update::<T, A, B>,
+                        update_generation_view::<T, A, B>,
+                    )
+                        .chain(),
+                );
             }
             GenerationViewMode::Final => {
+                // TODO Observer queue will fill up without being emptied
                 app.add_systems(Update, generate_all::<T, A, B>);
             }
         }
@@ -98,21 +114,17 @@ pub fn generate_all<T: SharableDirectionSet, A: Asset, B: Bundle>(
                 error!("Failed to generate");
             }
         }
-        generation_control.status = GenerationControlStatus::PausedNeedClear;
+        generation_control.status = GenerationControlStatus::Paused;
     }
 }
 
 pub fn update_generation_control(
     keys: Res<Input<KeyCode>>,
     mut generation_control: ResMut<GenerationControl>,
-    mut clear_events: EventWriter<ClearNodeEvent>,
-    mut marker_events: EventWriter<MarkerEvent>,
 ) {
     if keys.pressed(KeyCode::Space) {
         match generation_control.status {
-            GenerationControlStatus::PausedNeedClear => {
-                clear_events.send(ClearNodeEvent);
-                marker_events.send(MarkerEvent::ClearAll);
+            GenerationControlStatus::Paused => {
                 generation_control.status = GenerationControlStatus::Ongoing;
             }
             GenerationControlStatus::Ongoing => (),
@@ -121,55 +133,65 @@ pub fn update_generation_control(
 }
 
 pub fn step_by_step_input_update<T: SharableDirectionSet, A: Asset, B: Bundle>(
-    mut commands: Commands,
     keys: Res<Input<KeyCode>>,
     buttons: Res<Input<MouseButton>>,
     mut generation: ResMut<Generation<T, A, B>>,
     generation_control: ResMut<GenerationControl>,
-    clear_events: EventWriter<ClearNodeEvent>,
-    marker_events: EventWriter<MarkerEvent>,
 ) {
     if generation_control.status == GenerationControlStatus::Ongoing
         && (keys.just_pressed(KeyCode::Right)
             || keys.pressed(KeyCode::Up)
             || buttons.just_pressed(MouseButton::Left))
     {
-        step_generation(
-            &mut commands,
-            &mut generation,
-            clear_events,
-            marker_events,
-            generation_control,
-        );
+        step_generation(&mut generation, generation_control);
     }
 }
 
 pub fn step_by_step_timed_update<T: SharableDirectionSet, A: Asset, B: Bundle>(
-    mut commands: Commands,
     mut generation: ResMut<Generation<T, A, B>>,
     generation_control: ResMut<GenerationControl>,
     mut timer: ResMut<GenerationTimer>,
     time: Res<Time>,
-    clear_events: EventWriter<ClearNodeEvent>,
-    marker_events: EventWriter<MarkerEvent>,
 ) {
     timer.0.tick(time.delta());
     if timer.0.finished() && generation_control.status == GenerationControlStatus::Ongoing {
-        step_generation(
-            &mut commands,
-            &mut generation,
-            clear_events,
-            marker_events,
-            generation_control,
-        );
+        step_generation(&mut generation, generation_control);
+    }
+}
+
+fn update_generation_view<T: SharableDirectionSet, A: Asset, B: Bundle>(
+    mut commands: Commands,
+    mut generation: ResMut<Generation<T, A, B>>,
+    mut clear_events: EventWriter<ClearNodeEvent>,
+    mut marker_events: EventWriter<MarkerEvent>,
+) {
+    for update in generation.observer.dequeue_all() {
+        match update {
+            GenerationUpdate::Generated(grid_node) => {
+                spawn_node(
+                    &mut commands,
+                    &generation,
+                    &grid_node.model_instance,
+                    grid_node.node_index,
+                );
+            }
+            GenerationUpdate::Reinitialized => {
+                clear_events.send(ClearNodeEvent);
+                marker_events.send(MarkerEvent::ClearAll);
+            }
+            GenerationUpdate::Failed(node_index) => {
+                marker_events.send(MarkerEvent::Add {
+                    color: Color::RED,
+                    grid_entity: generation.grid_entity,
+                    node_index,
+                });
+            }
+        }
     }
 }
 
 fn step_generation<T: SharableDirectionSet, A: Asset, B: Bundle>(
-    commands: &mut Commands,
     generation: &mut ResMut<Generation<T, A, B>>,
-    mut clear_events: EventWriter<ClearNodeEvent>,
-    mut marker_events: EventWriter<MarkerEvent>,
     mut generation_control: ResMut<GenerationControl>,
 ) {
     loop {
@@ -177,12 +199,11 @@ fn step_generation<T: SharableDirectionSet, A: Asset, B: Bundle>(
         match generation.gen.select_and_propagate_collected() {
             Ok((status, nodes_to_spawn)) => {
                 for grid_node in nodes_to_spawn {
-                    if spawn_node(
-                        commands,
-                        generation,
-                        &grid_node.model_instance,
-                        grid_node.node_index,
-                    ) {
+                    // We still collect the generated nodes here even though we don't really use them to spawn entities. We just check them for void nodes (for visualization purposes)
+                    if let Some(_asset) = generation
+                        .models_assets
+                        .get(&grid_node.model_instance.model_index)
+                    {
                         non_void_spawned = true;
                     }
                 }
@@ -191,26 +212,16 @@ fn step_generation<T: SharableDirectionSet, A: Asset, B: Bundle>(
                     GenerationStatus::Done => {
                         info!("Generation done");
                         if generation_control.pause_when_done {
-                            generation_control.status = GenerationControlStatus::PausedNeedClear;
-                        } else {
-                            clear_events.send(ClearNodeEvent);
+                            generation_control.status = GenerationControlStatus::Paused;
                         }
                         break;
                     }
                 }
             }
-
             Err(GenerationError { node_index }) => {
                 info!("Generation Failed at node {}", node_index);
                 if generation_control.pause_on_error {
-                    generation_control.status = GenerationControlStatus::PausedNeedClear;
-                    marker_events.send(MarkerEvent::Add {
-                        color: Color::RED,
-                        grid_entity: generation.grid_entity,
-                        node_index,
-                    });
-                } else {
-                    clear_events.send(ClearNodeEvent);
+                    generation_control.status = GenerationControlStatus::Paused;
                 }
                 break;
             }
@@ -239,7 +250,7 @@ fn clear_nodes(
 /// Returns true if an entity was spawned. Some nodes are void and don't spawn any entity.
 pub fn spawn_node<T: SharableDirectionSet, A: Asset, B: Bundle>(
     commands: &mut Commands,
-    generation: &mut ResMut<Generation<T, A, B>>,
+    generation: &ResMut<Generation<T, A, B>>,
     instance: &ModelInstance,
     node_index: usize,
 ) -> bool {

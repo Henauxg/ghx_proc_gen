@@ -7,7 +7,10 @@ use bevy::{
     math::Vec3,
     time::Timer,
 };
-use bevy_ghx_proc_gen::{grid::SharableDirectionSet, proc_gen::generator::Generator};
+use bevy_ghx_proc_gen::{
+    grid::SharableDirectionSet,
+    proc_gen::generator::{observer::QueuedObserver, Generator},
+};
 
 pub mod anim;
 pub mod camera;
@@ -29,6 +32,7 @@ pub enum GenerationViewMode {
 pub struct Generation<T: SharableDirectionSet, A: Asset, B: Bundle> {
     pub models_assets: HashMap<usize, Handle<A>>,
     pub gen: Generator<T>,
+    pub observer: QueuedObserver,
     /// Size of a node in world units
     pub node_scale: Vec3,
     /// Grid entity
@@ -65,23 +69,25 @@ impl GenerationControl {
 
 #[derive(Resource, Eq, PartialEq, Debug)]
 pub enum GenerationControlStatus {
-    PausedNeedClear,
+    Paused,
     Ongoing,
 }
 
 impl<T: SharableDirectionSet, A: Asset, B: Bundle> Generation<T, A, B> {
     pub fn new(
         models_assets: HashMap<usize, Handle<A>>,
-        gen: Generator<T>,
+        mut gen: Generator<T>,
         node_scale: Vec3,
         grid_entity: Entity,
         assets_scale: Vec3,
         bundle_spawner: fn(asset: Handle<A>, translation: Vec3, scale: Vec3, rot_rad: f32) -> B,
         spawn_animation: Option<SpawningScaleAnimation>,
     ) -> Generation<T, A, B> {
+        let observer = QueuedObserver::new(&mut gen);
         Self {
             models_assets,
             gen,
+            observer,
             node_scale,
             grid_entity,
             assets_scale,
