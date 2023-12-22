@@ -11,8 +11,8 @@ pub enum GenerationUpdate {
     Generated(GridNode),
     /// The generator has reinitialized from its initial state.
     Reinitialized,
-    /// The generation failed due to a contradiction.
-    Failed,
+    /// The generation failed due to a contradiction at the specified node_index
+    Failed(usize),
 }
 
 pub struct QueuedStatefulObserver<T: DirectionSet + Clone> {
@@ -44,7 +44,7 @@ impl<T: DirectionSet + Clone> QueuedStatefulObserver<T> {
                     .grid_data
                     .set(grid_node.node_index, Some(grid_node.model_instance)),
                 GenerationUpdate::Reinitialized => self.grid_data.reset(None),
-                GenerationUpdate::Failed => self.grid_data.reset(None),
+                GenerationUpdate::Failed(_) => self.grid_data.reset(None),
             }
         }
     }
@@ -60,7 +60,7 @@ impl<T: DirectionSet + Clone> QueuedStatefulObserver<T> {
                         .grid_data
                         .set(grid_node.node_index, Some(grid_node.model_instance)),
                     GenerationUpdate::Reinitialized => self.grid_data.reset(None),
-                    GenerationUpdate::Failed => self.grid_data.reset(None),
+                    GenerationUpdate::Failed(_) => self.grid_data.reset(None),
                 }
                 Some(update)
             }

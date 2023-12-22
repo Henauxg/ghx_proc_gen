@@ -209,7 +209,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
                             if allowed_models_count == 0 && self.is_model_possible(node, model) {
                                 // Ban model for node since it would 100% lead to a contradiction at some point during the generation.
                                 if let Err(err) = self.ban_model_from_node(node, model, collector) {
-                                    self.signal_contradiction();
+                                    self.signal_contradiction(node);
                                     return Err(err);
                                 }
                                 // We don't need to process the remaining directions, iterate on the next model.
@@ -224,7 +224,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
 
         // Propagate the potential bans that occurred during initialization
         if let Err(err) = self.propagate(collector) {
-            self.signal_contradiction();
+            self.signal_contradiction(err.node_index);
             return Err(err);
         };
 
@@ -369,7 +369,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
         self.possible_models_count[node_index] = 1;
 
         if let Err(err) = self.propagate(collector) {
-            self.signal_contradiction();
+            self.signal_contradiction(err.node_index);
             return Err(err);
         };
 
@@ -475,8 +475,8 @@ impl<T: DirectionSet + Clone> Generator<T> {
         trace!(
             "Ban model {} from node {} at position {:?}, {} models left",
             model,
-            node,
-            self.grid.get_position(node),
+            node_index,
+            self.grid.get_position(node_index),
             number_of_models_left
         );
 
@@ -487,8 +487,8 @@ impl<T: DirectionSet + Clone> Generator<T> {
                 debug!(
                     "Previous bans force model {} for node {} at position {:?}",
                     model,
-                    node,
-                    self.grid.get_position(node)
+                    node_index,
+                    self.grid.get_position(node_index)
                 );
                 // Check beforehand to avoid `get_model_index` call
                 if !self.observers.is_empty() || collector.is_some() {
@@ -590,13 +590,13 @@ impl<T: DirectionSet + Clone> Generator<T> {
         receiver
     }
 
-    fn signal_contradiction(&mut self) {
+    fn signal_contradiction(&mut self, node_index: usize) {
         #[cfg(feature = "debug-traces")]
         debug!("Generation failed due to a contradiction");
 
         self.status = InternalGeneratorStatus::Failed;
         for obs in &mut self.observers {
-            let _ = obs.send(GenerationUpdate::Failed);
+            let _ = obs.send(GenerationUpdate::Failed(node_index));
         }
     }
 }
