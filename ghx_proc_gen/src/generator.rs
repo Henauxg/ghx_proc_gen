@@ -328,7 +328,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
         #[cfg(feature = "debug-traces")]
         debug!(
             "Heuristics selected model {} for node {} at position {:?}",
-            selected_model_index,
+            self.rules.model(selected_model_index),
             node_index,
             self.grid.get_position(node_index)
         );
@@ -408,7 +408,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
             #[cfg(feature = "debug-traces")]
             trace!(
                 "Propagate removal of model {} for node {}",
-                from.model_index,
+                self.rules.model(from.model_index),
                 from.node_index
             );
 
@@ -439,7 +439,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
         #[cfg(feature = "debug-traces")]
         trace!(
             "Enqueue removal for propagation: model {} from node {}",
-            model_index,
+            self.rules.model(model_index),
             node_index
         );
         self.propagation_stack.push(PropagationEntry {
@@ -474,7 +474,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
         #[cfg(feature = "debug-traces")]
         trace!(
             "Ban model {} from node {} at position {:?}, {} models left",
-            model,
+            self.rules.model(model),
             node_index,
             self.grid.get_position(node_index),
             number_of_models_left
@@ -484,12 +484,16 @@ impl<T: DirectionSet + Clone> Generator<T> {
             0 => return Err(GenerationError { node_index }),
             1 => {
                 #[cfg(feature = "debug-traces")]
-                debug!(
-                    "Previous bans force model {} for node {} at position {:?}",
-                    model,
-                    node_index,
-                    self.grid.get_position(node_index)
-                );
+                {
+                    let forced_model = self.get_model_index(node_index);
+                    debug!(
+                        "Previous bans force model {} for node {} at position {:?}",
+                        self.rules.model(forced_model),
+                        node_index,
+                        self.grid.get_position(node_index)
+                    );
+                }
+
                 // Check beforehand to avoid `get_model_index` call
                 if !self.observers.is_empty() || collector.is_some() {
                     self.signal_selection(collector, node_index, self.get_model_index(node_index));
