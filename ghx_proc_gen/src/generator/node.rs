@@ -1,5 +1,8 @@
 use std::{collections::HashSet, marker::PhantomData};
 
+#[cfg(feature = "debug-traces")]
+use core::fmt;
+
 use crate::grid::direction::{Cartesian2D, Cartesian3D, Direction, DirectionSet};
 
 use super::rules::CARTESIAN_2D_ROTATION_AXIS;
@@ -24,6 +27,8 @@ pub(crate) fn expand_models<T: DirectionSet>(
                     weight: model.weight,
                     original_index: index,
                     rotation: *rotation,
+                    #[cfg(feature = "debug-traces")]
+                    name: model.name,
                 });
             }
         }
@@ -44,10 +49,13 @@ pub struct NodeModel<T: DirectionSet> {
     ///
     /// Defaults to only [`NodeRotation::Rot0`].
     ///
-    /// Note:
+    /// Notes:
     /// - In 3d, top and bottom sockets of a model should be invariant to rotation around the chosen rotation axis.
     /// - In 2d, the rotation axis cannot be modified and is set to [`Direction::ZForward`].
     allowed_rotations: HashSet<NodeRotation>,
+
+    /// Name given to this model for debug purposes.
+    name: Option<&'static str>,
 
     typestate: PhantomData<T>,
 }
@@ -99,12 +107,7 @@ impl Into<Vec<Vec<SocketId>>> for SocketsCartesian2D {
 impl SocketsCartesian2D {
     /// Create a [`NodeModel`] from its sockets definition, with default values for the other members.
     pub fn new_model(self) -> NodeModel<Cartesian2D> {
-        NodeModel {
-            sockets: self.into(),
-            allowed_rotations: HashSet::from([NodeRotation::Rot0]),
-            weight: 1.0,
-            typestate: PhantomData,
-        }
+        NodeModel::new_cartesian_2d(self)
     }
 }
 
@@ -115,6 +118,7 @@ impl NodeModel<Cartesian2D> {
             sockets: sockets.into(),
             allowed_rotations: HashSet::from([NodeRotation::Rot0]),
             weight: 1.0,
+            name: None,
             typestate: PhantomData,
         }
     }
@@ -125,6 +129,7 @@ impl NodeModel<Cartesian2D> {
             sockets: self.rotated_sockets(rotation, CARTESIAN_2D_ROTATION_AXIS),
             weight: self.weight,
             allowed_rotations: self.allowed_rotations.clone(),
+            name: self.name.clone(),
             typestate: PhantomData,
         }
     }
@@ -192,12 +197,7 @@ impl Into<Vec<Vec<SocketId>>> for SocketsCartesian3D {
 impl SocketsCartesian3D {
     /// Create a [`NodeModel`] from its sockets definition, with default values for the other members: weight is 1.0 and the model will not be rotated.
     pub fn new_model(self) -> NodeModel<Cartesian3D> {
-        NodeModel {
-            sockets: self.into(),
-            allowed_rotations: HashSet::from([NodeRotation::Rot0]),
-            weight: 1.0,
-            typestate: PhantomData,
-        }
+        NodeModel::new_cartesian_3d(self)
     }
 }
 
@@ -208,6 +208,7 @@ impl NodeModel<Cartesian3D> {
             sockets: sockets.into(),
             allowed_rotations: HashSet::from([NodeRotation::Rot0]),
             weight: 1.0,
+            name: None,
             typestate: PhantomData,
         }
     }
@@ -218,6 +219,7 @@ impl NodeModel<Cartesian3D> {
             sockets: self.rotated_sockets(rotation, axis),
             weight: self.weight,
             allowed_rotations: self.allowed_rotations.clone(),
+            name: self.name.clone(),
             typestate: PhantomData,
         }
     }
@@ -257,6 +259,19 @@ impl<T: DirectionSet> NodeModel<T> {
         self
     }
 
+    #[allow(unused_mut)]
+    /// Register the given name for this model.
+    ///
+    /// Does nothing if the `debug-traces` feature is not enabled.
+    pub fn with_name(mut self, _name: &'static str) -> Self {
+        #[cfg(feature = "debug-traces")]
+        {
+            self.name = Some(_name);
+        }
+
+        self
+    }
+
     fn rotated_sockets(&self, rotation: NodeRotation, axis: Direction) -> Vec<Vec<SocketId>> {
         let mut rotated_sockets = vec![Vec::new(); self.sockets.len()];
 
@@ -288,6 +303,9 @@ pub struct ExpandedNodeModel {
     original_index: ModelIndex,
     /// Rotation of the [`NodeModel`]
     rotation: NodeRotation,
+
+    #[cfg(feature = "debug-traces")]
+    pub name: Option<&'static str>,
 }
 
 impl ExpandedNodeModel {
@@ -309,6 +327,19 @@ impl ExpandedNodeModel {
             model_index: self.original_index,
             rotation: self.rotation,
         }
+    }
+}
+
+#[cfg(feature = "debug-traces")]
+impl fmt::Display for ExpandedNodeModel {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "[{} ({:?}) rotation {}]",
+            self.original_index,
+            self.name,
+            self.rotation.value()
+        )
     }
 }
 
