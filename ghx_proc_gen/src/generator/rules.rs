@@ -8,7 +8,9 @@ use ndarray::{Array, Ix1, Ix2};
 #[cfg(feature = "debug-traces")]
 use tracing::trace;
 
-use super::node::{expand_models, ExpandedNodeModel, ModelIndex, NodeModel, SocketId};
+use super::node::{
+    expand_models, ExpandedNodeModel, ModelIndex, NodeModel, Socket, SocketCollection,
+};
 use crate::{
     grid::direction::{Cartesian2D, Cartesian3D, Direction, DirectionSet},
     RulesError,
@@ -16,11 +18,11 @@ use crate::{
 
 pub const CARTESIAN_2D_ROTATION_AXIS: Direction = Direction::ZForward;
 
-pub type SocketConnections = (SocketId, Vec<SocketId>);
+pub type SocketConnections = (Socket, Vec<Socket>);
 
 pub struct RulesBuilder<T: DirectionSet + Clone> {
     models: Vec<NodeModel<T>>,
-    sockets_connections: Vec<SocketConnections>,
+    socket_collection: SocketCollection,
     rotation_axis: Direction,
     direction_set: T,
 }
@@ -49,11 +51,11 @@ impl RulesBuilder<Cartesian2D> {
     /// ```
     pub fn new_cartesian_2d(
         models: Vec<NodeModel<Cartesian2D>>,
-        sockets_connections: Vec<SocketConnections>,
+        socket_collection: SocketCollection,
     ) -> Self {
         Self {
             models,
-            sockets_connections,
+            socket_collection,
             rotation_axis: CARTESIAN_2D_ROTATION_AXIS,
             direction_set: Cartesian2D {},
         }
@@ -94,11 +96,11 @@ impl RulesBuilder<Cartesian3D> {
     /// ```
     pub fn new_cartesian_3d(
         models: Vec<NodeModel<Cartesian3D>>,
-        sockets_connections: Vec<SocketConnections>,
+        socket_collection: SocketCollection,
     ) -> Self {
         Self {
             models,
-            sockets_connections,
+            socket_collection,
             rotation_axis: Direction::YForward,
             direction_set: Cartesian3D {},
         }
@@ -117,7 +119,7 @@ impl<T: DirectionSet + Clone> RulesBuilder<T> {
     pub fn build(self) -> Result<Rules<T>, RulesError> {
         Rules::new(
             self.models,
-            self.sockets_connections,
+            self.socket_collection,
             self.rotation_axis,
             self.direction_set,
         )
@@ -141,16 +143,15 @@ pub struct Rules<T: DirectionSet> {
 impl<T: DirectionSet> Rules<T> {
     fn new(
         models: Vec<NodeModel<T>>,
-        sockets_connections: Vec<SocketConnections>,
+        socket_collection: SocketCollection,
         rotation_axis: Direction,
         direction_set: T,
     ) -> Result<Rules<T>, RulesError> {
-        if models.len() == 0 || sockets_connections.len() == 0 {
-            return Err(RulesError);
+        if models.len() == 0 || socket_collection.is_empty() {
+            return Err(RulesError::NoModelsOrSockets);
         }
 
         let expanded_models = expand_models(models, rotation_axis);
-        let socket_to_sockets = expand_sockets_connections(sockets_connections);
 
         // Temporary collection to reverse the relation: sockets_to_models.get(socket)[direction] will hold all the models that have 'socket' from 'direction'
         let mut sockets_to_models = HashMap::new();
@@ -177,11 +178,11 @@ impl<T: DirectionSet> Rules<T> {
                 let mut unique_models = HashSet::new();
                 // For each socket of the model in this direction: get all the sockets that are compatible for connection
                 for socket in &model.sockets()[direction as usize] {
-                    if let Some(compatible_sockets) = socket_to_sockets.get(socket) {
+                    if let Some(compatible_sockets) = socket_collection.get_compatibles(*socket) {
                         for compatible_socket in compatible_sockets {
                             // For each of those: get all the models that have this socket from direction
                             // `sockets_to_models` may not have an entry for `compatible_socket` depending on user input data (socket present in sockets_connections but not in a model)
-                            if let Some(entry) = sockets_to_models.get(compatible_socket) {
+                            if let Some(entry) = sockets_to_models.get(&compatible_socket) {
                                 for allowed_model in &entry[direction as usize] {
                                     if unique_models.insert(*allowed_model) {
                                         allowed_neighbours[(model_index, direction as usize)]
@@ -234,40 +235,4 @@ impl<T: DirectionSet> Rules<T> {
     pub(crate) fn model(&self, index: usize) -> &ExpandedNodeModel {
         &self.models[index]
     }
-}
-
-/// Expand sockets connections. Returns `socket_to_sockets`: from a socket, get all sockets that are compatible for connection
-fn expand_sockets_connections(sockets_connections: Vec<(u32, Vec<u32>)>) -> HashMap<u32, Vec<u32>> {
-    // 2 collections. One temporary to filter for uniqueness, one with a Vec for iteration determinism while generating later.
-    let mut socket_to_sockets = HashMap::new();
-    let mut unique_socket_to_sockets = HashMap::new();
-    for (socket, connections) in sockets_connections {
-        let connectable_sockets = unique_socket_to_sockets
-            .entry(socket)
-            .or_insert(HashSet::new());
-        for other_socket in &connections {
-            if connectable_sockets.insert(*other_socket) {
-                socket_to_sockets
-                    .entry(socket)
-                    .or_insert(Vec::new())
-                    .push(*other_socket);
-            }
-        }
-
-        // Register the connection from the other socket too. (Doing it with a second iteration because unique_socket_to_sockets is already borrowed)
-        for other_socket in &connections {
-            if *other_socket != socket {
-                let other_connectable_sockets = unique_socket_to_sockets
-                    .entry(*other_socket)
-                    .or_insert(HashSet::new());
-                if other_connectable_sockets.insert(socket) {
-                    socket_to_sockets
-                        .entry(*other_socket)
-                        .or_insert(Vec::new())
-                        .push(socket);
-                }
-            }
-        }
-    }
-    socket_to_sockets
 }
