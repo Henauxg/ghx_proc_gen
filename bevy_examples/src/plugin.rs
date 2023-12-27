@@ -6,14 +6,14 @@ use bevy::{
     ecs::{
         bundle::Bundle,
         entity::Entity,
-        event::{Event, EventReader, EventWriter},
+        event::EventWriter,
         query::With,
         schedule::IntoSystemConfigs,
         system::{Commands, Query, Res, ResMut},
     },
     hierarchy::{BuildChildren, DespawnRecursiveExt},
     input::{keyboard::KeyCode, mouse::MouseButton, Input},
-    log::{error, info},
+    log::{info, warn},
     math::{Quat, Vec3},
     render::{color::Color, texture::Image},
     scene::{Scene, SceneBundle},
@@ -35,9 +35,6 @@ use crate::{
     GenerationTimer, GenerationViewMode, SpawnedNode,
 };
 
-#[derive(Event)]
-pub struct ClearNodeEvent;
-
 pub struct ProcGenExamplesPlugin<T: SharableDirectionSet, A: Asset, B: Bundle> {
     generation_view_mode: GenerationViewMode,
     typestate: PhantomData<(T, A, B)>,
@@ -52,17 +49,15 @@ impl<T: SharableDirectionSet, A: Asset, B: Bundle> ProcGenExamplesPlugin<T, A, B
     }
 }
 
-impl<T: SharableDirectionSet, A: Asset, B: Bundle> Plugin for ProcGenExamplesPlugin<T, A, B> {
+impl<D: SharableDirectionSet, A: Asset, B: Bundle> Plugin for ProcGenExamplesPlugin<D, A, B> {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
             (animate_spawning_nodes_scale, update_generation_control),
-        )
-        .add_systems(PostUpdate, clear_nodes)
-        .add_event::<ClearNodeEvent>();
+        );
 
         // TODO Move to a GridPlugin
-        app.add_systems(PostUpdate, (update_debug_markers::<T>, draw_debug_markers))
+        app.add_systems(PostUpdate, (update_debug_markers::<D>, draw_debug_markers))
             .add_event::<MarkerEvent>();
 
         match self.generation_view_mode {
@@ -70,8 +65,8 @@ impl<T: SharableDirectionSet, A: Asset, B: Bundle> Plugin for ProcGenExamplesPlu
                 app.add_systems(
                     Update,
                     (
-                        step_by_step_timed_update::<T, A, B>,
-                        update_generation_view::<T, A, B>,
+                        step_by_step_timed_update::<D, A, B>,
+                        update_generation_view::<D, A, B>,
                     )
                         .chain(),
                 );
@@ -84,34 +79,33 @@ impl<T: SharableDirectionSet, A: Asset, B: Bundle> Plugin for ProcGenExamplesPlu
                 app.add_systems(
                     Update,
                     (
-                        step_by_step_input_update::<T, A, B>,
-                        update_generation_view::<T, A, B>,
+                        step_by_step_input_update::<D, A, B>,
+                        update_generation_view::<D, A, B>,
                     )
                         .chain(),
                 );
             }
             GenerationViewMode::Final => {
-                // TODO Observer queue will fill up without being emptied
-                app.add_systems(Update, generate_all::<T, A, B>);
+                app.add_systems(
+                    Update,
+                    (generate_all::<D, A, B>, update_generation_view::<D, A, B>).chain(),
+                );
             }
         }
     }
 }
 
-pub fn generate_all<T: SharableDirectionSet, A: Asset, B: Bundle>(
-    mut commands: Commands,
-    mut generation: ResMut<Generation<T, A, B>>,
+pub fn generate_all<D: SharableDirectionSet, A: Asset, B: Bundle>(
+    mut generation: ResMut<Generation<D, A, B>>,
     mut generation_control: ResMut<GenerationControl>,
 ) {
     if generation_control.status == GenerationControlStatus::Ongoing {
-        match generation.gen.generate_collected() {
-            Ok(output) => {
-                for (node_index, node) in output.nodes().iter().enumerate() {
-                    spawn_node(&mut commands, &mut generation, node, node_index);
-                }
+        match generation.gen.generate() {
+            Ok(()) => {
+                info!("Generation done");
             }
-            Err(_) => {
-                error!("Failed to generate");
+            Err(GenerationError { node_index }) => {
+                warn!("Generation Failed at node {}", node_index);
             }
         }
         generation_control.status = GenerationControlStatus::Paused;
@@ -122,7 +116,7 @@ pub fn update_generation_control(
     keys: Res<Input<KeyCode>>,
     mut generation_control: ResMut<GenerationControl>,
 ) {
-    if keys.pressed(KeyCode::Space) {
+    if keys.just_pressed(KeyCode::Space) {
         match generation_control.status {
             GenerationControlStatus::Paused => {
                 generation_control.status = GenerationControlStatus::Ongoing;
@@ -132,10 +126,10 @@ pub fn update_generation_control(
     }
 }
 
-pub fn step_by_step_input_update<T: SharableDirectionSet, A: Asset, B: Bundle>(
+pub fn step_by_step_input_update<D: SharableDirectionSet, A: Asset, B: Bundle>(
     keys: Res<Input<KeyCode>>,
     buttons: Res<Input<MouseButton>>,
-    mut generation: ResMut<Generation<T, A, B>>,
+    mut generation: ResMut<Generation<D, A, B>>,
     generation_control: ResMut<GenerationControl>,
 ) {
     if generation_control.status == GenerationControlStatus::Ongoing
@@ -147,8 +141,8 @@ pub fn step_by_step_input_update<T: SharableDirectionSet, A: Asset, B: Bundle>(
     }
 }
 
-pub fn step_by_step_timed_update<T: SharableDirectionSet, A: Asset, B: Bundle>(
-    mut generation: ResMut<Generation<T, A, B>>,
+pub fn step_by_step_timed_update<D: SharableDirectionSet, A: Asset, B: Bundle>(
+    mut generation: ResMut<Generation<D, A, B>>,
     generation_control: ResMut<GenerationControl>,
     mut timer: ResMut<GenerationTimer>,
     time: Res<Time>,
@@ -159,25 +153,22 @@ pub fn step_by_step_timed_update<T: SharableDirectionSet, A: Asset, B: Bundle>(
     }
 }
 
-fn update_generation_view<T: SharableDirectionSet, A: Asset, B: Bundle>(
+fn update_generation_view<D: SharableDirectionSet, A: Asset, B: Bundle>(
     mut commands: Commands,
-    mut generation: ResMut<Generation<T, A, B>>,
-    mut clear_events: EventWriter<ClearNodeEvent>,
+    mut generation: ResMut<Generation<D, A, B>>,
     mut marker_events: EventWriter<MarkerEvent>,
+    existing_nodes: Query<Entity, With<SpawnedNode>>,
 ) {
+    let mut reinitialized = false;
+    let mut nodes_to_spawn = Vec::new();
     for update in generation.observer.dequeue_all() {
         match update {
             GenerationUpdate::Generated(grid_node) => {
-                spawn_node(
-                    &mut commands,
-                    &generation,
-                    &grid_node.model_instance,
-                    grid_node.node_index,
-                );
+                nodes_to_spawn.push(grid_node);
             }
             GenerationUpdate::Reinitialized => {
-                clear_events.send(ClearNodeEvent);
-                marker_events.send(MarkerEvent::ClearAll);
+                reinitialized = true;
+                nodes_to_spawn.clear();
             }
             GenerationUpdate::Failed(node_index) => {
                 marker_events.send(MarkerEvent::Add {
@@ -188,10 +179,26 @@ fn update_generation_view<T: SharableDirectionSet, A: Asset, B: Bundle>(
             }
         }
     }
+
+    if reinitialized {
+        for existing_node in existing_nodes.iter() {
+            commands.entity(existing_node).despawn_recursive();
+        }
+        marker_events.send(MarkerEvent::ClearAll);
+    }
+
+    for grid_node in nodes_to_spawn {
+        spawn_node(
+            &mut commands,
+            &generation,
+            &grid_node.model_instance,
+            grid_node.node_index,
+        );
+    }
 }
 
-fn step_generation<T: SharableDirectionSet, A: Asset, B: Bundle>(
-    generation: &mut ResMut<Generation<T, A, B>>,
+fn step_generation<D: SharableDirectionSet, A: Asset, B: Bundle>(
+    generation: &mut ResMut<Generation<D, A, B>>,
     mut generation_control: ResMut<GenerationControl>,
 ) {
     loop {
@@ -219,7 +226,7 @@ fn step_generation<T: SharableDirectionSet, A: Asset, B: Bundle>(
                 }
             }
             Err(GenerationError { node_index }) => {
-                info!("Generation Failed at node {}", node_index);
+                warn!("Generation Failed at node {}", node_index);
                 if generation_control.pause_on_error {
                     generation_control.status = GenerationControlStatus::Paused;
                 }
@@ -234,23 +241,10 @@ fn step_generation<T: SharableDirectionSet, A: Asset, B: Bundle>(
     }
 }
 
-fn clear_nodes(
-    mut commands: Commands,
-    mut clear_events: EventReader<ClearNodeEvent>,
-    existing_nodes: Query<Entity, With<SpawnedNode>>,
-) {
-    if !clear_events.is_empty() {
-        clear_events.clear();
-        for existing_node in existing_nodes.iter() {
-            commands.entity(existing_node).despawn_recursive();
-        }
-    }
-}
-
 /// Returns true if an entity was spawned. Some nodes are void and don't spawn any entity.
-pub fn spawn_node<T: SharableDirectionSet, A: Asset, B: Bundle>(
+pub fn spawn_node<D: SharableDirectionSet, A: Asset, B: Bundle>(
     commands: &mut Commands,
-    generation: &ResMut<Generation<T, A, B>>,
+    generation: &ResMut<Generation<D, A, B>>,
     instance: &ModelInstance,
     node_index: usize,
 ) -> bool {
