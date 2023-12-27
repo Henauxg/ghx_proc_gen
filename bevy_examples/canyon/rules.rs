@@ -24,7 +24,12 @@ pub(crate) fn rules_and_assets() -> (
     let (bridge, bridge_side, bridge_top, bridge_bottom) = (s(), s(), s(), s());
     let (bridge_start_in, bridge_start_out, bridge_start_bottom) = (s(), s(), s());
     let (platform_side, platform_back, platform_top, platform_bottom) = (s(), s(), s(), s());
-    let (platform_support_top, platform_support_bottom) = (s(), s());
+    let (
+        platform_support_top,
+        platform_support_bottom,
+        platform_support_long_top,
+        platform_support_long_bottom,
+    ) = (s(), s(), s(), s());
     let (cactus_border, cactus_top, cactus_bottom) = (s(), s(), s());
 
     let assets_and_models = vec![
@@ -167,8 +172,7 @@ pub(crate) fn rules_and_assets() -> (
                 y_neg: vec![rock_bottom],
             }
             .new_model()
-            .with_weight(0.05), // .with_all_rotations()
-                          // .with_weight(0.25),
+            .with_weight(0.05),
         ),
         (
             Some("bridge_start"),
@@ -198,34 +202,48 @@ pub(crate) fn rules_and_assets() -> (
             .with_all_rotations()
             .with_weight(0.05),
         ),
-        // (
-        //     Some("platform"),
-        //     SocketsCartesian3D::Multiple {
-        //         x_pos: vec![PLATFORM_SIDE],
-        //         x_neg: vec![PLATFORM_SIDE],
-        //         z_pos: vec![BRIDGE_START_IN],
-        //         z_neg: vec![PLATFORM_BACK],
-        //         y_pos: vec![PLATFORM_TOP],
-        //         y_neg: vec![PLATFORM_BOTTOM],
-        //     }
-        //     .new_model()
-        //     .with_all_rotations()
-        //     .with_weight(0.01),
-        // ),
-        // (
-        //     Some("platform_support"),
-        //     SocketsCartesian3D::Multiple {
-        //         x_pos: vec![PLATFORM_SIDE],
-        //         x_neg: vec![PLATFORM_SIDE],
-        //         z_pos: vec![PLATFORM_SIDE],
-        //         z_neg: vec![PLATFORM_SIDE],
-        //         y_pos: vec![PLATFORM_SUPPORT_TOP],
-        //         y_neg: vec![PLATFORM_SUPPORT_BOTTOM],
-        //     }
-        //     .new_model()
-        //     // .with_all_rotations()
-        //     .with_weight(0.01),
-        // ),
+        (
+            Some("platform"),
+            SocketsCartesian3D::Multiple {
+                x_pos: vec![platform_side],
+                x_neg: vec![platform_side],
+                z_pos: vec![bridge_start_in],
+                z_neg: vec![platform_back],
+                y_pos: vec![platform_top],
+                y_neg: vec![platform_bottom],
+            }
+            .new_model()
+            .with_all_rotations()
+            .with_weight(0.01),
+        ),
+        (
+            Some("platform_support"),
+            SocketsCartesian3D::Multiple {
+                x_pos: vec![platform_side],
+                x_neg: vec![platform_side],
+                z_pos: vec![platform_side],
+                z_neg: vec![platform_side],
+                y_pos: vec![platform_support_top],
+                y_neg: vec![platform_support_bottom],
+            }
+            .new_model()
+            .with_all_rotations()
+            .with_weight(0.000001),
+        ),
+        (
+            Some("platform_support_long"),
+            SocketsCartesian3D::Multiple {
+                x_pos: vec![platform_side],
+                x_neg: vec![platform_side],
+                z_pos: vec![platform_side],
+                z_neg: vec![platform_side],
+                y_pos: vec![platform_support_long_top],
+                y_neg: vec![platform_support_long_bottom],
+            }
+            .new_model()
+            .with_all_rotations()
+            .with_weight(0.000001),
+        ),
     ];
     sockets
         // Void
@@ -273,9 +291,18 @@ pub(crate) fn rules_and_assets() -> (
             (platform_back, vec![void]),
         ])
         .add_rotated_connection(platform_top, vec![void])
-        .add_rotated_connection(platform_bottom, vec![platform_support_top])
-        .add_rotated_connection(platform_support_top, vec![platform_support_bottom])
-        .add_rotated_connection(platform_support_bottom, vec![rock_top, sand_top, water_top])
+        .add_constrained_rotated_connection(
+            platform_bottom,
+            vec![NodeRotation::Rot0],
+            vec![platform_support_top, platform_support_long_top],
+        )
+        .add_constrained_rotated_connection(
+            platform_support_bottom,
+            vec![NodeRotation::Rot0],
+            vec![platform_support_top, platform_support_long_top],
+        )
+        .add_rotated_connection(platform_support_bottom, vec![rock_top])
+        .add_rotated_connection(platform_support_long_bottom, vec![sand_top, water_top])
         // Cactuses
         .add_connection(
             cactus_border,
