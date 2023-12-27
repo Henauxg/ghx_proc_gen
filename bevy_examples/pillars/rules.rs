@@ -1,29 +1,28 @@
 use bevy_ghx_proc_gen::proc_gen::{
-    generator::{
-        node::{NodeModel, SocketId, SocketsCartesian3D},
-        rules::SocketConnections,
-    },
+    generator::node::{NodeModel, SocketCollection, SocketsCartesian3D},
     grid::direction::Cartesian3D,
 };
-
-const VOID: SocketId = 0;
-
-const PILLAR_SIDE: SocketId = 1;
-
-const PILLAR_BASE_TOP: SocketId = 2;
-const PILLAR_BASE_BOTTOM: SocketId = 3;
-
-const PILLAR_CORE_BOTTOM: SocketId = 4;
-const PILLAR_CORE_TOP: SocketId = 5;
-
-const PILLAR_CAP_BOTTOM: SocketId = 6;
-const PILLAR_CAP_TOP: SocketId = 7;
 
 pub(crate) fn rules_and_assets() -> (
     Vec<Option<&'static str>>,
     Vec<NodeModel<Cartesian3D>>,
-    Vec<SocketConnections>,
+    SocketCollection,
 ) {
+    let mut sockets = SocketCollection::new();
+
+    let void = sockets.create();
+
+    let pillar_side = sockets.create();
+
+    let pillar_base_top = sockets.create();
+    let pillar_base_bottom = sockets.create();
+
+    let pillar_core_bottom = sockets.create();
+    let pillar_core_top = sockets.create();
+
+    let pillar_cap_bottom = sockets.create();
+    let pillar_cap_top = sockets.create();
+
     let models_asset_paths: Vec<Option<&str>> = vec![
         None,
         Some("pillar_base"),
@@ -31,41 +30,44 @@ pub(crate) fn rules_and_assets() -> (
         Some("pillar_cap"),
     ];
     let models = vec![
-        SocketsCartesian3D::Mono(VOID).new_model().with_weight(60.),
+        SocketsCartesian3D::Mono(void).new_model().with_weight(60.),
         SocketsCartesian3D::Simple {
-            x_pos: PILLAR_SIDE,
-            x_neg: PILLAR_SIDE,
-            z_pos: PILLAR_SIDE,
-            z_neg: PILLAR_SIDE,
-            y_pos: PILLAR_BASE_TOP,
-            y_neg: PILLAR_BASE_BOTTOM,
+            x_pos: pillar_side,
+            x_neg: pillar_side,
+            z_pos: pillar_side,
+            z_neg: pillar_side,
+            y_pos: pillar_base_top,
+            y_neg: pillar_base_bottom,
         }
         .new_model(),
         SocketsCartesian3D::Simple {
-            x_pos: PILLAR_SIDE,
-            x_neg: PILLAR_SIDE,
-            z_pos: PILLAR_SIDE,
-            z_neg: PILLAR_SIDE,
-            y_pos: PILLAR_CORE_TOP,
-            y_neg: PILLAR_CORE_BOTTOM,
+            x_pos: pillar_side,
+            x_neg: pillar_side,
+            z_pos: pillar_side,
+            z_neg: pillar_side,
+            y_pos: pillar_core_top,
+            y_neg: pillar_core_bottom,
         }
         .new_model(),
         SocketsCartesian3D::Simple {
-            x_pos: PILLAR_SIDE,
-            x_neg: PILLAR_SIDE,
-            z_pos: PILLAR_SIDE,
-            z_neg: PILLAR_SIDE,
-            y_pos: PILLAR_CAP_TOP,
-            y_neg: PILLAR_CAP_BOTTOM,
+            x_pos: pillar_side,
+            x_neg: pillar_side,
+            z_pos: pillar_side,
+            z_neg: pillar_side,
+            y_pos: pillar_cap_top,
+            y_neg: pillar_cap_bottom,
         }
         .new_model(),
     ];
-    let sockets_connections = vec![
-        (VOID, vec![VOID]),
-        (PILLAR_SIDE, vec![PILLAR_SIDE, VOID]),
-        (PILLAR_BASE_TOP, vec![PILLAR_CORE_BOTTOM]),
-        (PILLAR_CORE_TOP, vec![PILLAR_CORE_BOTTOM, PILLAR_CAP_BOTTOM]),
-        (PILLAR_CAP_TOP, vec![VOID]),
-    ];
-    (models_asset_paths, models, sockets_connections)
+
+    sockets
+        .add_connections(vec![
+            (void, vec![void]),
+            (pillar_side, vec![pillar_side, void]),
+        ])
+        .add_rotated_connection(pillar_base_top, vec![pillar_core_bottom])
+        .add_rotated_connection(pillar_core_top, vec![pillar_core_bottom, pillar_cap_bottom])
+        .add_rotated_connection(pillar_cap_top, vec![void]);
+
+    (models_asset_paths, models, sockets)
 }

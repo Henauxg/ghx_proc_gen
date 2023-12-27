@@ -1,10 +1,6 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, f32::consts::PI};
 
-use bevy::{
-    log::LogPlugin,
-    pbr::{CascadeShadowConfigBuilder, DirectionalLightShadowMap},
-    prelude::*,
-};
+use bevy::{log::LogPlugin, pbr::DirectionalLightShadowMap, prelude::*};
 
 use bevy_examples::{
     anim::{ease_in_cubic, SpawningScaleAnimation},
@@ -56,23 +52,22 @@ fn setup_scene(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // Camera
-    let camera_position = Vec3::new(-2.5, 1.5, 9.0);
-    let _radius = camera_position.length();
+    let camera_position = Vec3::new(0., 1.5 * GRID_HEIGHT as f32, GRID_Z as f32 / 3.);
+    let radius = camera_position.length();
     commands.spawn((
         Camera3dBundle {
             transform: Transform::from_translation(camera_position).looking_at(Vec3::ZERO, Vec3::Y),
             ..default()
         },
         PanOrbitCamera {
-            focus: camera_position,
-            radius: 0.01,
+            radius,
             ..Default::default()
         },
         FogSettings {
             color: Color::rgba(0.2, 0.15, 0.1, 1.0),
             falloff: FogFalloff::Linear {
-                start: 12.0,
-                end: 30.0,
+                start: 20.0,
+                end: 45.0,
             },
             ..default()
         },
@@ -98,21 +93,11 @@ fn setup_scene(
             // cull_mode: None,
             ..default()
         }),
-        transform: Transform::from_scale(Vec3::splat(100.0)),
-        ..default()
-    });
-    // Ceiling
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(shape::Plane::default())),
-        material: materials.add(StandardMaterial {
-            base_color: Color::hex("888888").unwrap(),
-            // unlit: true,
-            // cull_mode: None,
-            ..default()
-        }),
-        transform: Transform::from_scale(Vec3::splat(100.0))
-            .with_translation(Vec3::new(0., GRID_HEIGHT as f32, 0.))
-            .with_rotation(Quat::from_rotation_x(f32::to_radians(180.))),
+        transform: Transform::from_scale(Vec3::splat(100.0)).with_translation(Vec3::new(
+            0.,
+            NODE_SIZE / 2.,
+            0.,
+        )),
         ..default()
     });
 
@@ -124,26 +109,39 @@ fn setup_scene(
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
             shadows_enabled: true,
-            illuminance: 10000.,
-            color: Color::WHITE,
+            illuminance: 8000.,
+            color: Color::ORANGE_RED,
             ..default()
         },
-        cascade_shadow_config: CascadeShadowConfigBuilder {
-            num_cascades: 1,
-            maximum_distance: 1.6,
+        transform: Transform {
+            translation: Vec3::new(5.0, 10.0, 2.0),
+            rotation: Quat::from_euler(EulerRot::ZYX, 0., -PI / 5., -PI / 3.),
             ..default()
-        }
-        .into(),
+        },
+        ..default()
+    });
+    commands.spawn(DirectionalLightBundle {
+        directional_light: DirectionalLight {
+            shadows_enabled: false,
+            illuminance: 4000.,
+            color: Color::ORANGE_RED,
+            ..default()
+        },
+        transform: Transform {
+            translation: Vec3::new(5.0, 10.0, 2.0),
+            rotation: Quat::from_euler(EulerRot::ZYX, 0., PI * 4. / 5., -PI / 3.),
+            ..default()
+        },
         ..default()
     });
 }
 
 fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
     // Load rules
-    let (models_asset_paths, models, sockets_connections) = rules_and_assets();
+    let (models_asset_paths, models, socket_collection) = rules_and_assets();
 
     // Create generator
-    let rules = RulesBuilder::new_cartesian_3d(models, sockets_connections)
+    let rules = RulesBuilder::new_cartesian_3d(models, socket_collection)
         .build()
         .unwrap();
     let grid = GridDefinition::new_cartesian_3d(GRID_X, GRID_HEIGHT, GRID_Z, false);
