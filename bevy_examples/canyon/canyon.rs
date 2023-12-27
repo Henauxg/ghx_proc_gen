@@ -27,15 +27,17 @@ mod rules;
 
 // --------------------------------------------
 /// Change this value to change the way the generation is visualized
-const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::StepByStep(5);
+const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::StepByStep(1);
 
 /// Change to visualize void nodes with a transparent asset
-const SEE_VOID_NODES: bool = true;
+const SEE_VOID_NODES: bool = false;
+
+const AUTO_ORBIT_CAMERA: bool = true;
 
 /// Change this to change the map size.
 const GRID_HEIGHT: u32 = 5;
-const GRID_X: u32 = 20;
-const GRID_Z: u32 = 20;
+const GRID_X: u32 = 18;
+const GRID_Z: u32 = 18;
 // --------------------------------------------
 
 const ASSETS_PATH: &str = "canyon";
@@ -65,6 +67,7 @@ fn setup_scene(
         },
         PanOrbitCamera {
             radius,
+            auto_orbit: AUTO_ORBIT_CAMERA,
             ..Default::default()
         },
     ));
@@ -105,10 +108,10 @@ fn setup_scene(
 }
 
 fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let (models_asset_paths, models, sockets_connections) = rules_and_assets();
+    let (models_asset_paths, models, socket_collection) = rules_and_assets();
 
     // Create generator
-    let rules = RulesBuilder::new_cartesian_3d(models, sockets_connections)
+    let rules = RulesBuilder::new_cartesian_3d(models, socket_collection)
         .build()
         .unwrap();
     let grid = GridDefinition::new_cartesian_3d(GRID_X, GRID_HEIGHT, GRID_Z, false);
@@ -120,7 +123,13 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         .with_node_heuristic(NodeSelectionHeuristic::MinimumRemainingValue)
         .with_model_heuristic(ModelSelectionHeuristic::WeightedProbability)
         .build();
-    info!("Seed: {}", gen.get_seed());
+    info!(
+        "Seed: {}, grid size {} {} {}",
+        gen.get_seed(),
+        GRID_X,
+        GRID_HEIGHT,
+        GRID_Z
+    );
 
     // Load assets
     let mut models_assets = HashMap::new();

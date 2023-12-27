@@ -1,113 +1,32 @@
 use bevy_ghx_proc_gen::proc_gen::{
-    generator::{
-        node::{NodeModel, SocketId, SocketsCartesian3D},
-        rules::SocketConnections,
-    },
+    generator::node::{NodeModel, NodeRotation, Socket, SocketCollection, SocketsCartesian3D},
     grid::direction::Cartesian3D,
 };
 
 use crate::SEE_VOID_NODES;
 
-const VOID: SocketId = 0;
-const VOID_TOP: SocketId = 1;
-const VOID_BOTTOM: SocketId = 2;
-
-const WATER: SocketId = 10;
-const WATER_BORDER: SocketId = 11;
-const WATER_TOP: SocketId = 12;
-const WATER_BOTTOM: SocketId = 13;
-
-const SAND: SocketId = 20;
-const SAND_BORDER: SocketId = 21;
-const SAND_TOP: SocketId = 22;
-const SAND_BOTTOM: SocketId = 23;
-
-const ROCK: SocketId = 30;
-const ROCK_BORDER_TOP: SocketId = 32;
-const ROCK_BORDER_BOTTOM: SocketId = 33;
-const ROCK_BORDER: SocketId = 34;
-const ROCK_TOP: SocketId = 35;
-const ROCK_BOTTOM: SocketId = 36;
-const ROCK_TO_OTHER: SocketId = 37;
-const OTHER_TO_ROCK: SocketId = 38;
-
-const GROUND_ROCK_TO_OTHER: SocketId = 40;
-const OTHER_TO_GROUND_ROCK: SocketId = 41;
-const GROUND_ROCK_BORDER: SocketId = 42;
-const GROUND_ROCK_BORDER_TOP: SocketId = 43;
-const GROUND_ROCK_BORDER_BOTTOM: SocketId = 44;
-
-const CACTUS_BORDER: SocketId = 50;
-const CACTUS_BOTTOM: SocketId = 51;
-const CACTUS_TOP: SocketId = 52;
-
-const BRIDGE: SocketId = 60;
-const BRIDGE_SIDE: SocketId = 61;
-const BRIDGE_BOTTOM: SocketId = 62;
-const BRIDGE_TOP: SocketId = 63;
-const BRIDGE_START_IN: SocketId = 64;
-const BRIDGE_START_OUT: SocketId = 65;
-const BRIDGE_START_BOTTOM: SocketId = 66;
-
-const PLATFORM_SIDE: SocketId = 70;
-const PLATFORM_TOP: SocketId = 71;
-const PLATFORM_BOTTOM: SocketId = 72;
-const PLATFORM_BACK: SocketId = 73;
-const PLATFORM_SUPPORT_TOP: SocketId = 74;
-const PLATFORM_SUPPORT_BOTTOM: SocketId = 75;
-
-pub(crate) fn _ground_rules_and_assets() -> (
-    Vec<Option<&'static str>>,
-    Vec<NodeModel<Cartesian3D>>,
-    Vec<SocketConnections>,
-) {
-    let assets_and_models = vec![
-        (
-            Some("water_poly"),
-            SocketsCartesian3D::Multiple {
-                x_pos: vec![WATER],
-                x_neg: vec![WATER, WATER_BORDER],
-                z_pos: vec![WATER],
-                z_neg: vec![WATER, WATER_BORDER],
-                y_pos: vec![WATER_TOP],
-                y_neg: vec![WATER_BOTTOM],
-            }
-            .new_model()
-            .with_all_rotations()
-            .with_weight(1.25),
-        ),
-        (
-            Some("sand"),
-            SocketsCartesian3D::Multiple {
-                x_pos: vec![SAND],
-                x_neg: vec![SAND, SAND_BORDER],
-                z_pos: vec![SAND],
-                z_neg: vec![SAND, SAND_BORDER],
-                y_pos: vec![SAND_TOP],
-                y_neg: vec![SAND_BOTTOM],
-            }
-            .new_model()
-            .with_all_rotations()
-            .with_weight(1.25),
-        ),
-    ];
-    let sockets_connections = vec![
-        (WATER, vec![WATER]),
-        (SAND, vec![SAND]),
-        (SAND_BORDER, vec![WATER_BORDER]),
-    ];
-    (
-        assets_and_models.iter().map(|t| t.0).collect(),
-        assets_and_models.iter().map(|t| t.1.clone()).collect(),
-        sockets_connections,
-    )
-}
-
 pub(crate) fn rules_and_assets() -> (
     Vec<Option<&'static str>>,
     Vec<NodeModel<Cartesian3D>>,
-    Vec<SocketConnections>,
+    SocketCollection,
 ) {
+    let mut sockets = SocketCollection::new();
+
+    let mut s = || -> Socket { sockets.create() };
+    let (void, void_top, void_bottom) = (s(), s(), s());
+    let (water, water_border, water_top, water_bottom) = (s(), s(), s(), s());
+    let (sand, sand_border, sand_top, sand_bottom) = (s(), s(), s(), s());
+    let (ground_rock_border, ground_rock_border_top, ground_rock_border_bottom) = (s(), s(), s());
+    let (ground_rock_to_other, other_to_ground_rock) = (s(), s());
+    let (rock, rock_top, rock_bottom) = (s(), s(), s());
+    let (rock_border, rock_border_top, rock_border_bottom) = (s(), s(), s());
+    let (rock_to_other, other_to_rock) = (s(), s());
+    let (bridge, bridge_side, bridge_top, bridge_bottom) = (s(), s(), s(), s());
+    let (bridge_start_in, bridge_start_out, bridge_start_bottom) = (s(), s(), s());
+    let (platform_side, platform_back, platform_top, platform_bottom) = (s(), s(), s(), s());
+    let (platform_support_top, platform_support_bottom) = (s(), s());
+    let (cactus_border, cactus_top, cactus_bottom) = (s(), s(), s());
+
     let assets_and_models = vec![
         (
             match SEE_VOID_NODES {
@@ -115,12 +34,12 @@ pub(crate) fn rules_and_assets() -> (
                 false => None,
             },
             SocketsCartesian3D::Simple {
-                x_pos: VOID,
-                x_neg: VOID,
-                z_pos: VOID,
-                z_neg: VOID,
-                y_pos: VOID_TOP,
-                y_neg: VOID_BOTTOM,
+                x_pos: void,
+                x_neg: void,
+                z_pos: void,
+                z_neg: void,
+                y_pos: void_top,
+                y_neg: void_bottom,
             }
             .new_model()
             .with_weight(10.),
@@ -128,12 +47,12 @@ pub(crate) fn rules_and_assets() -> (
         (
             Some("water_poly"),
             SocketsCartesian3D::Multiple {
-                x_pos: vec![WATER],
-                x_neg: vec![WATER, WATER_BORDER],
-                z_pos: vec![WATER],
-                z_neg: vec![WATER, WATER_BORDER],
-                y_pos: vec![WATER_TOP],
-                y_neg: vec![WATER_BOTTOM],
+                x_pos: vec![water],
+                x_neg: vec![water, water_border],
+                z_pos: vec![water],
+                z_neg: vec![water, water_border],
+                y_pos: vec![water_top],
+                y_neg: vec![water_bottom],
             }
             .new_model()
             .with_all_rotations()
@@ -142,12 +61,12 @@ pub(crate) fn rules_and_assets() -> (
         (
             Some("sand"),
             SocketsCartesian3D::Multiple {
-                x_pos: vec![SAND],
-                x_neg: vec![SAND, SAND_BORDER],
-                z_pos: vec![SAND],
-                z_neg: vec![SAND, SAND_BORDER],
-                y_pos: vec![SAND_TOP],
-                y_neg: vec![SAND_BOTTOM],
+                x_pos: vec![sand],
+                x_neg: vec![sand, sand_border],
+                z_pos: vec![sand],
+                z_neg: vec![sand, sand_border],
+                y_pos: vec![sand_top],
+                y_neg: vec![sand_bottom],
             }
             .new_model()
             .with_all_rotations()
@@ -156,12 +75,12 @@ pub(crate) fn rules_and_assets() -> (
         (
             Some("cactus"),
             SocketsCartesian3D::Simple {
-                x_pos: CACTUS_BORDER,
-                x_neg: CACTUS_BORDER,
-                z_pos: CACTUS_BORDER,
-                z_neg: CACTUS_BORDER,
-                y_pos: CACTUS_TOP,
-                y_neg: CACTUS_BOTTOM,
+                x_pos: cactus_border,
+                x_neg: cactus_border,
+                z_pos: cactus_border,
+                z_neg: cactus_border,
+                y_pos: cactus_top,
+                y_neg: cactus_bottom,
             }
             .new_model()
             .with_all_rotations()
@@ -170,12 +89,12 @@ pub(crate) fn rules_and_assets() -> (
         (
             Some("ground_rock_corner_in"),
             SocketsCartesian3D::Multiple {
-                x_pos: vec![GROUND_ROCK_BORDER],
-                x_neg: vec![OTHER_TO_GROUND_ROCK],
-                z_pos: vec![GROUND_ROCK_BORDER],
-                z_neg: vec![GROUND_ROCK_TO_OTHER],
-                y_pos: vec![GROUND_ROCK_BORDER_TOP],
-                y_neg: vec![GROUND_ROCK_BORDER_BOTTOM],
+                x_pos: vec![ground_rock_border],
+                x_neg: vec![other_to_ground_rock],
+                z_pos: vec![ground_rock_border],
+                z_neg: vec![ground_rock_to_other],
+                y_pos: vec![ground_rock_border_top],
+                y_neg: vec![ground_rock_border_bottom],
             }
             .new_model()
             .with_all_rotations()
@@ -184,12 +103,12 @@ pub(crate) fn rules_and_assets() -> (
         (
             Some("ground_rock_side"),
             SocketsCartesian3D::Multiple {
-                x_pos: vec![GROUND_ROCK_BORDER],
-                x_neg: vec![ROCK],
-                z_pos: vec![OTHER_TO_GROUND_ROCK],
-                z_neg: vec![GROUND_ROCK_TO_OTHER],
-                y_pos: vec![GROUND_ROCK_BORDER_TOP],
-                y_neg: vec![GROUND_ROCK_BORDER_BOTTOM],
+                x_pos: vec![ground_rock_border],
+                x_neg: vec![rock],
+                z_pos: vec![other_to_ground_rock],
+                z_neg: vec![ground_rock_to_other],
+                y_pos: vec![ground_rock_border_top],
+                y_neg: vec![ground_rock_border_bottom],
             }
             .new_model()
             .with_all_rotations()
@@ -198,12 +117,12 @@ pub(crate) fn rules_and_assets() -> (
         (
             Some("rock_corner_in_1"),
             SocketsCartesian3D::Multiple {
-                x_pos: vec![ROCK_BORDER],
-                x_neg: vec![OTHER_TO_ROCK],
-                z_pos: vec![ROCK_BORDER],
-                z_neg: vec![ROCK_TO_OTHER],
-                y_pos: vec![ROCK_BORDER_TOP],
-                y_neg: vec![ROCK_BORDER_BOTTOM],
+                x_pos: vec![rock_border],
+                x_neg: vec![other_to_rock],
+                z_pos: vec![rock_border],
+                z_neg: vec![rock_to_other],
+                y_pos: vec![rock_border_top],
+                y_neg: vec![rock_border_bottom],
             }
             .new_model()
             .with_all_rotations()
@@ -212,12 +131,12 @@ pub(crate) fn rules_and_assets() -> (
         (
             Some("rock_corner_in_2"),
             SocketsCartesian3D::Multiple {
-                x_pos: vec![ROCK_BORDER],
-                x_neg: vec![OTHER_TO_ROCK],
-                z_pos: vec![ROCK_BORDER],
-                z_neg: vec![ROCK_TO_OTHER],
-                y_pos: vec![ROCK_BORDER_TOP],
-                y_neg: vec![ROCK_BORDER_BOTTOM],
+                x_pos: vec![rock_border],
+                x_neg: vec![other_to_rock],
+                z_pos: vec![rock_border],
+                z_neg: vec![rock_to_other],
+                y_pos: vec![rock_border_top],
+                y_neg: vec![rock_border_bottom],
             }
             .new_model()
             .with_all_rotations()
@@ -226,12 +145,12 @@ pub(crate) fn rules_and_assets() -> (
         (
             Some("rock_side_1"),
             SocketsCartesian3D::Multiple {
-                x_pos: vec![ROCK_BORDER],
-                x_neg: vec![ROCK],
-                z_pos: vec![OTHER_TO_ROCK],
-                z_neg: vec![ROCK_TO_OTHER],
-                y_pos: vec![ROCK_BORDER_TOP],
-                y_neg: vec![ROCK_BORDER_BOTTOM],
+                x_pos: vec![rock_border],
+                x_neg: vec![rock],
+                z_pos: vec![other_to_rock],
+                z_neg: vec![rock_to_other],
+                y_pos: vec![rock_border_top],
+                y_neg: vec![rock_border_bottom],
             }
             .new_model()
             .with_all_rotations()
@@ -240,12 +159,12 @@ pub(crate) fn rules_and_assets() -> (
         (
             Some("rock"), // rock
             SocketsCartesian3D::Multiple {
-                x_pos: vec![ROCK],
-                x_neg: vec![ROCK],
-                z_pos: vec![ROCK],
-                z_neg: vec![ROCK],
-                y_pos: vec![ROCK_TOP],
-                y_neg: vec![ROCK_BOTTOM],
+                x_pos: vec![rock],
+                x_neg: vec![rock],
+                z_pos: vec![rock],
+                z_neg: vec![rock],
+                y_pos: vec![rock_top],
+                y_neg: vec![rock_bottom],
             }
             .new_model()
             .with_weight(0.05), // .with_all_rotations()
@@ -254,12 +173,12 @@ pub(crate) fn rules_and_assets() -> (
         (
             Some("bridge_start"),
             SocketsCartesian3D::Multiple {
-                x_pos: vec![BRIDGE_SIDE],
-                x_neg: vec![BRIDGE_SIDE],
-                z_pos: vec![BRIDGE_START_OUT],
-                z_neg: vec![BRIDGE_START_IN],
-                y_pos: vec![BRIDGE_TOP],
-                y_neg: vec![BRIDGE_START_BOTTOM],
+                x_pos: vec![bridge_side],
+                x_neg: vec![bridge_side],
+                z_pos: vec![bridge_start_out],
+                z_neg: vec![bridge_start_in],
+                y_pos: vec![bridge_top],
+                y_neg: vec![bridge_start_bottom],
             }
             .new_model()
             .with_all_rotations()
@@ -268,12 +187,12 @@ pub(crate) fn rules_and_assets() -> (
         (
             Some("bridge"),
             SocketsCartesian3D::Multiple {
-                x_pos: vec![BRIDGE_SIDE],
-                x_neg: vec![BRIDGE_SIDE],
-                z_pos: vec![BRIDGE],
-                z_neg: vec![BRIDGE],
-                y_pos: vec![BRIDGE_TOP],
-                y_neg: vec![BRIDGE_BOTTOM],
+                x_pos: vec![bridge_side],
+                x_neg: vec![bridge_side],
+                z_pos: vec![bridge],
+                z_neg: vec![bridge],
+                y_pos: vec![bridge_top],
+                y_neg: vec![bridge_bottom],
             }
             .new_model()
             .with_all_rotations()
@@ -308,55 +227,68 @@ pub(crate) fn rules_and_assets() -> (
         //     .with_weight(0.01),
         // ),
     ];
-    let sockets_connections = vec![
-        (VOID, vec![VOID]),
-        (VOID_BOTTOM, vec![VOID_TOP]),
-        (WATER, vec![WATER]),
-        (WATER_TOP, vec![VOID_BOTTOM]),
-        (SAND, vec![SAND]),
-        (SAND_TOP, vec![VOID_BOTTOM]),
-        (SAND_BORDER, vec![WATER_BORDER]),
-        (SAND_BORDER, vec![WATER_BORDER]),
-        (GROUND_ROCK_BORDER, vec![WATER, SAND]),
-        (
-            GROUND_ROCK_BORDER_TOP,
-            vec![VOID_BOTTOM, ROCK_BORDER_BOTTOM],
-        ),
-        (GROUND_ROCK_TO_OTHER, vec![OTHER_TO_GROUND_ROCK]),
-        (ROCK_BORDER_TOP, vec![VOID_BOTTOM, ROCK_BORDER_BOTTOM]),
-        (ROCK, vec![ROCK]),
-        (ROCK_BORDER, vec![VOID]),
-        (ROCK_TO_OTHER, vec![OTHER_TO_ROCK]),
-        (ROCK_TOP, vec![ROCK_BOTTOM, ROCK_BORDER_BOTTOM, VOID_BOTTOM]),
-        (BRIDGE, vec![BRIDGE]),
-        (BRIDGE_SIDE, vec![VOID, ROCK_BORDER]),
-        (BRIDGE_START_OUT, vec![VOID, ROCK_BORDER]),
-        (BRIDGE_START_IN, vec![BRIDGE]),
-        (BRIDGE_TOP, vec![VOID_BOTTOM, BRIDGE_BOTTOM]),
-        (
-            BRIDGE_BOTTOM,
-            vec![VOID_TOP, CACTUS_TOP, SAND_TOP, WATER_TOP],
-        ),
-        (
-            BRIDGE_START_BOTTOM,
-            vec![ROCK_BORDER_TOP, GROUND_ROCK_BORDER_TOP],
-        ),
-        (PLATFORM_SIDE, vec![VOID, ROCK_BORDER, GROUND_ROCK_BORDER]),
-        (PLATFORM_BACK, vec![VOID]),
-        (PLATFORM_TOP, vec![VOID]),
-        (PLATFORM_BOTTOM, vec![PLATFORM_SUPPORT_TOP]),
-        (PLATFORM_SUPPORT_TOP, vec![PLATFORM_SUPPORT_BOTTOM]),
-        (PLATFORM_SUPPORT_BOTTOM, vec![ROCK_TOP, SAND_TOP, WATER_TOP]),
-        (
-            CACTUS_BORDER,
-            vec![VOID, ROCK_BORDER, BRIDGE_SIDE, PLATFORM_SIDE],
-        ),
-        (CACTUS_BOTTOM, vec![SAND_TOP]),
-        (CACTUS_TOP, vec![VOID_BOTTOM]),
-    ];
+    sockets
+        // Void
+        .add_connection(void, vec![void])
+        .add_rotated_connection(void_bottom, vec![void_top])
+        // Water & sand
+        .add_connection(water, vec![water])
+        .add_rotated_connection(water_top, vec![void_bottom])
+        .add_connection(sand, vec![sand])
+        .add_connection(sand_border, vec![water_border])
+        .add_rotated_connection(sand_top, vec![void_bottom])
+        // Rocks
+        .add_connections(vec![
+            (ground_rock_border, vec![water, sand]),
+            (ground_rock_to_other, vec![other_to_ground_rock]),
+        ])
+        .add_rotated_connection(
+            ground_rock_border_top,
+            vec![void_bottom, rock_border_bottom],
+        )
+        .add_connections(vec![
+            (rock, vec![rock]),
+            (rock_border, vec![void]),
+            (rock_to_other, vec![other_to_rock]),
+        ])
+        .add_rotated_connection(rock_border_top, vec![void_bottom, rock_border_bottom])
+        .add_rotated_connection(rock_top, vec![rock_bottom, rock_border_bottom, void_bottom])
+        // Bridges
+        .add_connections(vec![
+            (bridge, vec![bridge]),
+            (bridge_side, vec![void, rock_border]),
+            (bridge_start_out, vec![void, rock_border]),
+            (bridge_start_in, vec![bridge]),
+        ])
+        .add_rotated_connection(bridge_top, vec![void_bottom, bridge_bottom])
+        .add_rotated_connection(bridge_bottom, vec![void_top, sand_top, water_top])
+        .add_constrained_rotated_connection(
+            bridge_start_bottom,
+            vec![NodeRotation::Rot180, NodeRotation::Rot270],
+            vec![rock_border_top, ground_rock_border_top],
+        )
+        // Platforms
+        .add_connections(vec![
+            (platform_side, vec![void, rock_border, ground_rock_border]),
+            (platform_back, vec![void]),
+        ])
+        .add_rotated_connection(platform_top, vec![void])
+        .add_rotated_connection(platform_bottom, vec![platform_support_top])
+        .add_rotated_connection(platform_support_top, vec![platform_support_bottom])
+        .add_rotated_connection(platform_support_bottom, vec![rock_top, sand_top, water_top])
+        // Cactuses
+        .add_connection(
+            cactus_border,
+            vec![void, rock_border, bridge_side, platform_side],
+        )
+        .add_rotated_connection(cactus_bottom, vec![sand_top])
+        .add_rotated_connection(cactus_top, vec![void_bottom, bridge_bottom]);
     (
         assets_and_models.iter().map(|t| t.0).collect(),
-        assets_and_models.iter().map(|t| t.1.clone()).collect(),
-        sockets_connections,
+        assets_and_models
+            .iter()
+            .map(|t| t.1.clone().with_name(t.0.unwrap_or("void")))
+            .collect(),
+        sockets,
     )
 }
