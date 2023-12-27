@@ -48,9 +48,9 @@ fn setup_scene(mut commands: Commands) {
 
 fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
     // Load rules
-    let (models_asset_paths, models, sockets_connections) = rules_and_assets();
+    let (models_asset_paths, models, socket_collection) = rules_and_assets();
 
-    let rules = RulesBuilder::new_cartesian_3d(models, sockets_connections)
+    let rules = RulesBuilder::new_cartesian_3d(models, socket_collection)
         // Use ZForward as the up axis (rotation axis for models) since we are still using Bevy in 2D
         .with_rotation_axis(Direction::ZForward)
         .build()
