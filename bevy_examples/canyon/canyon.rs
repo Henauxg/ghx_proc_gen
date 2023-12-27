@@ -35,9 +35,9 @@ const SEE_VOID_NODES: bool = false;
 const AUTO_ORBIT_CAMERA: bool = true;
 
 /// Change this to change the map size.
-const GRID_HEIGHT: u32 = 5;
-const GRID_X: u32 = 18;
-const GRID_Z: u32 = 18;
+const GRID_HEIGHT: u32 = 6;
+const GRID_X: u32 = 28;
+const GRID_Z: u32 = 28;
 // --------------------------------------------
 
 const ASSETS_PATH: &str = "canyon";
@@ -80,8 +80,8 @@ fn setup_scene(
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
             shadows_enabled: true,
-            illuminance: 10000.,
-            color: Color::ORANGE_RED,
+            illuminance: 8000.,
+            color: Color::rgb(1.0, 0.85, 0.65),
             ..default()
         },
         transform: Transform {
@@ -94,8 +94,8 @@ fn setup_scene(
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
             shadows_enabled: false,
-            illuminance: 5000.,
-            color: Color::WHITE,
+            illuminance: 4000.,
+            color: Color::ORANGE_RED,
             ..default()
         },
         transform: Transform {
