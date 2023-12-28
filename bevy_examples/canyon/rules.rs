@@ -280,6 +280,7 @@ pub(crate) fn rules_and_assets() -> (
         ])
         .add_rotated_connection(bridge_top, vec![void_bottom, bridge_bottom])
         .add_rotated_connection(bridge_bottom, vec![void_top, sand_top, water_top])
+        // A bridge start model should face outwards from a rock.
         .add_constrained_rotated_connection(
             bridge_start_bottom,
             vec![NodeRotation::Rot180, NodeRotation::Rot270],
@@ -291,6 +292,7 @@ pub(crate) fn rules_and_assets() -> (
             (platform_back, vec![void]),
         ])
         .add_rotated_connection(platform_top, vec![void])
+        // Keep the ladders and the wood beams aligned
         .add_constrained_rotated_connection(
             platform_bottom,
             vec![NodeRotation::Rot0],
@@ -308,8 +310,10 @@ pub(crate) fn rules_and_assets() -> (
             cactus_border,
             vec![void, rock_border, bridge_side, platform_side],
         )
-        .add_rotated_connection(cactus_bottom, vec![sand_top])
-        .add_rotated_connection(cactus_top, vec![void_bottom, bridge_bottom]);
+        .add_rotated_connections(vec![
+            (cactus_bottom, vec![sand_top]),
+            (cactus_top, vec![void_bottom, bridge_bottom]),
+        ]);
     (
         assets_and_models.iter().map(|t| t.0).collect(),
         assets_and_models
