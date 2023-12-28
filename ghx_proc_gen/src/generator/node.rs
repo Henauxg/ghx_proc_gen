@@ -13,33 +13,6 @@ use super::rules::CARTESIAN_2D_ROTATION_AXIS;
 /// Index of a model
 pub type ModelIndex = usize;
 
-pub(crate) fn expand_models<T: DirectionSet>(
-    models: Vec<NodeModel<T>>,
-    rotation_axis: Direction,
-) -> Vec<ExpandedNodeModel> {
-    let mut expanded_models = Vec::new();
-    for (index, model) in models.iter().enumerate() {
-        // Iterate on a vec of all possible node rotations and filter with the set to have a deterministic insertion order of expanded nodes.
-        for rotation in ALL_NODE_ROTATIONS {
-            if model.allowed_rotations.contains(&rotation) {
-                let rotated_sockets = model.rotated_sockets(*rotation, rotation_axis);
-                expanded_models.push(ExpandedNodeModel {
-                    sockets: rotated_sockets
-                        .iter()
-                        .map(|dir| dir.iter().map(|s| s.id()).collect())
-                        .collect(),
-                    weight: model.weight,
-                    original_index: index,
-                    rotation: *rotation,
-                    #[cfg(feature = "debug-traces")]
-                    name: model.name,
-                });
-            }
-        }
-    }
-    expanded_models
-}
-
 /// Id of a possible connection type
 pub(crate) type SocketId = u64;
 
@@ -54,6 +27,7 @@ pub struct SocketCollection {
 }
 
 impl SocketCollection {
+    /// Creates a new [`SocketCollection`] used to create [`Socket`]. Created [`Socket`] can then be used to define [`NodeModel`] and define connections between them.
     pub fn new() -> Self {
         Self {
             incremental_socket_index: 0,
@@ -62,12 +36,28 @@ impl SocketCollection {
         }
     }
 
+    /// Create a new [`Socket`] in the collection and return it
     pub fn create(&mut self) -> Socket {
         let socket = Socket::new(self.incremental_socket_index);
         self.incremental_socket_index += 1;
         socket
     }
 
+    /// Adds a connection between two sockets. [`NodeModel`] with sockets `from` can connect to [`NodeModel`] with sockets `to` and vice versa.
+    ///
+    /// - There is **no** direction in the relation, adding a connection from`a` to `b` also adds a connection from `b` to `a`
+    /// - By default (until the connection is explicitly added), a socket is not "compatible" with itself.
+    /// ### Example
+    /// ```
+    /// use ghx_proc_gen::generator::node::SocketCollection;
+    ///
+    /// let mut sockets = SocketCollection::new();
+    /// let a = sockets.create();
+    /// let b = sockets.create();
+    /// sockets.add_connection(a, vec![a, b]);
+    /// // `a` can be connected to `a` and `b`
+    /// // `b` can be connected to `a`
+    /// ```
     pub fn add_connection<I>(&mut self, from: Socket, to: I) -> &mut Self
     where
         I: IntoIterator<Item = Socket>,
@@ -78,6 +68,21 @@ impl SocketCollection {
         self
     }
 
+    /// Same as `add_connection` but accept multiple connections definitions at the same time.
+    /// ### Example
+    /// ```
+    /// use ghx_proc_gen::generator::node::SocketCollection;
+    ///
+    /// let mut sockets = SocketCollection::new();
+    /// let (a, b, c) = (sockets.create(), sockets.create(), sockets.create());
+    /// sockets.add_connections(vec![
+    ///     (a, vec![a, b]),
+    ///     (b, vec![c])
+    /// ]);
+    /// // `a` can be connected to `a` and `b`
+    /// // `b` can be connected to `a` and `c`
+    /// // `c` can be connected to `b`
+    /// ```
     pub fn add_connections<I, J>(&mut self, connections: I) -> &mut Self
     where
         I: IntoIterator<Item = (Socket, J)>,
@@ -91,6 +96,38 @@ impl SocketCollection {
         self
     }
 
+    /// Adds a connection between all possible rotations of two sockets that are on the rotation axis of the [`Rules`]. [`NodeModel`] with sockets `from` can connect to [`NodeModel`] with sockets `to` and vice versa.
+    ///
+    /// - There is **no** direction in the relation, adding a connection from`a` to `b` also adds a connection from `b` to `a`
+    /// - By default (until the connection is explicitly added), a socket is not "compatible" with itself.
+    /// ### Example
+    /// ```
+    /// use ghx_proc_gen::generator::node::{SocketCollection, SocketsCartesian3D};
+    ///
+    /// let mut sockets = SocketCollection::new();
+    /// let (side_a, vertical_a) = (sockets.create(), sockets.create());
+    /// let (side_b, vertical_b) = (sockets.create(), sockets.create());
+    /// // If Y+ is our rotation axis. We could have such node models:
+    /// let model_a = SocketsCartesian3D::Simple {
+    ///     x_pos: side_a,
+    ///     x_neg: side_a,
+    ///     z_pos: side_a,
+    ///     z_neg: side_a,
+    ///     y_pos: vertical_a,
+    ///     y_neg: vertical_a,
+    /// }.new_model().with_all_rotations();
+    /// let model_b = SocketsCartesian3D::Simple {
+    ///     x_pos: side_b,
+    ///     x_neg: side_b,
+    ///     z_pos: side_b,
+    ///     z_neg: side_b,
+    ///     y_pos: vertical_b,
+    ///     y_neg: vertical_b,
+    /// }.new_model().with_all_rotations();
+    /// sockets.add_rotated_connection(vertical_a, vec![vertical_b]);
+    /// // `model_a` and `model_b` can now be stacked on top of each other (no matter their rotations)
+    /// // Note: here two `model_a` cannot be stacke don top of each other since `vertical_a` was not said to be connected to itself.
+    /// ```
     pub fn add_rotated_connection(&mut self, from: Socket, to: Vec<Socket>) -> &mut Self {
         for to_rotation in ALL_NODE_ROTATIONS {
             let to_rotated_sockets: Vec<Socket> =
@@ -105,17 +142,35 @@ impl SocketCollection {
         self
     }
 
-    /// Modifies `delta_rotations`
+    /// Same as `add_rotated_connection` but accepts multiple connections definitions at the same time.
+    pub fn add_rotated_connections<I>(&mut self, connections: I) -> &mut Self
+    where
+        I: IntoIterator<Item = (Socket, Vec<Socket>)>,
+    {
+        for (from, to_sockets) in connections.into_iter() {
+            self.add_rotated_connection(from, to_sockets);
+        }
+        self
+    }
+
+    /// Similar to `add_rotated_connection` but with additional constraints.
+    ///
+    /// Adds a connection between only the specified `relative_rotations` of two sockets that are on the rotation axis of the [`Rules`]. [`NodeModel`] with sockets `from`, with a given relative rotation to socket `to`, can connect to [`NodeModel`] with sockets `to` and vice versa (with the opposite relative rotation).
+    ///
+    /// `relative_rotations` should be defined with regard to rotation [`NodeRotation::Rot0`] of `to`. So a value of [`NodeRotation::Rot90`] in `relative_rotations` means that a `from` socket can be connected to a `to` socket if and only if the `from` socket is rotated 90° more than the `to` socket, no matter their absolute rotations.
+    ///
+    /// - There is **no** direction in the relation, adding a connection from`a` to `b` also adds a connection from `b` to `a` (here with the opposite relative rotation)
+    /// - By default (until the connection is explicitly added), a socket is not "compatible" with itself.
     pub fn add_constrained_rotated_connection(
         &mut self,
         from: Socket,
-        mut delta_rotations: Vec<NodeRotation>,
+        mut relative_rotations: Vec<NodeRotation>,
         to: Vec<Socket>,
     ) -> &mut Self {
         for to_rotation in ALL_NODE_ROTATIONS {
             let to_rotated_sockets: Vec<Socket> =
                 to.iter().map(|s| s.rotated(*to_rotation)).collect();
-            for from_rotation in delta_rotations.iter_mut() {
+            for from_rotation in relative_rotations.iter_mut() {
                 let from_rotated_socket = from.rotated(*from_rotation);
                 for to_socket in to_rotated_sockets.iter() {
                     self.register_connection(&from_rotated_socket, &to_socket);
@@ -153,8 +208,12 @@ impl SocketCollection {
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
+/// Defines a contact point of a [`NodeModel`]. Each [`NodeModel`] may have none or multiple socket(s) on each of his sides.
+/// Relations between sockets are not defined on the socket nor on the [`NodeModel`] but rather in a [`SocketCollection`].
 pub struct Socket {
+    /// Index of the socket. Always unique, except for rotated sockets on the rotation axis which share the same `socket_index`
     socket_index: u32,
+    /// Internal index which defines the rotation of the socket. Always `NodeRotation::Rot0` for sockets that are not on the rotation axis of the [`Rules`]
     rot: NodeRotation,
 }
 
@@ -195,7 +254,7 @@ pub struct NodeModel<T: DirectionSet> {
     /// Defaults to only [`NodeRotation::Rot0`].
     ///
     /// Notes:
-    /// - In 3d, top and bottom sockets of a model are rotated into new sockets when the model itself is rotated.
+    /// - In 3d, sockets of a model that are on the rotation axis are rotated into new sockets when the model itself is rotated. See [`SocketCollection`] for how to define and/or constrain sockets connections on the rotation axis.
     /// - In 2d, the rotation axis cannot be modified and is set to [`Direction::ZForward`].
     allowed_rotations: HashSet<NodeRotation>,
 
@@ -460,15 +519,19 @@ pub struct ExpandedNodeModel {
 }
 
 impl ExpandedNodeModel {
+    /// Return the sockets of the model
     pub fn sockets(&self) -> &Vec<Vec<SocketId>> {
         &self.sockets
     }
+    /// Returns the weight of the model
     pub fn weight(&self) -> f32 {
         self.weight
     }
+    /// Returns the index of the [`NodeModel`] this model was expanded from
     pub fn original_index(&self) -> ModelIndex {
         self.original_index
     }
+    /// Returns the rotation applied to the original [``NodeModel`] this model was expanded from
     pub fn rotation(&self) -> NodeRotation {
         self.rotation
     }
@@ -542,17 +605,46 @@ impl NodeRotation {
     }
 
     #[inline]
+    /// Returns a new [`NodeRotation`] equal to this rotation rotated by `rotation` counter-clock
+    ///     
+    /// ### Example
+    /// ```
+    /// use ghx_proc_gen::generator::node::NodeRotation;
+    ///
+    /// let rot_90 = NodeRotation::Rot90;
+    /// assert_eq!(rot_90.rotated(NodeRotation::Rot180), NodeRotation::Rot270);
+    /// ```
     pub fn rotated(&self, rotation: NodeRotation) -> NodeRotation {
         ALL_NODE_ROTATIONS
             [(self.index() as usize + rotation.index() as usize) % ALL_NODE_ROTATIONS.len()]
     }
 
     #[inline]
+    /// Modifies this rotation by rotating it by `rotation` counter-clock
+    ///     
+    /// ### Example
+    /// ```
+    /// use ghx_proc_gen::generator::node::NodeRotation;
+    ///
+    /// let mut rot = NodeRotation::Rot90;
+    /// rot.rotate(NodeRotation::Rot180);
+    /// assert_eq!(rot, NodeRotation::Rot270);
+    /// ```
     pub fn rotate(&mut self, rotation: NodeRotation) {
         *self = self.rotated(rotation);
     }
 
     #[inline]
+    /// Returns the next [`NodeRotation`]: this rotation rotated by 90° counter-clockwise.
+    ///
+    /// ### Example
+    /// ```
+    /// use ghx_proc_gen::generator::node::NodeRotation;
+    ///
+    /// let rot_90 = NodeRotation::Rot90;
+    /// let rot_180 = rot_90.next();
+    /// assert_eq!(rot_180, NodeRotation::Rot180);
+    /// ```
     pub fn next(&self) -> NodeRotation {
         self.rotated(NodeRotation::Rot90)
     }
@@ -565,3 +657,30 @@ pub const ALL_NODE_ROTATIONS: &'static [NodeRotation] = &[
     NodeRotation::Rot180,
     NodeRotation::Rot270,
 ];
+
+pub(crate) fn expand_models<T: DirectionSet>(
+    models: Vec<NodeModel<T>>,
+    rotation_axis: Direction,
+) -> Vec<ExpandedNodeModel> {
+    let mut expanded_models = Vec::new();
+    for (index, model) in models.iter().enumerate() {
+        // Iterate on a vec of all possible node rotations and filter with the set to have a deterministic insertion order of expanded nodes.
+        for rotation in ALL_NODE_ROTATIONS {
+            if model.allowed_rotations.contains(&rotation) {
+                let rotated_sockets = model.rotated_sockets(*rotation, rotation_axis);
+                expanded_models.push(ExpandedNodeModel {
+                    sockets: rotated_sockets
+                        .iter()
+                        .map(|dir| dir.iter().map(|s| s.id()).collect())
+                        .collect(),
+                    weight: model.weight,
+                    original_index: index,
+                    rotation: *rotation,
+                    #[cfg(feature = "debug-traces")]
+                    name: model.name,
+                });
+            }
+        }
+    }
+    expanded_models
+}
