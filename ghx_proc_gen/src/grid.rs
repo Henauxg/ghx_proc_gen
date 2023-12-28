@@ -1,4 +1,4 @@
-use std::ops::Range;
+use std::{fmt, ops::Range};
 
 use self::direction::{Cartesian2D, Cartesian3D, Direction, DirectionSet, GridDelta};
 
@@ -30,6 +30,16 @@ pub struct GridDefinition<T: DirectionSet + Clone> {
     looping_z: bool,
     pub(crate) direction_set: T,
     size_xy: u32,
+}
+
+impl<T: DirectionSet + Clone> fmt::Display for GridDefinition<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "( size: {} {} {}, looping: {} {} {} )",
+            self.size_x, self.size_y, self.size_z, self.looping_x, self.looping_y, self.looping_z
+        )
+    }
 }
 
 impl GridDefinition<Cartesian2D> {
