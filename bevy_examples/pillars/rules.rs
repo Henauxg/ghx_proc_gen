@@ -65,9 +65,11 @@ pub(crate) fn rules_and_assets() -> (
             (void, vec![void]),
             (pillar_side, vec![pillar_side, void]),
         ])
-        .add_rotated_connection(pillar_base_top, vec![pillar_core_bottom])
-        .add_rotated_connection(pillar_core_top, vec![pillar_core_bottom, pillar_cap_bottom])
-        .add_rotated_connection(pillar_cap_top, vec![void]);
+        .add_rotated_connections(vec![
+            (pillar_base_top, vec![pillar_core_bottom]),
+            (pillar_core_top, vec![pillar_core_bottom, pillar_cap_bottom]),
+            (pillar_cap_top, vec![void]),
+        ]);
 
     (models_asset_paths, models, sockets)
 }
