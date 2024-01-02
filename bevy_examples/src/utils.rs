@@ -1,4 +1,7 @@
+use std::collections::HashMap;
+
 use bevy::{
+    asset::{Asset, AssetServer},
     ecs::{
         query::With,
         system::{Query, Res},
@@ -7,6 +10,8 @@ use bevy::{
     render::view::Visibility,
 };
 use bevy_ghx_proc_gen::grid::DebugGridMesh;
+
+use crate::{AssetDef, NodeAsset};
 
 pub fn toggle_debug_grid_visibility(
     keys: Res<Input<KeyCode>>,
@@ -21,4 +26,25 @@ pub fn toggle_debug_grid_visibility(
             }
         }
     }
+}
+
+pub fn load_assets<A: Asset>(
+    asset_server: &Res<AssetServer>,
+    assets_definitions: Vec<Vec<AssetDef>>,
+    assets_directory: &str,
+    extension: &str,
+) -> HashMap<usize, Vec<NodeAsset<A>>> {
+    let mut models_assets = HashMap::new();
+    for (model_index, assets) in assets_definitions.iter().enumerate() {
+        let mut node_assets = Vec::new();
+        for asset_def in assets {
+            let handle = asset_server.load(format!(
+                "{assets_directory}/{}.{extension}",
+                asset_def.path()
+            ));
+            node_assets.push(asset_def.to_asset(handle));
+        }
+        models_assets.insert(model_index, node_assets);
+    }
+    models_assets
 }
