@@ -79,7 +79,7 @@ fn main() {
     let rules = RulesBuilder::new_cartesian_2d(models, sockets)
         .build()
         .unwrap();
-    let grid = GridDefinition::new_cartesian_2d(35, 12, false);
+    let grid = GridDefinition::new_cartesian_2d(35, 12, false, false);
     let mut generator = GeneratorBuilder::new()
         .with_rules(rules)
         .with_grid(grid)

@@ -144,7 +144,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
     let rules = RulesBuilder::new_cartesian_3d(models, socket_collection)
         .build()
         .unwrap();
-    let grid = GridDefinition::new_cartesian_3d(GRID_X, GRID_HEIGHT, GRID_Z, false);
+    let grid = GridDefinition::new_cartesian_3d(GRID_X, GRID_HEIGHT, GRID_Z, false, false, false);
     let gen = GeneratorBuilder::new()
         .with_rules(rules)
         .with_grid(grid.clone())

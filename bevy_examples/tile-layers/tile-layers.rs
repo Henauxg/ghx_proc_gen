@@ -30,7 +30,7 @@ const GRID_X: u32 = 20;
 const GRID_Y: u32 = 20;
 
 /// Change this value to change the way the generation is visualized
-const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::StepByStep(2);
+const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::Final;
 // --------------------------------------------
 
 /// Size of a block in world units
@@ -54,7 +54,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         .with_rotation_axis(Direction::ZForward)
         .build()
         .unwrap();
-    let grid = GridDefinition::new_cartesian_3d(GRID_X, GRID_Y, GRID_Z, false);
+    let grid = GridDefinition::new_cartesian_3d(GRID_X, GRID_Y, GRID_Z, false, false, false);
     // Create generator
     let gen = GeneratorBuilder::new()
         .with_rules(rules)
