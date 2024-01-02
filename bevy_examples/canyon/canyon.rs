@@ -1,4 +1,4 @@
-use std::{collections::HashMap, f32::consts::PI};
+use std::f32::consts::PI;
 
 use bevy::{log::LogPlugin, pbr::DirectionalLightShadowMap, prelude::*};
 
@@ -6,7 +6,7 @@ use bevy_examples::{
     anim::{ease_in_cubic, SpawningScaleAnimation},
     camera::{pan_orbit_camera, PanOrbitCamera},
     plugin::{scene_node_spawner, ProcGenExamplesPlugin},
-    utils::toggle_debug_grid_visibility,
+    utils::{load_assets, toggle_debug_grid_visibility},
     Generation, GenerationControl, GenerationViewMode,
 };
 use bevy_ghx_proc_gen::{
@@ -108,7 +108,7 @@ fn setup_scene(
 }
 
 fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let (models_asset_paths, models, socket_collection) = rules_and_assets();
+    let (assets_definitions, models, socket_collection) = rules_and_assets();
 
     // Create generator
     let rules = RulesBuilder::new_cartesian_3d(models, socket_collection)
@@ -125,15 +125,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         .build();
 
     // Load assets
-    let mut models_assets = HashMap::new();
-    for (model_index, path) in models_asset_paths.iter().enumerate() {
-        if let Some(path) = path {
-            models_assets.insert(
-                model_index,
-                asset_server.load(format!("{ASSETS_PATH}/{path}.glb#Scene0")),
-            );
-        }
-    }
+    let models_assets = load_assets(&asset_server, assets_definitions, ASSETS_PATH, "glb#Scene0");
 
     let grid_entity = commands
         .spawn((
@@ -162,6 +154,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
             ASSETS_SCALE,
             ease_in_cubic,
         )),
+        false,
     ));
 
     commands.insert_resource(GenerationControl::new(true, true, true));

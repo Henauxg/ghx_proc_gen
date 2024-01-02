@@ -1,10 +1,11 @@
+use bevy_examples::AssetDef;
 use bevy_ghx_proc_gen::proc_gen::{
     generator::node::{NodeModel, SocketCollection, SocketsCartesian3D},
     grid::direction::Cartesian3D,
 };
 
 pub(crate) fn rules_and_assets() -> (
-    Vec<Option<&'static str>>,
+    Vec<Vec<AssetDef>>,
     Vec<NodeModel<Cartesian3D>>,
     SocketCollection,
 ) {
@@ -23,11 +24,11 @@ pub(crate) fn rules_and_assets() -> (
     let pillar_cap_bottom = sockets.create();
     let pillar_cap_top = sockets.create();
 
-    let models_asset_paths: Vec<Option<&str>> = vec![
-        None,
-        Some("pillar_base"),
-        Some("pillar_core"),
-        Some("pillar_cap"),
+    let models_asset_paths: Vec<Vec<AssetDef>> = vec![
+        vec![],
+        vec![AssetDef::new("pillar_base")],
+        vec![AssetDef::new("pillar_core")],
+        vec![AssetDef::new("pillar_cap")],
     ];
     let models = vec![
         SocketsCartesian3D::Mono(void).new_model().with_weight(60.),

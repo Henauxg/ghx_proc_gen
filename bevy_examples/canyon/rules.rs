@@ -1,12 +1,13 @@
+use bevy_examples::AssetDef;
 use bevy_ghx_proc_gen::proc_gen::{
     generator::node::{NodeModel, NodeRotation, Socket, SocketCollection, SocketsCartesian3D},
-    grid::direction::Cartesian3D,
+    grid::direction::{Cartesian3D, DirectionSet},
 };
 
 use crate::SEE_VOID_NODES;
 
 pub(crate) fn rules_and_assets() -> (
-    Vec<Option<&'static str>>,
+    Vec<Vec<AssetDef>>,
     Vec<NodeModel<Cartesian3D>>,
     SocketCollection,
 ) {
@@ -32,11 +33,13 @@ pub(crate) fn rules_and_assets() -> (
     ) = (s(), s(), s(), s());
     let (cactus_border, cactus_top, cactus_bottom) = (s(), s(), s());
 
+    let asset = |str| -> Vec<AssetDef> { vec![AssetDef::new(str)] };
+
     let assets_and_models = vec![
         (
             match SEE_VOID_NODES {
-                true => Some("void"),
-                false => None,
+                true => asset("void"),
+                false => vec![],
             },
             SocketsCartesian3D::Simple {
                 x_pos: void,
@@ -50,7 +53,7 @@ pub(crate) fn rules_and_assets() -> (
             .with_weight(10.),
         ),
         (
-            Some("water_poly"),
+            asset("water_poly"),
             SocketsCartesian3D::Multiple {
                 x_pos: vec![water],
                 x_neg: vec![water, water_border],
@@ -64,7 +67,7 @@ pub(crate) fn rules_and_assets() -> (
             .with_weight(10.25),
         ),
         (
-            Some("sand"),
+            asset("sand"),
             SocketsCartesian3D::Multiple {
                 x_pos: vec![sand],
                 x_neg: vec![sand, sand_border],
@@ -78,7 +81,7 @@ pub(crate) fn rules_and_assets() -> (
             .with_weight(10.25),
         ),
         (
-            Some("cactus"),
+            asset("cactus"),
             SocketsCartesian3D::Simple {
                 x_pos: cactus_border,
                 x_neg: cactus_border,
@@ -92,7 +95,7 @@ pub(crate) fn rules_and_assets() -> (
             .with_weight(0.25),
         ),
         (
-            Some("ground_rock_corner_in"),
+            asset("ground_rock_corner_in"),
             SocketsCartesian3D::Multiple {
                 x_pos: vec![ground_rock_border],
                 x_neg: vec![other_to_ground_rock],
@@ -106,7 +109,7 @@ pub(crate) fn rules_and_assets() -> (
             .with_weight(0.5),
         ),
         (
-            Some("ground_rock_side"),
+            asset("ground_rock_side"),
             SocketsCartesian3D::Multiple {
                 x_pos: vec![ground_rock_border],
                 x_neg: vec![rock],
@@ -120,7 +123,7 @@ pub(crate) fn rules_and_assets() -> (
             .with_weight(0.5),
         ),
         (
-            Some("rock_corner_in_1"),
+            asset("rock_corner_in_1"),
             SocketsCartesian3D::Multiple {
                 x_pos: vec![rock_border],
                 x_neg: vec![other_to_rock],
@@ -134,7 +137,7 @@ pub(crate) fn rules_and_assets() -> (
             .with_weight(0.05),
         ),
         (
-            Some("rock_corner_in_2"),
+            asset("rock_corner_in_2"),
             SocketsCartesian3D::Multiple {
                 x_pos: vec![rock_border],
                 x_neg: vec![other_to_rock],
@@ -148,7 +151,7 @@ pub(crate) fn rules_and_assets() -> (
             .with_weight(0.05),
         ),
         (
-            Some("rock_side_1"),
+            asset("rock_side_1"),
             SocketsCartesian3D::Multiple {
                 x_pos: vec![rock_border],
                 x_neg: vec![rock],
@@ -162,7 +165,7 @@ pub(crate) fn rules_and_assets() -> (
             .with_weight(0.05),
         ),
         (
-            Some("rock"), // rock
+            asset("rock"), // rock
             SocketsCartesian3D::Multiple {
                 x_pos: vec![rock],
                 x_neg: vec![rock],
@@ -175,7 +178,7 @@ pub(crate) fn rules_and_assets() -> (
             .with_weight(0.05),
         ),
         (
-            Some("bridge_start"),
+            asset("bridge_start"),
             SocketsCartesian3D::Multiple {
                 x_pos: vec![bridge_side],
                 x_neg: vec![bridge_side],
@@ -189,7 +192,7 @@ pub(crate) fn rules_and_assets() -> (
             .with_weight(0.05),
         ),
         (
-            Some("bridge"),
+            asset("bridge"),
             SocketsCartesian3D::Multiple {
                 x_pos: vec![bridge_side],
                 x_neg: vec![bridge_side],
@@ -203,7 +206,7 @@ pub(crate) fn rules_and_assets() -> (
             .with_weight(0.05),
         ),
         (
-            Some("platform"),
+            asset("platform"),
             SocketsCartesian3D::Multiple {
                 x_pos: vec![platform_side],
                 x_neg: vec![platform_side],
@@ -217,7 +220,7 @@ pub(crate) fn rules_and_assets() -> (
             .with_weight(0.01),
         ),
         (
-            Some("platform_support"),
+            asset("platform_support"),
             SocketsCartesian3D::Multiple {
                 x_pos: vec![platform_side],
                 x_neg: vec![platform_side],
@@ -231,7 +234,7 @@ pub(crate) fn rules_and_assets() -> (
             .with_weight(0.000001),
         ),
         (
-            Some("platform_support_long"),
+            asset("platform_support_long"),
             SocketsCartesian3D::Multiple {
                 x_pos: vec![platform_side],
                 x_neg: vec![platform_side],
@@ -315,10 +318,15 @@ pub(crate) fn rules_and_assets() -> (
             (cactus_top, vec![void_bottom, bridge_bottom]),
         ]);
     (
-        assets_and_models.iter().map(|t| t.0).collect(),
+        // Assets
+        assets_and_models.iter().map(|t| t.0.clone()).collect(),
+        // Node models
         assets_and_models
             .iter()
-            .map(|t| t.1.clone().with_name(t.0.unwrap_or("void")))
+            .map(|t| {
+                t.1.clone()
+                    .with_name(t.0.first().unwrap_or(&AssetDef::new("void")).path())
+            })
             .collect(),
         sockets,
     )
