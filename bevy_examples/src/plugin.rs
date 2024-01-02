@@ -166,7 +166,7 @@ fn update_generation_view<D: SharableDirectionSet, A: Asset, B: Bundle>(
             GenerationUpdate::Generated(grid_node) => {
                 nodes_to_spawn.push(grid_node);
             }
-            GenerationUpdate::Reinitialized(_) => {
+            GenerationUpdate::Reinitializing(_) => {
                 reinitialized = true;
                 nodes_to_spawn.clear();
             }
