@@ -102,10 +102,19 @@ pub fn generate_all<D: SharableDirectionSet, A: Asset, B: Bundle>(
     if generation_control.status == GenerationControlStatus::Ongoing {
         match generation.gen.generate() {
             Ok(()) => {
-                info!("Generation done");
+                info!(
+                    "Generation done, seed: {}; grid: {}",
+                    generation.gen.get_seed(),
+                    generation.gen.grid()
+                );
             }
             Err(GenerationError { node_index }) => {
-                warn!("Generation Failed at node {}", node_index);
+                warn!(
+                    "Generation Failed at node {}, seed: {}; grid: {}",
+                    node_index,
+                    generation.gen.get_seed(),
+                    generation.gen.grid()
+                );
             }
         }
         generation_control.status = GenerationControlStatus::Paused;
@@ -207,11 +216,13 @@ fn step_generation<D: SharableDirectionSet, A: Asset, B: Bundle>(
             Ok((status, nodes_to_spawn)) => {
                 for grid_node in nodes_to_spawn {
                     // We still collect the generated nodes here even though we don't really use them to spawn entities. We just check them for void nodes (for visualization purposes)
-                    if let Some(_asset) = generation
+                    if let Some(assets) = generation
                         .models_assets
                         .get(&grid_node.model_instance.model_index)
                     {
-                        non_void_spawned = true;
+                        if !assets.is_empty() {
+                            non_void_spawned = true;
+                        }
                     }
                 }
                 match status {
@@ -250,25 +261,40 @@ fn step_generation<D: SharableDirectionSet, A: Asset, B: Bundle>(
     }
 }
 
-/// Returns true if an entity was spawned. Some nodes are void and don't spawn any entity.
 pub fn spawn_node<D: SharableDirectionSet, A: Asset, B: Bundle>(
     commands: &mut Commands,
     generation: &ResMut<Generation<D, A, B>>,
     instance: &ModelInstance,
     node_index: usize,
-) -> bool {
-    if let Some(asset) = generation.models_assets.get(&instance.model_index) {
-        let pos = generation.gen.grid().get_position(node_index);
+) {
+    let empy = vec![];
+    let node_assets = generation
+        .models_assets
+        .get(&instance.model_index)
+        .unwrap_or(&empy);
+    if node_assets.is_empty() {
+        return;
+    }
+
+    let pos = generation.gen.grid().get_position(node_index);
+    for node_asset in node_assets {
+        let offset = node_asset.offset();
         // +0.5*scale to center the node because its center is at its origin
-        let translation = Vec3::new(
-            generation.node_scale.x * (pos.x as f32 + 0.5),
-            generation.node_scale.y * (pos.y as f32 + 0.5),
-            generation.node_scale.z * (pos.z as f32 + 0.5),
+        let mut translation = Vec3::new(
+            generation.node_scale.x * (pos.x as f32 + offset.dx as f32 + 0.5),
+            generation.node_scale.y * (pos.y as f32 + offset.dy as f32 + 0.5),
+            generation.node_scale.z * (pos.z as f32 + offset.dz as f32 + 0.5),
         );
+
+        if generation.z_offset_from_y {
+            translation.z += generation.node_scale.z
+                * (1. - pos.y as f32 / generation.gen.grid().size_y() as f32);
+        }
+
         let node_entity = commands
             .spawn((
                 (generation.bundle_spawner)(
-                    asset.clone(),
+                    node_asset.handle.clone(),
                     translation,
                     generation.assets_scale,
                     f32::to_radians(instance.rotation.value() as f32),
@@ -282,9 +308,6 @@ pub fn spawn_node<D: SharableDirectionSet, A: Asset, B: Bundle>(
         commands
             .entity(generation.grid_entity)
             .add_child(node_entity);
-        true
-    } else {
-        false
     }
 }
 

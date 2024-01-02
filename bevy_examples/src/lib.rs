@@ -9,7 +9,10 @@ use bevy::{
 };
 use bevy_ghx_proc_gen::{
     grid::SharableDirectionSet,
-    proc_gen::generator::{observer::QueuedObserver, Generator},
+    proc_gen::{
+        generator::{observer::QueuedObserver, Generator},
+        grid::direction::GridDelta,
+    },
 };
 
 pub mod anim;
@@ -30,7 +33,7 @@ pub enum GenerationViewMode {
 
 #[derive(Resource)]
 pub struct Generation<T: SharableDirectionSet, A: Asset, B: Bundle> {
-    pub models_assets: HashMap<usize, Handle<A>>,
+    pub models_assets: HashMap<usize, Vec<NodeAsset<A>>>,
     pub gen: Generator<T>,
     pub observer: QueuedObserver,
     /// Size of a node in world units
@@ -43,6 +46,9 @@ pub struct Generation<T: SharableDirectionSet, A: Asset, B: Bundle> {
     pub bundle_spawner: fn(asset: Handle<A>, translation: Vec3, scale: Vec3, rot_rad: f32) -> B,
     /// Animation used by all spawned assets
     pub spawn_animation: Option<SpawningScaleAnimation>,
+
+    /// Whether to offset the z coordinate of spawned nodes from the y coordinate (used for 2d ordering of sprites)
+    pub z_offset_from_y: bool,
 }
 
 #[derive(Resource)]
@@ -75,13 +81,14 @@ pub enum GenerationControlStatus {
 
 impl<T: SharableDirectionSet, A: Asset, B: Bundle> Generation<T, A, B> {
     pub fn new(
-        models_assets: HashMap<usize, Handle<A>>,
+        models_assets: HashMap<usize, Vec<NodeAsset<A>>>,
         mut gen: Generator<T>,
         node_scale: Vec3,
         grid_entity: Entity,
         assets_scale: Vec3,
         bundle_spawner: fn(asset: Handle<A>, translation: Vec3, scale: Vec3, rot_rad: f32) -> B,
         spawn_animation: Option<SpawningScaleAnimation>,
+        z_offset_from_y: bool,
     ) -> Generation<T, A, B> {
         let observer = QueuedObserver::new(&mut gen);
         Self {
@@ -93,6 +100,7 @@ impl<T: SharableDirectionSet, A: Asset, B: Bundle> Generation<T, A, B> {
             assets_scale,
             bundle_spawner,
             spawn_animation,
+            z_offset_from_y,
         }
     }
 }
@@ -104,3 +112,51 @@ pub struct GenerationTimer(pub Timer);
 /// Node spawned by the generator
 #[derive(Component)]
 pub struct SpawnedNode;
+
+#[derive(Clone)]
+pub struct AssetDef {
+    path: &'static str,
+    offset: GridDelta,
+}
+
+impl AssetDef {
+    pub fn new(path: &'static str) -> Self {
+        Self {
+            path,
+            offset: GridDelta::new(0, 0, 0),
+        }
+    }
+
+    pub fn with_offset(mut self, offset: GridDelta) -> Self {
+        self.offset = offset;
+        self
+    }
+
+    pub fn to_asset<A: Asset>(&self, handle: Handle<A>) -> NodeAsset<A> {
+        NodeAsset {
+            handle,
+            offset: self.offset.clone(),
+        }
+    }
+
+    pub fn path(&self) -> &'static str {
+        self.path
+    }
+    pub fn offset(&self) -> &GridDelta {
+        &self.offset
+    }
+}
+
+pub struct NodeAsset<A: Asset> {
+    handle: Handle<A>,
+    offset: GridDelta,
+}
+
+impl<A: Asset> NodeAsset<A> {
+    pub fn handle(&self) -> &Handle<A> {
+        &self.handle
+    }
+    pub fn offset(&self) -> &GridDelta {
+        &self.offset
+    }
+}
