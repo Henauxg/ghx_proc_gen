@@ -69,10 +69,11 @@ pub(crate) const Z_NEG_AXIS: &'static [Direction] = &[
     Direction::XBackward,
 ];
 
+#[derive(Clone, Eq, PartialEq)]
 pub struct GridDelta {
-    pub(crate) dx: i32,
-    pub(crate) dy: i32,
-    pub(crate) dz: i32,
+    pub dx: i32,
+    pub dy: i32,
+    pub dz: i32,
 }
 
 impl GridDelta {
