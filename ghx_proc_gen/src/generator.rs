@@ -163,8 +163,14 @@ impl<T: DirectionSet + Clone> Generator<T> {
         &mut self,
         collector: &mut Option<Vec<GridNode>>,
     ) -> Result<(), GenerationError> {
+        self.seed = self.rng.gen::<u64>();
+        self.rng = StdRng::seed_from_u64(self.seed);
+
         #[cfg(feature = "debug-traces")]
-        info!("Reinitializing generator, state was {:?}", self.status);
+        info!(
+            "Reinitializing generator with seed {}, state was {:?}",
+            self.seed, self.status
+        );
 
         self.status = InternalGeneratorStatus::Ongoing;
         self.nodes = bitvec![1;self.rules.models_count() * self.grid.total_size() ];
@@ -173,7 +179,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
         self.initialize_supports_count(collector)?;
 
         for obs in &mut self.observers {
-            let _ = obs.send(GenerationUpdate::Reinitialized);
+            let _ = obs.send(GenerationUpdate::Reinitialized(self.seed));
         }
         Ok(())
     }
