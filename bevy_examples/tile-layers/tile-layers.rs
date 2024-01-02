@@ -1,10 +1,9 @@
-use std::collections::HashMap;
-
-use bevy::{log::LogPlugin, prelude::*};
+use bevy::{app::PluginGroup, log::LogPlugin, prelude::*};
 
 use bevy_examples::{
     anim::{ease_in_cubic, SpawningScaleAnimation},
     plugin::{sprite_node_spawner, ProcGenExamplesPlugin},
+    utils::load_assets,
     Generation, GenerationControl, GenerationViewMode,
 };
 use bevy_ghx_proc_gen::{
@@ -31,7 +30,7 @@ const GRID_X: u32 = 20;
 const GRID_Y: u32 = 20;
 
 /// Change this value to change the way the generation is visualized
-const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::StepByStep(10);
+const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::StepByStep(2);
 // --------------------------------------------
 
 /// Size of a block in world units
@@ -39,7 +38,7 @@ const TILE_SIZE: f32 = 32.;
 const NODE_SIZE: Vec3 = Vec3::new(TILE_SIZE, TILE_SIZE, 1.);
 const ASSETS_PATH: &str = "tile_layers";
 /// Number of z layers in the map, do not chnage without adapting the rules.
-const GRID_Z: u32 = 4;
+const GRID_Z: u32 = 5;
 
 fn setup_scene(mut commands: Commands) {
     // Camera
@@ -48,7 +47,7 @@ fn setup_scene(mut commands: Commands) {
 
 fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
     // Load rules
-    let (models_asset_paths, models, socket_collection) = rules_and_assets();
+    let (assets_definitions, models, socket_collection) = rules_and_assets();
 
     let rules = RulesBuilder::new_cartesian_3d(models, socket_collection)
         // Use ZForward as the up axis (rotation axis for models) since we are still using Bevy in 2D
@@ -64,18 +63,9 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         .with_node_heuristic(NodeSelectionHeuristic::MinimumRemainingValue)
         .with_model_heuristic(ModelSelectionHeuristic::WeightedProbability)
         .build();
-    info!("Seed: {}", gen.get_seed());
 
     // Load assets
-    let mut models_assets = HashMap::new();
-    for (model_index, path) in models_asset_paths.iter().enumerate() {
-        if let Some(path) = path {
-            models_assets.insert(
-                model_index,
-                asset_server.load(format!("{ASSETS_PATH}/{path}.png")),
-            );
-        }
-    }
+    let models_assets = load_assets(&asset_server, assets_definitions, ASSETS_PATH, "png");
 
     let grid_entity = commands
         .spawn((
@@ -96,6 +86,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         Vec3::ZERO,
         sprite_node_spawner,
         Some(SpawningScaleAnimation::new(0.4, Vec3::ONE, ease_in_cubic)),
+        true,
     ));
 
     commands.insert_resource(GenerationControl::new(true, true, true));
