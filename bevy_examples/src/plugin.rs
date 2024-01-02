@@ -166,7 +166,7 @@ fn update_generation_view<D: SharableDirectionSet, A: Asset, B: Bundle>(
             GenerationUpdate::Generated(grid_node) => {
                 nodes_to_spawn.push(grid_node);
             }
-            GenerationUpdate::Reinitialized => {
+            GenerationUpdate::Reinitialized(_) => {
                 reinitialized = true;
                 nodes_to_spawn.clear();
             }
@@ -217,7 +217,11 @@ fn step_generation<D: SharableDirectionSet, A: Asset, B: Bundle>(
                 match status {
                     GenerationStatus::Ongoing => {}
                     GenerationStatus::Done => {
-                        info!("Generation done");
+                        info!(
+                            "Generation done, seed: {}; grid: {}",
+                            generation.gen.get_seed(),
+                            generation.gen.grid()
+                        );
                         if generation_control.pause_when_done {
                             generation_control.status = GenerationControlStatus::Paused;
                         }
@@ -226,7 +230,12 @@ fn step_generation<D: SharableDirectionSet, A: Asset, B: Bundle>(
                 }
             }
             Err(GenerationError { node_index }) => {
-                warn!("Generation Failed at node {}", node_index);
+                warn!(
+                    "Generation Failed at node {}, seed: {}; grid: {}",
+                    node_index,
+                    generation.gen.get_seed(),
+                    generation.gen.grid()
+                );
                 if generation_control.pause_on_error {
                     generation_control.status = GenerationControlStatus::Paused;
                 }
