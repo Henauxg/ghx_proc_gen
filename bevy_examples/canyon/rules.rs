@@ -1,7 +1,7 @@
 use bevy_examples::AssetDef;
 use bevy_ghx_proc_gen::proc_gen::{
     generator::node::{NodeModel, NodeRotation, Socket, SocketCollection, SocketsCartesian3D},
-    grid::direction::{Cartesian3D, DirectionSet},
+    grid::direction::Cartesian3D,
 };
 
 use crate::SEE_VOID_NODES;
