@@ -163,6 +163,10 @@ impl<T: DirectionSet + Clone> Generator<T> {
         &mut self,
         collector: &mut Option<Vec<GridNode>>,
     ) -> Result<(), GenerationError> {
+        for obs in &mut self.observers {
+            let _ = obs.send(GenerationUpdate::Reinitializing(self.seed));
+        }
+
         self.seed = self.rng.gen::<u64>();
         self.rng = StdRng::seed_from_u64(self.seed);
 
@@ -178,9 +182,6 @@ impl<T: DirectionSet + Clone> Generator<T> {
         self.propagation_stack = Vec::new();
         self.initialize_supports_count(collector)?;
 
-        for obs in &mut self.observers {
-            let _ = obs.send(GenerationUpdate::Reinitialized(self.seed));
-        }
         Ok(())
     }
 

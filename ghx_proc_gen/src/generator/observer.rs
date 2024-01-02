@@ -9,8 +9,8 @@ use super::{
 pub enum GenerationUpdate {
     /// A node has been generated
     Generated(GridNode),
-    /// The generator was reinitialized to its initial state, with a new seed.
-    Reinitialized(u64),
+    /// The generator is being reinitialized to its initial state, with a new seed.
+    Reinitializing(u64),
     /// The generation failed due to a contradiction at the specified node_index
     Failed(usize),
 }
@@ -43,7 +43,7 @@ impl<T: DirectionSet + Clone> QueuedStatefulObserver<T> {
                 GenerationUpdate::Generated(grid_node) => self
                     .grid_data
                     .set(grid_node.node_index, Some(grid_node.model_instance)),
-                GenerationUpdate::Reinitialized(_) => self.grid_data.reset(None),
+                GenerationUpdate::Reinitializing(_) => self.grid_data.reset(None),
                 GenerationUpdate::Failed(_) => self.grid_data.reset(None),
             }
         }
@@ -59,7 +59,7 @@ impl<T: DirectionSet + Clone> QueuedStatefulObserver<T> {
                     GenerationUpdate::Generated(grid_node) => self
                         .grid_data
                         .set(grid_node.node_index, Some(grid_node.model_instance)),
-                    GenerationUpdate::Reinitialized(_) => self.grid_data.reset(None),
+                    GenerationUpdate::Reinitializing(_) => self.grid_data.reset(None),
                     GenerationUpdate::Failed(_) => self.grid_data.reset(None),
                 }
                 Some(update)
