@@ -352,7 +352,10 @@ pub(crate) fn rules_and_assets() -> (
 
     (
         assets_and_models.iter().map(|t| t.0).collect(),
-        assets_and_models.iter().map(|t| t.1.clone()).collect(),
+        assets_and_models
+            .iter()
+            .map(|t| t.1.clone().with_name(t.0.unwrap_or("void")))
+            .collect(),
         sockets,
     )
 }
