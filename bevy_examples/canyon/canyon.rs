@@ -123,13 +123,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         .with_node_heuristic(NodeSelectionHeuristic::MinimumRemainingValue)
         .with_model_heuristic(ModelSelectionHeuristic::WeightedProbability)
         .build();
-    info!(
-        "Seed: {}, grid size {} {} {}",
-        gen.get_seed(),
-        GRID_X,
-        GRID_HEIGHT,
-        GRID_Z
-    );
+    info!("Seed: {}, grid {}", gen.get_seed(), grid);
 
     // Load assets
     let mut models_assets = HashMap::new();
