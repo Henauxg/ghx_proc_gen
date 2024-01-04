@@ -34,7 +34,7 @@ use bevy_ghx_proc_gen::{
 use crate::{
     anim::animate_spawning_nodes_scale,
     fps::{fps_text_update_system, setup_fps_counter},
-    utils::toggle_fps_counter,
+    utils::{toggle_debug_grid_visibility, toggle_fps_counter},
     Generation, GenerationControl, GenerationControlStatus, GenerationTimer, GenerationViewMode,
     SpawnedNode,
 };
@@ -61,7 +61,11 @@ impl<D: SharableDirectionSet, A: Asset, B: Bundle> Plugin for ProcGenExamplesPlu
         ));
         app.add_systems(
             Update,
-            (animate_spawning_nodes_scale, update_generation_control),
+            (
+                animate_spawning_nodes_scale,
+                update_generation_control,
+                toggle_debug_grid_visibility,
+            ),
         );
 
         // Fps
