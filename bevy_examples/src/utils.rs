@@ -9,7 +9,7 @@ use bevy::{
     input::{keyboard::KeyCode, Input},
     render::view::Visibility,
 };
-use bevy_ghx_proc_gen::grid::DebugGridMesh;
+use bevy_ghx_proc_gen::grid::view::DebugGridMesh;
 
 use crate::{fps::FpsRoot, AssetDef, NodeAsset};
 

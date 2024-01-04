@@ -7,7 +7,7 @@ use bevy_examples::{
     Generation, GenerationControl, GenerationViewMode,
 };
 use bevy_ghx_proc_gen::{
-    grid::Grid,
+    grid::{DebugGridViewConfig2d, Grid},
     proc_gen::{
         generator::{
             builder::GeneratorBuilder, rules::RulesBuilder, ModelSelectionHeuristic,
@@ -30,10 +30,10 @@ const GRID_X: u32 = 20;
 const GRID_Y: u32 = 20;
 
 /// Change this value to change the way the generation is visualized
-const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::Final;
+const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::StepByStep(1);
 // --------------------------------------------
 
-/// Size of a block in world units
+/// Size of a block in world units (in Bevy 2d, 1 pixel is 1 world unit)
 const TILE_SIZE: f32 = 32.;
 const NODE_SIZE: Vec3 = Vec3::new(TILE_SIZE, TILE_SIZE, 1.);
 const ASSETS_PATH: &str = "tile_layers";
@@ -46,16 +46,15 @@ fn setup_scene(mut commands: Commands) {
 }
 
 fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
-    // Load rules
+    // Get rules from rules.rs
     let (assets_definitions, models, socket_collection) = rules_and_assets();
 
     let rules = RulesBuilder::new_cartesian_3d(models, socket_collection)
-        // Use ZForward as the up axis (rotation axis for models) since we are still using Bevy in 2D
+        // Use ZForward as the up axis (rotation axis for models) since we are using Bevy in 2D
         .with_rotation_axis(Direction::ZForward)
         .build()
         .unwrap();
     let grid = GridDefinition::new_cartesian_3d(GRID_X, GRID_Y, GRID_Z, false, false, false);
-    // Create generator
     let gen = GeneratorBuilder::new()
         .with_rules(rules)
         .with_grid(grid.clone())
@@ -64,7 +63,6 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         .with_model_heuristic(ModelSelectionHeuristic::WeightedProbability)
         .build();
 
-    // Load assets
     let models_assets = load_assets(&asset_server, assets_definitions, ASSETS_PATH, "png");
 
     let grid_entity = commands
@@ -75,6 +73,13 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
                 z: 0.,
             })),
             Grid { def: grid },
+            DebugGridViewConfig2d {
+                node_size: Vec2 {
+                    x: TILE_SIZE,
+                    y: TILE_SIZE,
+                },
+                color: Color::WHITE,
+            },
         ))
         .id();
 

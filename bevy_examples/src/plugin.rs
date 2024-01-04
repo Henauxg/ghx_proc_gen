@@ -1,7 +1,7 @@
 use std::{marker::PhantomData, time::Duration};
 
 use bevy::{
-    app::{App, Plugin, PostUpdate, Startup, Update},
+    app::{App, Plugin, Startup, Update},
     asset::{Asset, Handle},
     diagnostic::FrameTimeDiagnosticsPlugin,
     ecs::{
@@ -24,7 +24,7 @@ use bevy::{
     utils::default,
 };
 use bevy_ghx_proc_gen::{
-    grid::{draw_debug_markers, update_debug_markers, MarkerEvent, SharableDirectionSet},
+    grid::{markers::MarkerEvent, GridDebugPlugin, SharableDirectionSet},
     proc_gen::{
         generator::{node::ModelInstance, observer::GenerationUpdate, GenerationStatus},
         GenerationError,
@@ -55,7 +55,10 @@ impl<T: SharableDirectionSet, A: Asset, B: Bundle> ProcGenExamplesPlugin<T, A, B
 
 impl<D: SharableDirectionSet, A: Asset, B: Bundle> Plugin for ProcGenExamplesPlugin<D, A, B> {
     fn build(&self, app: &mut App) {
-        app.add_plugins(FrameTimeDiagnosticsPlugin::default());
+        app.add_plugins((
+            FrameTimeDiagnosticsPlugin::default(),
+            GridDebugPlugin::<D>::new(),
+        ));
         app.add_systems(
             Update,
             (animate_spawning_nodes_scale, update_generation_control),
@@ -64,10 +67,6 @@ impl<D: SharableDirectionSet, A: Asset, B: Bundle> Plugin for ProcGenExamplesPlu
         // Fps
         app.add_systems(Startup, setup_fps_counter)
             .add_systems(Update, (fps_text_update_system, toggle_fps_counter));
-
-        // TODO Move to a GridPlugin
-        app.add_systems(PostUpdate, (update_debug_markers::<D>, draw_debug_markers))
-            .add_event::<MarkerEvent>();
 
         match self.generation_view_mode {
             GenerationViewMode::StepByStep(interval) => {

@@ -10,8 +10,7 @@ use bevy_examples::{
     Generation, GenerationControl, GenerationViewMode,
 };
 use bevy_ghx_proc_gen::{
-    grid::{spawn_debug_grids, DebugGridViewConfig, Grid},
-    lines::LineMaterial,
+    grid::{DebugGridViewConfig3d, Grid},
     proc_gen::{
         generator::{
             builder::GeneratorBuilder, rules::RulesBuilder, ModelSelectionHeuristic,
@@ -166,7 +165,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
                 z: -(grid.size_z() as f32) / 2.,
             })),
             Grid { def: grid },
-            DebugGridViewConfig {
+            DebugGridViewConfig3d {
                 node_size: NODE_SCALE,
                 color: Color::GRAY.with_a(0.),
             },
@@ -199,12 +198,10 @@ fn main() {
             filter: "info,wgpu_core=warn,wgpu_hal=warn,ghx_proc_gen=debug".into(),
             level: bevy::log::Level::DEBUG,
         }),
-        MaterialPlugin::<LineMaterial>::default(),
         ProcGenExamplesPlugin::<Cartesian3D, Scene, SceneBundle>::new(GENERATION_VIEW_MODE),
     ));
     app.add_systems(Startup, (setup_generator, setup_scene))
         .add_systems(Update, pan_orbit_camera)
-        .add_systems(Update, spawn_debug_grids::<Cartesian3D>)
         .add_systems(Update, toggle_debug_grid_visibility);
 
     app.run();
