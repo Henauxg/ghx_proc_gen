@@ -1,8 +1,9 @@
 use std::{marker::PhantomData, time::Duration};
 
 use bevy::{
-    app::{App, Plugin, PostUpdate, Update},
+    app::{App, Plugin, PostUpdate, Startup, Update},
     asset::{Asset, Handle},
+    diagnostic::FrameTimeDiagnosticsPlugin,
     ecs::{
         bundle::Bundle,
         entity::Entity,
@@ -31,8 +32,11 @@ use bevy_ghx_proc_gen::{
 };
 
 use crate::{
-    anim::animate_spawning_nodes_scale, Generation, GenerationControl, GenerationControlStatus,
-    GenerationTimer, GenerationViewMode, SpawnedNode,
+    anim::animate_spawning_nodes_scale,
+    fps::{fps_text_update_system, setup_fps_counter},
+    utils::toggle_fps_counter,
+    Generation, GenerationControl, GenerationControlStatus, GenerationTimer, GenerationViewMode,
+    SpawnedNode,
 };
 
 pub struct ProcGenExamplesPlugin<T: SharableDirectionSet, A: Asset, B: Bundle> {
@@ -51,10 +55,15 @@ impl<T: SharableDirectionSet, A: Asset, B: Bundle> ProcGenExamplesPlugin<T, A, B
 
 impl<D: SharableDirectionSet, A: Asset, B: Bundle> Plugin for ProcGenExamplesPlugin<D, A, B> {
     fn build(&self, app: &mut App) {
+        app.add_plugins(FrameTimeDiagnosticsPlugin::default());
         app.add_systems(
             Update,
             (animate_spawning_nodes_scale, update_generation_control),
         );
+
+        // Fps
+        app.add_systems(Startup, setup_fps_counter)
+            .add_systems(Update, (fps_text_update_system, toggle_fps_counter));
 
         // TODO Move to a GridPlugin
         app.add_systems(PostUpdate, (update_debug_markers::<D>, draw_debug_markers))

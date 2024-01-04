@@ -11,7 +11,7 @@ use bevy::{
 };
 use bevy_ghx_proc_gen::grid::DebugGridMesh;
 
-use crate::{AssetDef, NodeAsset};
+use crate::{fps::FpsRoot, AssetDef, NodeAsset};
 
 pub fn toggle_debug_grid_visibility(
     keys: Res<Input<KeyCode>>,
@@ -25,6 +25,20 @@ pub fn toggle_debug_grid_visibility(
                 Visibility::Visible => Visibility::Hidden,
             }
         }
+    }
+}
+
+/// Toggle the FPS counter when pressing F2
+pub fn toggle_fps_counter(
+    mut fps_ui: Query<&mut Visibility, With<FpsRoot>>,
+    keyboard: Res<Input<KeyCode>>,
+) {
+    if keyboard.just_pressed(KeyCode::F2) {
+        let mut vis = fps_ui.single_mut();
+        *vis = match *vis {
+            Visibility::Hidden => Visibility::Visible,
+            _ => Visibility::Hidden,
+        };
     }
 }
 
