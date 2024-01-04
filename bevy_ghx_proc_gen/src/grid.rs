@@ -1,215 +1,92 @@
-use std::collections::HashMap;
+use std::marker::PhantomData;
 
 use bevy::{
-    asset::Assets,
-    core::Name,
-    ecs::{
-        component::Component,
-        entity::Entity,
-        event::{Event, EventReader},
-        query::Added,
-        system::{Commands, Query, ResMut},
-    },
-    gizmos::gizmos::Gizmos,
-    hierarchy::BuildChildren,
-    math::Vec3,
-    pbr::MaterialMeshBundle,
-    render::{color::Color, mesh::Mesh},
-    transform::components::Transform,
-    utils::default,
+    app::{App, Plugin, PostUpdate, Update},
+    ecs::component::Component,
+    math::{Vec2, Vec3},
+    pbr::MaterialPlugin,
+    render::color::Color,
 };
 use ghx_proc_gen::grid::{direction::DirectionSet, GridDefinition, GridPosition};
 
-use crate::lines::{LineList, LineMaterial};
+use self::{
+    lines::LineMaterial,
+    markers::{draw_debug_markers_2d, draw_debug_markers_3d, update_debug_markers, MarkerEvent},
+    view::{draw_debug_grids_2d, spawn_debug_grids_2d, spawn_debug_grids_3d},
+};
+
+pub mod lines;
+pub mod markers;
+pub mod view;
 
 #[derive(Component)]
-pub struct DebugGridViewConfig {
+pub struct DebugGridViewConfig3d {
     pub node_size: Vec3,
     pub color: Color,
-    // grid_size: Vec3,
 }
 
-#[derive(Clone)]
-pub struct Marker {
+#[derive(Component)]
+pub struct DebugGridViewConfig2d {
+    pub node_size: Vec2,
     pub color: Color,
-    pub pos: GridPosition,
-}
-
-#[derive(Component, Default)]
-pub struct DebugGridMesh;
-impl DebugGridMesh {
-    fn new() -> Self {
-        Self {}
-    }
-}
-
-#[derive(Component, Default)]
-pub struct DebugGridView {
-    node_size: Vec3,
-    markers: HashMap<usize, Marker>,
-}
-impl DebugGridView {
-    fn new(node_size: Vec3) -> Self {
-        Self {
-            node_size,
-            markers: HashMap::new(),
-        }
-    }
 }
 
 pub trait SharableDirectionSet: DirectionSet + Clone + Sync + Send + 'static {}
 impl<T: DirectionSet + Clone + Sync + Send + 'static> SharableDirectionSet for T {}
 
 #[derive(Component)]
-pub struct Grid<T: SharableDirectionSet> {
-    pub def: GridDefinition<T>,
+pub struct Grid<D: SharableDirectionSet> {
+    pub def: GridDefinition<D>,
 }
 
-#[derive(Event)]
-pub enum MarkerEvent {
-    Add {
-        color: Color,
-        grid_entity: Entity,
-        node_index: usize,
-    },
-    Remove {
-        grid_entity: Entity,
-        node_index: usize,
-    },
-    Clear {
-        grid_entity: Entity,
-    },
-    ClearAll,
+pub struct GridDebugPlugin<D: SharableDirectionSet> {
+    typestate: PhantomData<D>,
 }
 
-pub fn update_debug_markers<T: SharableDirectionSet>(
-    mut marker_events: EventReader<MarkerEvent>,
-    mut debug_grids: Query<(&Grid<T>, &mut DebugGridView)>,
-) {
-    for marker_event in marker_events.read() {
-        match marker_event {
-            MarkerEvent::Add {
-                color,
-                grid_entity,
-                node_index,
-            } => {
-                if let Ok((grid, mut debug_grid)) = debug_grids.get_mut(*grid_entity) {
-                    debug_grid.markers.insert(
-                        *node_index,
-                        Marker {
-                            color: *color,
-                            pos: grid.def.get_position(*node_index),
-                        },
-                    );
-                }
-            }
-            MarkerEvent::Remove {
-                grid_entity,
-                node_index,
-            } => {
-                if let Ok((_grid, mut debug_grid)) = debug_grids.get_mut(*grid_entity) {
-                    debug_grid.markers.remove(node_index);
-                }
-            }
-            MarkerEvent::Clear { grid_entity } => {
-                if let Ok((_grid, mut debug_grid)) = debug_grids.get_mut(*grid_entity) {
-                    debug_grid.markers.clear();
-                }
-            }
-            MarkerEvent::ClearAll => {
-                for (_grid, mut debug_grid) in debug_grids.iter_mut() {
-                    debug_grid.markers.clear();
-                }
-            }
+impl<T: SharableDirectionSet> GridDebugPlugin<T> {
+    pub fn new() -> Self {
+        Self {
+            typestate: PhantomData,
         }
     }
 }
 
-pub fn draw_debug_markers(mut gizmos: Gizmos, debug_grids: Query<(&Transform, &DebugGridView)>) {
-    for (transform, debug_grid) in debug_grids.iter() {
-        for (_, marker) in debug_grid.markers.iter() {
-            let giz_pos = transform.translation
-                + get_translation_from_grid_pos(&marker.pos, &debug_grid.node_size);
-            gizmos.cuboid(
-                Transform::from_translation(giz_pos).with_scale(debug_grid.node_size),
-                marker.color,
-            );
-        }
-    }
-}
-
-pub fn spawn_debug_grids<T: SharableDirectionSet>(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<LineMaterial>>,
-    debug_grids: Query<(Entity, &Grid<T>, &DebugGridViewConfig), Added<DebugGridViewConfig>>,
-) {
-    // TODO Gizmos ? :)
-    for (grid_entity, grid, view_config) in debug_grids.iter() {
-        let mut lines = vec![];
-        for y in 0..=grid.def.size_y() {
-            let mut from = Vec3::new(0., y as f32, 0.);
-            let mut to = Vec3::new(
-                0.,
-                y as f32,
-                (grid.def.size_z() as f32) * view_config.node_size.z,
-            );
-            for x in 0..=grid.def.size_x() {
-                from.x = view_config.node_size.x * x as f32;
-                to.x = from.x;
-                lines.push((from, to));
-            }
-            from = Vec3::new(0., y as f32, 0.);
-            to = Vec3::new(
-                grid.def.size_x() as f32 * view_config.node_size.x,
-                y as f32,
-                0.,
-            );
-            for z in 0..=grid.def.size_z() {
-                from.z = view_config.node_size.z * z as f32;
-                to.z = from.z;
-                lines.push((from, to));
-            }
-        }
-        for x in 0..=grid.def.size_x() {
-            let mut from = Vec3::new(x as f32, 0., 0.);
-            let mut to = Vec3::new(
-                x as f32,
-                grid.def.size_y() as f32 * view_config.node_size.y,
-                0.,
-            );
-            for z in 0..=grid.def.size_z() {
-                from.z = view_config.node_size.z * z as f32;
-                to.z = from.z;
-                lines.push((from, to));
-            }
-        }
-
-        let debug_grid_mesh = commands
-            .spawn((
-                MaterialMeshBundle {
-                    mesh: meshes.add(Mesh::from(LineList { lines })),
-                    material: materials.add(LineMaterial {
-                        color: view_config.color,
-                    }),
-                    ..default()
-                },
-                Name::new("DebugGridView"),
-                DebugGridMesh::new(),
-            ))
-            .id();
-        commands.entity(grid_entity).add_child(debug_grid_mesh);
-        commands
-            .entity(grid_entity)
-            .insert(DebugGridView::new(view_config.node_size));
+impl<D: SharableDirectionSet> Plugin for GridDebugPlugin<D> {
+    fn build(&self, app: &mut App) {
+        app.add_plugins(MaterialPlugin::<LineMaterial>::default());
+        app.add_systems(
+            Update,
+            (
+                spawn_debug_grids_3d::<D>,
+                spawn_debug_grids_2d::<D>,
+                draw_debug_grids_2d::<D>,
+            ),
+        )
+        .add_systems(
+            PostUpdate,
+            (
+                update_debug_markers::<D>,
+                draw_debug_markers_3d,
+                draw_debug_markers_2d,
+            ),
+        )
+        .add_event::<MarkerEvent>();
     }
 }
 
 #[inline]
-pub fn get_translation_from_grid_pos(grid_pos: &GridPosition, node_size: &Vec3) -> Vec3 {
+pub fn get_translation_from_grid_pos_3d(grid_pos: &GridPosition, node_size: &Vec3) -> Vec3 {
     Vec3 {
         x: (grid_pos.x as f32 + 0.5) * node_size.x,
         y: (grid_pos.y as f32 + 0.5) * node_size.y,
         z: (grid_pos.z as f32 + 0.5) * node_size.z,
+    }
+}
+
+#[inline]
+pub fn get_translation_from_grid_pos_2d(grid_pos: &GridPosition, node_size: &Vec2) -> Vec2 {
+    Vec2 {
+        x: (grid_pos.x as f32 + 0.5) * node_size.x,
+        y: (grid_pos.y as f32 + 0.5) * node_size.y,
     }
 }
