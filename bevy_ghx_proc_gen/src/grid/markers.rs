@@ -12,8 +12,9 @@ use bevy::{
 use ghx_proc_gen::grid::GridPosition;
 
 use super::{
-    get_translation_from_grid_pos_2d, get_translation_from_grid_pos_3d, view::DebugGridView,
-    DebugGridViewConfig2d, DebugGridViewConfig3d, Grid, SharableDirectionSet,
+    get_translation_from_grid_pos_2d, get_translation_from_grid_pos_3d,
+    view::{DebugGridView, DebugGridViewConfig2d, DebugGridViewConfig3d},
+    Grid, SharableDirectionSet,
 };
 
 #[derive(Clone)]
@@ -86,13 +87,16 @@ pub fn draw_debug_markers_3d(
     mut gizmos: Gizmos,
     debug_grids: Query<(&Transform, &DebugGridView, &DebugGridViewConfig3d)>,
 ) {
-    for (transform, debug_grid, debug_grid_config) in debug_grids.iter() {
-        for (_, marker) in debug_grid.markers.iter() {
+    for (transform, view, view_config) in debug_grids.iter() {
+        if !view.display_markers {
+            continue;
+        }
+        for (_, marker) in view.markers.iter() {
             let giz_pos = transform.translation
-                + get_translation_from_grid_pos_3d(&marker.pos, &debug_grid_config.node_size);
+                + get_translation_from_grid_pos_3d(&marker.pos, &view_config.node_size);
             gizmos.cuboid(
                 // Scale a bit so that it is not on the grid outlines.
-                Transform::from_translation(giz_pos).with_scale(debug_grid_config.node_size * 1.05),
+                Transform::from_translation(giz_pos).with_scale(view_config.node_size * 1.05),
                 marker.color,
             );
         }
@@ -103,15 +107,18 @@ pub fn draw_debug_markers_2d(
     mut gizmos: Gizmos,
     debug_grids: Query<(&Transform, &DebugGridView, &DebugGridViewConfig2d)>,
 ) {
-    for (transform, debug_grid, debug_grid_config) in debug_grids.iter() {
-        for (_, marker) in debug_grid.markers.iter() {
+    for (transform, view, view_config) in debug_grids.iter() {
+        if !view.display_markers {
+            continue;
+        }
+        for (_, marker) in view.markers.iter() {
             let giz_pos = transform.translation.xy()
-                + get_translation_from_grid_pos_2d(&marker.pos, &debug_grid_config.node_size);
+                + get_translation_from_grid_pos_2d(&marker.pos, &view_config.node_size);
             gizmos.rect_2d(
                 giz_pos,
                 0.,
                 // Scale a bit so that it is not on the grid outlines.
-                debug_grid_config.node_size * 1.05,
+                view_config.node_size * 1.05,
                 marker.color,
             );
         }

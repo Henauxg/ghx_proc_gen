@@ -4,16 +4,17 @@ use bevy::{
     asset::Assets,
     core::Name,
     ecs::{
+        bundle::Bundle,
         component::Component,
         entity::Entity,
-        query::Added,
+        query::{Added, Changed, With},
         system::{Commands, Query, ResMut},
     },
     gizmos::gizmos::Gizmos,
     hierarchy::BuildChildren,
     math::{Vec2, Vec3},
     pbr::MaterialMeshBundle,
-    render::mesh::Mesh,
+    render::{color::Color, mesh::Mesh, view::Visibility},
     transform::components::Transform,
     utils::default,
 };
@@ -21,8 +22,64 @@ use bevy::{
 use super::{
     lines::{LineList, LineMaterial},
     markers::Marker,
-    DebugGridViewConfig2d, DebugGridViewConfig3d, Grid, SharableDirectionSet,
+    Grid, SharableDirectionSet,
 };
+
+#[derive(Bundle)]
+pub struct DebugGridView3d {
+    pub config: DebugGridViewConfig3d,
+    pub view: DebugGridView,
+}
+impl Default for DebugGridView3d {
+    fn default() -> Self {
+        Self {
+            config: Default::default(),
+            view: Default::default(),
+        }
+    }
+}
+
+#[derive(Bundle)]
+pub struct DebugGridView2d {
+    pub config: DebugGridViewConfig2d,
+    pub view: DebugGridView,
+}
+impl Default for DebugGridView2d {
+    fn default() -> Self {
+        Self {
+            config: Default::default(),
+            view: Default::default(),
+        }
+    }
+}
+
+#[derive(Component)]
+pub struct DebugGridViewConfig3d {
+    pub node_size: Vec3,
+    pub color: Color,
+}
+impl Default for DebugGridViewConfig3d {
+    fn default() -> Self {
+        Self {
+            node_size: Vec3::ONE,
+            color: Default::default(),
+        }
+    }
+}
+
+#[derive(Component)]
+pub struct DebugGridViewConfig2d {
+    pub node_size: Vec2,
+    pub color: Color,
+}
+impl Default for DebugGridViewConfig2d {
+    fn default() -> Self {
+        Self {
+            node_size: Vec2::splat(32.),
+            color: Default::default(),
+        }
+    }
+}
 
 #[derive(Component, Default)]
 pub struct DebugGridMesh;
@@ -30,12 +87,15 @@ pub struct DebugGridMesh;
 #[derive(Component)]
 pub struct DebugGridView {
     pub(crate) markers: HashMap<usize, Marker>,
+    pub display_grid: bool,
+    pub display_markers: bool,
 }
-
 impl Default for DebugGridView {
     fn default() -> Self {
         Self {
             markers: Default::default(),
+            display_grid: true,
+            display_markers: true,
         }
     }
 }
@@ -103,26 +163,38 @@ pub fn spawn_debug_grids_3d<T: SharableDirectionSet>(
         commands.entity(grid_entity).add_child(debug_grid_mesh);
         commands
             .entity(grid_entity)
-            .insert(DebugGridView::default());
+            .insert(GridMeshMarker(debug_grid_mesh));
     }
 }
 
-pub fn spawn_debug_grids_2d<T: SharableDirectionSet>(
-    mut commands: Commands,
-    debug_grids: Query<Entity, Added<DebugGridViewConfig2d>>,
+#[derive(Component)]
+pub struct GridMeshMarker(Entity);
+
+pub fn update_debug_grid_mesh_visibility_3d(
+    mut debug_grids: Query<(&GridMeshMarker, &DebugGridView), Changed<DebugGridView>>,
+    mut grid_meshes: Query<&mut Visibility, With<DebugGridMesh>>,
 ) {
-    for grid_entity in debug_grids.iter() {
-        commands
-            .entity(grid_entity)
-            .insert(DebugGridView::default());
+    for (grid_mesh_marker, view) in debug_grids.iter_mut() {
+        match grid_meshes.get_mut(grid_mesh_marker.0) {
+            Ok(mut mesh_visibility) => {
+                *mesh_visibility = match view.display_grid {
+                    true => Visibility::Visible,
+                    false => Visibility::Hidden,
+                }
+            }
+            Err(_) => (),
+        }
     }
 }
 
 pub fn draw_debug_grids_2d<T: SharableDirectionSet>(
     mut gizmos: Gizmos,
-    debug_grids: Query<(&Transform, &Grid<T>, &DebugGridViewConfig2d)>,
+    debug_grids: Query<(&Transform, &Grid<T>, &DebugGridView, &DebugGridViewConfig2d)>,
 ) {
-    for (transform, grid, view_config) in debug_grids.iter() {
+    for (transform, grid, view, view_config) in debug_grids.iter() {
+        if !view.display_grid {
+            continue;
+        }
         for y in 0..=grid.def.size_y() {
             let from = Vec2::new(
                 transform.translation.x,

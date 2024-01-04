@@ -5,31 +5,18 @@ use bevy::{
     ecs::component::Component,
     math::{Vec2, Vec3},
     pbr::MaterialPlugin,
-    render::color::Color,
 };
 use ghx_proc_gen::grid::{direction::DirectionSet, GridDefinition, GridPosition};
 
 use self::{
     lines::LineMaterial,
     markers::{draw_debug_markers_2d, draw_debug_markers_3d, update_debug_markers, MarkerEvent},
-    view::{draw_debug_grids_2d, spawn_debug_grids_2d, spawn_debug_grids_3d},
+    view::{draw_debug_grids_2d, spawn_debug_grids_3d, update_debug_grid_mesh_visibility_3d},
 };
 
 pub mod lines;
 pub mod markers;
 pub mod view;
-
-#[derive(Component)]
-pub struct DebugGridViewConfig3d {
-    pub node_size: Vec3,
-    pub color: Color,
-}
-
-#[derive(Component)]
-pub struct DebugGridViewConfig2d {
-    pub node_size: Vec2,
-    pub color: Color,
-}
 
 pub trait SharableDirectionSet: DirectionSet + Clone + Sync + Send + 'static {}
 impl<T: DirectionSet + Clone + Sync + Send + 'static> SharableDirectionSet for T {}
@@ -58,7 +45,7 @@ impl<D: SharableDirectionSet> Plugin for GridDebugPlugin<D> {
             Update,
             (
                 spawn_debug_grids_3d::<D>,
-                spawn_debug_grids_2d::<D>,
+                update_debug_grid_mesh_visibility_3d,
                 draw_debug_grids_2d::<D>,
             ),
         )
