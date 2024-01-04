@@ -10,7 +10,10 @@ use bevy_examples::{
     Generation, GenerationControl, GenerationViewMode,
 };
 use bevy_ghx_proc_gen::{
-    grid::{DebugGridViewConfig3d, Grid},
+    grid::{
+        view::{DebugGridView3d, DebugGridViewConfig3d},
+        Grid,
+    },
     proc_gen::{
         generator::{
             builder::GeneratorBuilder, rules::RulesBuilder, ModelSelectionHeuristic,
@@ -165,9 +168,12 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
                 z: -(grid.size_z() as f32) / 2.,
             })),
             Grid { def: grid },
-            DebugGridViewConfig3d {
-                node_size: NODE_SCALE,
-                color: Color::GRAY.with_a(0.),
+            DebugGridView3d {
+                config: DebugGridViewConfig3d {
+                    node_size: NODE_SCALE,
+                    color: Color::GRAY,
+                },
+                ..Default::default()
             },
         ))
         .id();

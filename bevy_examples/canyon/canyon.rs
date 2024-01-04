@@ -6,11 +6,14 @@ use bevy_examples::{
     anim::{ease_in_cubic, SpawningScaleAnimation},
     camera::{pan_orbit_camera, PanOrbitCamera},
     plugin::{scene_node_spawner, ProcGenExamplesPlugin},
-    utils::{load_assets, toggle_debug_grid_visibility},
+    utils::load_assets,
     Generation, GenerationControl, GenerationViewMode,
 };
 use bevy_ghx_proc_gen::{
-    grid::{DebugGridViewConfig3d, Grid},
+    grid::{
+        view::{DebugGridView3d, DebugGridViewConfig3d},
+        Grid,
+    },
     proc_gen::{
         generator::{
             builder::GeneratorBuilder, rules::RulesBuilder, ModelSelectionHeuristic,
@@ -134,9 +137,12 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
                 z: -(grid.size_z() as f32) / 2.,
             })),
             Grid { def: grid },
-            DebugGridViewConfig3d {
-                node_size: NODE_SCALE,
-                color: Color::GRAY.with_a(0.),
+            DebugGridView3d {
+                config: DebugGridViewConfig3d {
+                    node_size: NODE_SCALE,
+                    color: Color::GRAY,
+                },
+                ..Default::default()
             },
         ))
         .id();
@@ -170,8 +176,7 @@ fn main() {
         ProcGenExamplesPlugin::<Cartesian3D, Scene, SceneBundle>::new(GENERATION_VIEW_MODE),
     ));
     app.add_systems(Startup, (setup_generator, setup_scene))
-        .add_systems(Update, pan_orbit_camera)
-        .add_systems(Update, toggle_debug_grid_visibility);
+        .add_systems(Update, pan_orbit_camera);
 
     app.run();
 }

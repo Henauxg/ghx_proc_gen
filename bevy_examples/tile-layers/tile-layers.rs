@@ -7,7 +7,10 @@ use bevy_examples::{
     Generation, GenerationControl, GenerationViewMode,
 };
 use bevy_ghx_proc_gen::{
-    grid::{DebugGridViewConfig2d, Grid},
+    grid::{
+        view::{DebugGridView2d, DebugGridViewConfig2d},
+        Grid,
+    },
     proc_gen::{
         generator::{
             builder::GeneratorBuilder, rules::RulesBuilder, ModelSelectionHeuristic,
@@ -73,12 +76,12 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
                 z: 0.,
             })),
             Grid { def: grid },
-            DebugGridViewConfig2d {
-                node_size: Vec2 {
-                    x: TILE_SIZE,
-                    y: TILE_SIZE,
+            DebugGridView2d {
+                config: DebugGridViewConfig2d {
+                    node_size: Vec2::splat(TILE_SIZE),
+                    ..Default::default()
                 },
-                color: Color::WHITE,
+                ..Default::default()
             },
         ))
         .id();
