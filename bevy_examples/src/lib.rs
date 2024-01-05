@@ -22,10 +22,10 @@ pub mod plugin;
 pub mod utils;
 
 /// Controls how the generation occurs.
-#[derive(PartialEq, Eq)]
+#[derive(Resource, Clone, Copy, PartialEq, Eq)]
 pub enum GenerationViewMode {
     /// Generates step by step and waits at least the specified amount (in milliseconds) between each step.
-    StepByStep(u64),
+    StepByStepTimed(u32, u64),
     /// Generates step by step and waits for a user input between each step.
     StepByStepPaused,
     /// Generates it all at once at the start
@@ -106,9 +106,12 @@ impl<T: SharableDirectionSet, A: Asset, B: Bundle> Generation<T, A, B> {
     }
 }
 
-/// Timer to track the generation steps when using [`GenerationViewMode::StepByStep`]
+/// Resource to track the generation steps when using [`GenerationViewMode::StepByStepTimed`]
 #[derive(Resource)]
-pub struct GenerationTimer(pub Timer);
+pub struct StepByStepTimed {
+    pub steps: u32,
+    pub timer: Timer,
+}
 
 /// Node spawned by the generator
 #[derive(Component)]

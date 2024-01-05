@@ -37,8 +37,8 @@ use crate::{
     anim::animate_spawning_nodes_scale,
     fps::{fps_text_update_system, setup_fps_counter},
     utils::{toggle_debug_grid_visibility, toggle_fps_counter},
-    Generation, GenerationControl, GenerationControlStatus, GenerationTimer, GenerationViewMode,
-    SpawnedNode,
+    Generation, GenerationControl, GenerationControlStatus, GenerationViewMode, SpawnedNode,
+    StepByStepTimed,
 };
 
 pub struct ProcGenExamplesPlugin<T: SharableDirectionSet, A: Asset, B: Bundle> {
@@ -61,7 +61,8 @@ impl<D: SharableDirectionSet, A: Asset, B: Bundle> Plugin for ProcGenExamplesPlu
             FrameTimeDiagnosticsPlugin::default(),
             GridDebugPlugin::<D>::new(),
         ));
-        app.add_systems(Startup, (setup_ui,));
+        app.insert_resource(self.generation_view_mode);
+        app.add_systems(Startup, setup_ui);
         app.add_systems(
             Update,
             (
@@ -76,7 +77,7 @@ impl<D: SharableDirectionSet, A: Asset, B: Bundle> Plugin for ProcGenExamplesPlu
             .add_systems(Update, (fps_text_update_system, toggle_fps_counter));
 
         match self.generation_view_mode {
-            GenerationViewMode::StepByStep(interval) => {
+            GenerationViewMode::StepByStepTimed(steps, interval) => {
                 app.add_systems(
                     Update,
                     (
@@ -85,10 +86,10 @@ impl<D: SharableDirectionSet, A: Asset, B: Bundle> Plugin for ProcGenExamplesPlu
                     )
                         .chain(),
                 );
-                app.insert_resource(GenerationTimer(Timer::new(
-                    Duration::from_millis(interval),
-                    TimerMode::Repeating,
-                )));
+                app.insert_resource(StepByStepTimed {
+                    steps,
+                    timer: Timer::new(Duration::from_millis(interval), TimerMode::Repeating),
+                });
             }
             GenerationViewMode::StepByStepPaused => {
                 app.add_systems(
@@ -110,9 +111,18 @@ impl<D: SharableDirectionSet, A: Asset, B: Bundle> Plugin for ProcGenExamplesPlu
     }
 }
 
-pub fn setup_ui(mut commands: Commands) {
+pub fn setup_ui(mut commands: Commands, view_mode: Res<GenerationViewMode>) {
+    let mut controls_text = "`F1` toggle grid | `F2` toggle fps display\n\
+    `Space` new generation"
+        .to_string();
+    if *view_mode == GenerationViewMode::StepByStepPaused {
+        controls_text.push_str(
+            "\n\
+        'Up' or 'Right' advance the generation",
+        );
+    }
     commands.spawn(TextBundle::from_section(
-        "F1: toggle grid | F2: toggle fps display",
+        controls_text,
         TextStyle {
             font_size: 14.,
             ..Default::default()
@@ -164,26 +174,33 @@ pub fn step_by_step_input_update<D: SharableDirectionSet, A: Asset, B: Bundle>(
     keys: Res<Input<KeyCode>>,
     buttons: Res<Input<MouseButton>>,
     mut generation: ResMut<Generation<D, A, B>>,
-    generation_control: ResMut<GenerationControl>,
+    mut generation_control: ResMut<GenerationControl>,
 ) {
     if generation_control.status == GenerationControlStatus::Ongoing
         && (keys.just_pressed(KeyCode::Right)
             || keys.pressed(KeyCode::Up)
             || buttons.just_pressed(MouseButton::Left))
     {
-        step_generation(&mut generation, generation_control);
+        step_generation(&mut generation, &mut generation_control);
     }
 }
 
 pub fn step_by_step_timed_update<D: SharableDirectionSet, A: Asset, B: Bundle>(
     mut generation: ResMut<Generation<D, A, B>>,
-    generation_control: ResMut<GenerationControl>,
-    mut timer: ResMut<GenerationTimer>,
+    mut generation_control: ResMut<GenerationControl>,
+    mut steps_and_timer: ResMut<StepByStepTimed>,
     time: Res<Time>,
 ) {
-    timer.0.tick(time.delta());
-    if timer.0.finished() && generation_control.status == GenerationControlStatus::Ongoing {
-        step_generation(&mut generation, generation_control);
+    steps_and_timer.timer.tick(time.delta());
+    if steps_and_timer.timer.finished()
+        && generation_control.status == GenerationControlStatus::Ongoing
+    {
+        for _ in 0..steps_and_timer.steps {
+            step_generation(&mut generation, &mut generation_control);
+            if generation_control.status != GenerationControlStatus::Ongoing {
+                break;
+            }
+        }
     }
 }
 
@@ -233,7 +250,7 @@ fn update_generation_view<D: SharableDirectionSet, A: Asset, B: Bundle>(
 
 fn step_generation<D: SharableDirectionSet, A: Asset, B: Bundle>(
     generation: &mut ResMut<Generation<D, A, B>>,
-    mut generation_control: ResMut<GenerationControl>,
+    generation_control: &mut ResMut<GenerationControl>,
 ) {
     loop {
         let mut non_void_spawned = false;
