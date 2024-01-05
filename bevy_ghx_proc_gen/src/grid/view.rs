@@ -99,15 +99,27 @@ impl Default for DebugGridView {
         }
     }
 }
+impl DebugGridView {
+    pub fn new(display_grid: bool, display_markers: bool) -> Self {
+        Self {
+            markers: Default::default(),
+            display_grid,
+            display_markers,
+        }
+    }
+}
 
 pub fn spawn_debug_grids_3d<T: SharableDirectionSet>(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<LineMaterial>>,
-    debug_grids: Query<(Entity, &Grid<T>, &DebugGridViewConfig3d), Added<DebugGridViewConfig3d>>,
+    debug_grids: Query<
+        (Entity, &Grid<T>, &DebugGridView, &DebugGridViewConfig3d),
+        Added<DebugGridViewConfig3d>,
+    >,
 ) {
     // TODO Gizmos ? Performances may be worse than this mesh built once
-    for (grid_entity, grid, view_config) in debug_grids.iter() {
+    for (grid_entity, grid, view, view_config) in debug_grids.iter() {
         let mut lines = Vec::new();
         for y in 0..=grid.def.size_y() {
             let mut from = Vec3::new(0., y as f32, 0.);
@@ -154,6 +166,10 @@ pub fn spawn_debug_grids_3d<T: SharableDirectionSet>(
                     material: materials.add(LineMaterial {
                         color: view_config.color,
                     }),
+                    visibility: match view.display_grid {
+                        true => Visibility::Visible,
+                        false => Visibility::Hidden,
+                    },
                     ..default()
                 },
                 Name::new("DebugGridMesh"),
