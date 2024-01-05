@@ -35,6 +35,8 @@ pub enum NodeSelectionHeuristic {
     /// The node with with the minimum count of possible models remaining will be chosen at each selection iteration. If multiple nodes have the same value, a random one is picked.
     MinimumRemainingValue,
     /// A random node with no special features (except not being generated yet) will be chosen at each selection iteration.
+    ///
+    /// Often causes a **very high generation failure rate**, except for very simple rules.
     Random,
 }
 
@@ -47,7 +49,9 @@ pub enum ModelSelectionHeuristic {
 pub enum RngMode {
     /// The generator will use the given seed for its random source.
     Seeded(u64),
-    /// The generator will use a random seed for its random source. The randomly generated seed can be retrieved by calling `get_seed` on the generator.
+    /// The generator will use a random seed for its random source.
+    ///
+    /// The randomly generated seed can be retrieved by calling `get_seed` on the generator.
     RandomSeed,
 }
 
