@@ -311,6 +311,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
     ) -> Result<(GenerationStatus, Vec<GridNode>), GenerationError> {
         let mut collector = Some(Vec::new());
         let res = self.internal_select_and_propagate(&mut collector)?;
+        // We know that collector is Some.
         Ok((res, collector.unwrap()))
     }
 

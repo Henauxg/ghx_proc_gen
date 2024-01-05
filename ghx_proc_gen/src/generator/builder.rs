@@ -121,6 +121,7 @@ impl<G, R, T: DirectionSet + Clone> GeneratorBuilder<G, R, T> {
 impl<T: DirectionSet + Clone> GeneratorBuilder<Set, Set, T> {
     /// Instantiates a [`Generator`] as specified by the various builder parameters.
     pub fn build(self) -> Generator<T> {
+        // We know that self.rules and self.grid are `Some` thanks to the typing.
         let rules = self.rules.unwrap();
         let grid = self.grid.unwrap();
         Generator::new(
