@@ -19,8 +19,10 @@ use bevy::{
     render::{color::Color, texture::Image},
     scene::{Scene, SceneBundle},
     sprite::SpriteBundle,
+    text::TextStyle,
     time::{Time, Timer, TimerMode},
     transform::components::Transform,
+    ui::node_bundles::TextBundle,
     utils::default,
 };
 use bevy_ghx_proc_gen::{
@@ -59,6 +61,7 @@ impl<D: SharableDirectionSet, A: Asset, B: Bundle> Plugin for ProcGenExamplesPlu
             FrameTimeDiagnosticsPlugin::default(),
             GridDebugPlugin::<D>::new(),
         ));
+        app.add_systems(Startup, (setup_ui,));
         app.add_systems(
             Update,
             (
@@ -105,6 +108,16 @@ impl<D: SharableDirectionSet, A: Asset, B: Bundle> Plugin for ProcGenExamplesPlu
             }
         }
     }
+}
+
+pub fn setup_ui(mut commands: Commands) {
+    commands.spawn(TextBundle::from_section(
+        "F1: toggle grid | F2: toggle fps display",
+        TextStyle {
+            font_size: 14.,
+            ..Default::default()
+        },
+    ));
 }
 
 pub fn generate_all<D: SharableDirectionSet, A: Asset, B: Bundle>(
