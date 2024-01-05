@@ -8,7 +8,7 @@ use bevy_examples::{
 };
 use bevy_ghx_proc_gen::{
     grid::{
-        view::{DebugGridView2d, DebugGridViewConfig2d},
+        view::{DebugGridView, DebugGridView2d, DebugGridViewConfig2d},
         Grid,
     },
     proc_gen::{
@@ -81,7 +81,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
                     node_size: Vec2::splat(TILE_SIZE),
                     ..Default::default()
                 },
-                ..Default::default()
+                view: DebugGridView::new(false, true),
             },
         ))
         .id();

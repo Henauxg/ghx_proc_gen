@@ -11,7 +11,7 @@ use bevy_examples::{
 };
 use bevy_ghx_proc_gen::{
     grid::{
-        view::{DebugGridView3d, DebugGridViewConfig3d},
+        view::{DebugGridView, DebugGridView3d, DebugGridViewConfig3d},
         Grid,
     },
     proc_gen::{
@@ -142,7 +142,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
                     node_size: NODE_SCALE,
                     color: Color::GRAY,
                 },
-                ..Default::default()
+                view: DebugGridView::new(false, true),
             },
         ))
         .id();
