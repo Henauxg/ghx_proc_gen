@@ -6,12 +6,12 @@ use bevy_examples::{
     anim::{ease_in_cubic, SpawningScaleAnimation},
     camera::{pan_orbit_camera, PanOrbitCamera},
     plugin::{scene_node_spawner, ProcGenExamplesPlugin},
-    utils::{load_assets, toggle_debug_grid_visibility},
+    utils::load_assets,
     Generation, GenerationControl, GenerationViewMode,
 };
 use bevy_ghx_proc_gen::{
     grid::{
-        view::{DebugGridView3d, DebugGridViewConfig3d},
+        view::{DebugGridView, DebugGridView3d, DebugGridViewConfig3d},
         Grid,
     },
     proc_gen::{
@@ -139,10 +139,9 @@ fn setup_scene(
 }
 
 fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
-    // Load rules
+    // Get rules from rules.rs
     let (models_asset_paths, models, socket_collection) = rules_and_assets();
 
-    // Create generator
     let rules = RulesBuilder::new_cartesian_3d(models, socket_collection)
         .build()
         .unwrap();
@@ -155,9 +154,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         .with_node_heuristic(NodeSelectionHeuristic::MinimumRemainingValue)
         .with_model_heuristic(ModelSelectionHeuristic::WeightedProbability)
         .build();
-    info!("Seed: {}", gen.get_seed());
 
-    // Load assets
     let models_assets = load_assets(&asset_server, models_asset_paths, "pillars", "glb#Scene0");
 
     let grid_entity = commands
@@ -173,7 +170,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
                     node_size: NODE_SCALE,
                     color: Color::GRAY,
                 },
-                ..Default::default()
+                view: DebugGridView::new(false, true),
             },
         ))
         .id();
@@ -207,8 +204,7 @@ fn main() {
         ProcGenExamplesPlugin::<Cartesian3D, Scene, SceneBundle>::new(GENERATION_VIEW_MODE),
     ));
     app.add_systems(Startup, (setup_generator, setup_scene))
-        .add_systems(Update, pan_orbit_camera)
-        .add_systems(Update, toggle_debug_grid_visibility);
+        .add_systems(Update, pan_orbit_camera);
 
     app.run();
 }
