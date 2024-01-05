@@ -29,11 +29,11 @@ mod rules;
 
 // --------------------------------------------
 /// Change this to change the map size.
-const GRID_X: u32 = 20;
+const GRID_X: u32 = 25;
 const GRID_Y: u32 = 20;
 
 /// Change this value to change the way the generation is visualized
-const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::StepByStep(1);
+const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::StepByStepTimed(2, 1);
 // --------------------------------------------
 
 /// Size of a block in world units (in Bevy 2d, 1 pixel is 1 world unit)

@@ -29,7 +29,7 @@ mod rules;
 
 // --------------------------------------------
 /// Change this value to change the way the generation is visualized
-const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::StepByStep(1);
+const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::Final;
 
 /// Change to visualize void nodes with a transparent asset
 const SEE_VOID_NODES: bool = false;
@@ -38,8 +38,8 @@ const AUTO_ORBIT_CAMERA: bool = true;
 
 /// Change this to change the map size.
 const GRID_HEIGHT: u32 = 6;
-const GRID_X: u32 = 28;
-const GRID_Z: u32 = 28;
+const GRID_X: u32 = 30;
+const GRID_Z: u32 = 30;
 // --------------------------------------------
 
 const ASSETS_PATH: &str = "canyon";
