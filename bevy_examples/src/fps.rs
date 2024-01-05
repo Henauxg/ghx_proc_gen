@@ -39,14 +39,14 @@ pub fn setup_fps_counter(mut commands: Commands) {
                 z_index: ZIndex::Global(i32::MAX),
                 style: Style {
                     position_type: PositionType::Absolute,
-                    // position it at the top-left corner
+                    // position it at the top-right corner
                     // 1% away from the top window edge
-                    left: Val::Percent(1.),
+                    right: Val::Percent(1.),
                     top: Val::Percent(1.),
                     // set bottom/left to Auto, so it can be
                     // automatically sized depending on the text
                     bottom: Val::Auto,
-                    right: Val::Auto,
+                    left: Val::Auto,
                     // give it some padding for readability
                     padding: UiRect::all(Val::Px(4.0)),
                     ..Default::default()
