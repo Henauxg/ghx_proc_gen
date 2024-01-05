@@ -4,7 +4,7 @@ use std::{
 };
 
 #[cfg(feature = "debug-traces")]
-use core::fmt;
+use {core::fmt, tracing::warn};
 
 use crate::grid::direction::{Cartesian2D, Cartesian3D, Direction, DirectionSet};
 
@@ -457,9 +457,22 @@ impl<T: DirectionSet> NodeModel<T> {
         self.allowed_rotations = HashSet::from([NodeRotation::Rot0]);
         self
     }
-    /// Specify this [`NodeModel`] weight. Used by a [`Generator`] when using [`ModelSelectionHeuristic::WeightedProbability`]. All the variations(rotations) of this [`NodeModel`] will use the same weight.
+    /// Specify this [`NodeModel`] weight. The `weight` value should be strictly superior to `0`. If it is not the case, the value will be overriden by `f32::MIN_POSITIVE`.
+    ///
+    /// Used by a [`Generator`] when using [`ModelSelectionHeuristic::WeightedProbability`].
+    ///
+    /// All the variations (rotations) of this [`NodeModel`] will use the same weight.
     pub fn with_weight<W: Into<f32>>(mut self, weight: W) -> Self {
-        self.weight = weight.into();
+        let mut checked_weight = weight.into();
+        if checked_weight <= 0. {
+            #[cfg(feature = "debug-traces")]
+            warn!(
+                "Model with name {:?}, had an invalid weight {} <= 0., weight overriden to f32::MIN: {}",
+                self.name, checked_weight, f32::MIN_POSITIVE
+            );
+            checked_weight = f32::MIN_POSITIVE
+        };
+        self.weight = checked_weight;
         self
     }
 
