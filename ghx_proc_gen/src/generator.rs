@@ -19,21 +19,23 @@ use crate::{
 use self::{
     builder::{GeneratorBuilder, Unset},
     node::{GridNode, ModelIndex, ModelInstance},
+    node_heuristic::InternalNodeSelectionHeuristic,
     observer::GenerationUpdate,
     rules::Rules,
 };
 
 pub mod builder;
 pub mod node;
+pub mod node_heuristic;
 pub mod observer;
 pub mod rules;
 
-const MAX_NOISE_VALUE: f32 = 1E-2;
-
-/// Defines a heuristic for the choice of a node to generate.
+/// Defines a heuristic for the choice of a node to generate. For some given Rules, each heuristic will lead to different visual results and different failure rates.
 pub enum NodeSelectionHeuristic {
-    /// The node with with the minimum count of possible models remaining will be chosen at each selection iteration. If multiple nodes have the same value, a random one is picked.
+    /// The node with with the minimum count of possible models remaining will be chosen at each selection iteration. If multiple nodes have the same value, a random one is picked. Similar to `MinimumEntropy` when the models have all more or less the same weight.
     MinimumRemainingValue,
+    /// The node with the minimum Shannon entropy will be chosen at each selection iteration. If multiple nodes have the same value, a random one is picked.
+    MinimumEntropy,
     /// A random node with no special features (except not being generated yet) will be chosen at each selection iteration.
     ///
     /// Often causes a **very high generation failure rate**, except for very simple rules.
@@ -87,20 +89,18 @@ pub struct Generator<T: DirectionSet + Clone> {
     grid: GridDefinition<T>,
     rules: Arc<Rules<T>>,
     max_retry_count: u32,
-    node_selection_heuristic: NodeSelectionHeuristic,
-    model_selection_heuristic: ModelSelectionHeuristic,
-
-    // === Internal ===
-    rng: StdRng,
-    seed: u64,
 
     // === Generation state ===
+    seed: u64,
+    rng: StdRng,
     status: InternalGeneratorStatus,
     /// `nodes[node_index * self.rules.models_count() + model_index]` is true (1) if model with index `model_index` is still allowed on node with index `node_index`
     nodes: BitVec<usize>,
     /// Stores how many models are still possible for a given node
-    possible_models_count: Vec<usize>,
-    /// Vector of observers currently being signaled with updates of the nodes.
+    possible_models_counts: Vec<usize>,
+    node_selection_heuristic: InternalNodeSelectionHeuristic,
+    model_selection_heuristic: ModelSelectionHeuristic,
+    /// Observers signaled with updates of the nodes.
     observers: Vec<crossbeam_channel::Sender<GenerationUpdate>>,
 
     // === Constraint satisfaction algorithm data ===
@@ -132,6 +132,12 @@ impl<T: DirectionSet + Clone> Generator<T> {
             RngMode::RandomSeed => rand::thread_rng().gen::<u64>(),
         };
 
+        let node_selection_heuristic = InternalNodeSelectionHeuristic::from_external(
+            node_selection_heuristic,
+            &rules,
+            grid.total_size(),
+        );
+
         let generator = Self {
             grid,
             rules,
@@ -144,7 +150,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
 
             status: InternalGeneratorStatus::Init,
             nodes: bitvec![1; nodes_count * models_count],
-            possible_models_count: vec![models_count; nodes_count],
+            possible_models_counts: vec![models_count; nodes_count],
             observers: Vec::new(),
 
             propagation_stack: Vec::new(),
@@ -180,9 +186,10 @@ impl<T: DirectionSet + Clone> Generator<T> {
             self.seed, self.status
         );
 
+        self.node_selection_heuristic.reinitialize();
         self.status = InternalGeneratorStatus::Ongoing;
         self.nodes = bitvec![1;self.rules.models_count() * self.grid.total_size() ];
-        self.possible_models_count = vec![self.rules.models_count(); self.grid.total_size()];
+        self.possible_models_counts = vec![self.rules.models_count(); self.grid.total_size()];
         self.propagation_stack = Vec::new();
         self.initialize_supports_count(collector)?;
 
@@ -327,7 +334,10 @@ impl<T: DirectionSet + Clone> Generator<T> {
             }
         };
 
-        let node_index = match self.select_node_to_generate() {
+        let node_index = match self
+            .node_selection_heuristic
+            .select_node(&self.possible_models_counts, &mut self.rng)
+        {
             Some(index) => index,
             None => {
                 self.status = InternalGeneratorStatus::Done;
@@ -378,7 +388,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
         }
         self.nodes
             .set(node_index * models_count + selected_model_index, true);
-        self.possible_models_count[node_index] = 1;
+        self.possible_models_counts[node_index] = 1;
 
         if let Err(err) = self.propagate(collector) {
             self.signal_contradiction(err.node_index);
@@ -480,8 +490,11 @@ impl<T: DirectionSet + Clone> Generator<T> {
         self.nodes
             .set(node_index * self.rules.models_count() + model, false);
 
-        let number_of_models_left = &mut self.possible_models_count[node_index];
+        let number_of_models_left = &mut self.possible_models_counts[node_index];
         *number_of_models_left = number_of_models_left.saturating_sub(1);
+
+        self.node_selection_heuristic
+            .handle_ban(node_index, model, self.rules.weight(model));
 
         #[cfg(feature = "debug-traces")]
         trace!(
@@ -518,41 +531,6 @@ impl<T: DirectionSet + Clone> Generator<T> {
         self.enqueue_removal_to_propagate(node_index, model);
 
         Ok(())
-    }
-
-    fn select_node_to_generate<'a>(&mut self) -> Option<usize> {
-        // Pick a node according to the heuristic
-        match self.node_selection_heuristic {
-            NodeSelectionHeuristic::MinimumRemainingValue => {
-                let mut min = f32::MAX;
-                let mut picked_node = None;
-                for (index, &count) in self.possible_models_count.iter().enumerate() {
-                    // If the node is not generated yet (multiple possibilities)
-                    if count > 1 {
-                        // Noise added to entropy so that when evaluating multiples candidates with the same value, we pick a random one, not in the evaluating order.
-                        let noise = MAX_NOISE_VALUE * self.rng.gen::<f32>();
-                        if (count as f32 + noise) < min {
-                            min = count as f32 + noise;
-                            picked_node = Some(index);
-                        }
-                    }
-                }
-                picked_node
-            }
-            NodeSelectionHeuristic::Random => {
-                let mut picked_node = None;
-                let mut candidates = Vec::new();
-                for (index, &count) in self.possible_models_count.iter().enumerate() {
-                    if count > 1 {
-                        candidates.push(index);
-                    }
-                }
-                if candidates.len() > 0 {
-                    picked_node = Some(candidates[self.rng.gen_range(0..candidates.len())]);
-                }
-                picked_node
-            }
-        }
     }
 
     /// There should at least be one possible model for this node index. May panic otherwise.
