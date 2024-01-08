@@ -184,6 +184,7 @@ pub struct ExpandedModel {
     /// Rotation of the [`Model`]
     rotation: ModelRotation,
 
+    /// Debug name for this model
     #[cfg(feature = "debug-traces")]
     pub name: Option<&'static str>,
 }
@@ -271,7 +272,7 @@ impl ModelRotation {
 
     #[inline]
     /// Returns a new [`ModelRotation`] equal to this rotation rotated by `rotation` counter-clock
-    ///     
+    ///
     /// ### Example
     /// ```
     /// use ghx_proc_gen::generator::model::ModelRotation;
