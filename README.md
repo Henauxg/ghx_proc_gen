@@ -11,20 +11,24 @@ A Rust library for 2D & 3D procedural generation with Model synthesis/Wave funct
     - [Bevy plugins](#bevy-plugins)
     - [Compatible Bevy versions](#compatible-bevy-versions)
   - [Examples](#examples)
+  - [Features](#features)
+    - [`debug-traces`](#debug-traces)
   - [Misc](#misc)
   - [Credits](#credits)
   - [License](#license)
+    - [Code](#code)
+    - [Assets](#assets)
 
 ## Quickstart
 
-```bash
+```
 cargo add ghx_proc_gen
 ```
 
 ## Additions for Bevy users
 
-Instead of using `ghx_proc_gen` directly, you can use `bevy_ghx_proc_gen` which exports `ghx_proc_gen` and some addditional plugins & utilities dedicated to Bevy.
-```bash
+Instead of using `ghx_proc_gen` directly, you can use `bevy_ghx_proc_gen` which exports `ghx_proc_gen` and some additional plugins & utilities dedicated to Bevy.
+```
 cargo add bevy_ghx_proc_gen
 ```
 
@@ -46,14 +50,18 @@ Compatibility with Bevy versions:
 <details>
   <summary>Terminal example</summary>
 
-Todo
+```
+cargo run --example unicode-terrain
+```
 
 </details>
 
 <details>
   <summary>Pillars example (using Bevy)</summary>
 
-Todo
+```
+cargo run --example pillars
+```
 
 </details>
 
@@ -61,22 +69,38 @@ Todo
 <details>
   <summary>Tile-layers example (using Bevy)</summary>
 
-Todo
+```
+cargo run --example tile-layers
+```
 
 </details>
 
 <details>
   <summary>Canyon example (using Bevy)</summary>
 
-Todo
+```
+cargo run --example canyon
+```
 
 </details>
+
+## Features
+
+### `debug-traces`
+
+Disabled by default, this feature will add many debug traces (using the `tracing` crate) to the core algorithm of the crate. Since some of those logs are on the hot path, the feature should only be enabled in debug.
+
+When creating models, you can register a name for them with the `with_name` function. With the feature disabled, the function does nothing. But when enabled, the name of your models will be visible in the debug traces of the core algorithm, providing useful information about the current generation state.
+
+The log level can be configured by the user crates (`tracing::level`, the `LogPlugin` for Bevy, ...).
+
+![debug_traces](assets/debug_traces.png)
 
 ## Misc
 
 Rules-writing tips:
- - Start simple and add complexity iteratively
- - Changing the Node selection heuristic may drastically change the generated result
+ - Start simple, then add complexity iteratively
+ - Changing the Node selection heuristic may drastically change the generated results
  - Diagonals constraints are harder and need intermediary models
 
 Why "ghx" ?
@@ -91,11 +115,18 @@ Thanks to:
 
 ## License
 
+### Code
+
 ghx-proc-gen is free and open source. All code in this repository is dual-licensed under either:
 
-* MIT License ([LICENSE-MIT](docs/LICENSE-MIT) or [http://opensource.org/licenses/MIT](http://opensource.org/licenses/MIT))
-* Apache License, Version 2.0 ([LICENSE-APACHE](docs/LICENSE-APACHE) or [http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0))
+* MIT License ([LICENSE-MIT](LICENSE-MIT) or [http://opensource.org/licenses/MIT](http://opensource.org/licenses/MIT))
+* Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or [http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0))
 
 at your option.
 
 Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
+
+### Assets
+
+- Assets of the [`pillars`](bevy_examples/assets/pillars) and [`canyon`](bevy_examples/assets/canyon) examples were made for these examples by Gilles Henaux, and are availabe under [CC-BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)
+- Assets in the [`tile-layers`](bevy_examples/assets/tile_layers) example are "16x16 Game Assets" by George Bailey available on [OpenGameArt](https://opengameart.org/content/16x16-game-assets) under [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/)
