@@ -19,7 +19,7 @@ use crate::{
 use self::{
     builder::{GeneratorBuilder, Unset},
     node::{GridNode, ModelIndex, ModelInstance},
-    node_heuristic::InternalNodeSelectionHeuristic,
+    node_heuristic::{InternalNodeSelectionHeuristic, NodeSelectionHeuristic},
     observer::GenerationUpdate,
     rules::Rules,
 };
@@ -29,22 +29,6 @@ pub mod node;
 pub mod node_heuristic;
 pub mod observer;
 pub mod rules;
-
-/// Defines a heuristic for the choice of a node to generate. For some given Rules, each heuristic will lead to different visual results and different failure rates.
-pub enum NodeSelectionHeuristic {
-    /// The node with with the minimum count of possible models remaining will be chosen at each selection iteration. If multiple nodes have the same value, a random one is picked.
-    ///s
-    /// Similar to `MinimumEntropy` when the models have all more or less the same weight.
-    MinimumRemainingValue,
-    /// The node with the minimum Shannon entropy (computed from the models weights) will be chosen at each selection iteration. If multiple nodes have the same value, a random one is picked.
-    ///
-    ///  Similar to `MinimumRemainingValue` when the models have all more or less the same weight.
-    MinimumEntropy,
-    /// A random node with no special features (except not being generated yet) will be chosen at each selection iteration.
-    ///
-    /// Often causes a **very high generation failure rate**, except for very simple rules.
-    Random,
-}
 
 /// Defines a heuristic for the choice of a model among the possible ones when a node has been selected for generation.
 pub enum ModelSelectionHeuristic {

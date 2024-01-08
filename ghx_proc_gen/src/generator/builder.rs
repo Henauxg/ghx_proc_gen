@@ -2,7 +2,10 @@ use std::{marker::PhantomData, sync::Arc};
 
 use crate::grid::{direction::DirectionSet, GridDefinition};
 
-use super::{rules::Rules, Generator, ModelSelectionHeuristic, NodeSelectionHeuristic, RngMode};
+use super::{
+    node_heuristic::NodeSelectionHeuristic, rules::Rules, Generator, ModelSelectionHeuristic,
+    RngMode,
+};
 
 pub const DEFAULT_RETRY_COUNT: u32 = 10;
 

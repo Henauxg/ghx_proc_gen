@@ -2,7 +2,23 @@ use rand::{rngs::StdRng, Rng};
 
 use crate::grid::direction::DirectionSet;
 
-use super::{rules::Rules, NodeSelectionHeuristic};
+use super::rules::Rules;
+
+/// Defines a heuristic for the choice of a node to generate. For some given Rules, each heuristic will lead to different visual results and different failure rates.
+pub enum NodeSelectionHeuristic {
+    /// The node with with the minimum count of possible models remaining will be chosen at each selection iteration. If multiple nodes have the same value, a random one is picked.
+    ///s
+    /// Similar to `MinimumEntropy` when the models have all more or less the same weight.
+    MinimumRemainingValue,
+    /// The node with the minimum Shannon entropy (computed from the models weights) will be chosen at each selection iteration. If multiple nodes have the same value, a random one is picked.
+    ///
+    ///  Similar to `MinimumRemainingValue` when the models have all more or less the same weight.
+    MinimumEntropy,
+    /// A random node with no special features (except not being generated yet) will be chosen at each selection iteration.
+    ///
+    /// Often causes a **very high generation failure rate**, except for very simple rules.
+    Random,
+}
 
 const MAX_NOISE_VALUE: f32 = 1E-2;
 

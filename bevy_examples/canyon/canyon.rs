@@ -16,8 +16,8 @@ use bevy_ghx_proc_gen::{
     },
     proc_gen::{
         generator::{
-            builder::GeneratorBuilder, rules::RulesBuilder, ModelSelectionHeuristic,
-            NodeSelectionHeuristic, RngMode,
+            builder::GeneratorBuilder, node_heuristic::NodeSelectionHeuristic, rules::RulesBuilder,
+            ModelSelectionHeuristic, RngMode,
         },
         grid::{direction::Cartesian3D, GridDefinition},
     },

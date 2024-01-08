@@ -6,6 +6,7 @@ use std::{
 use ghx_proc_gen::{
     generator::{
         node::{ModelInstance, SocketCollection, SocketsCartesian2D},
+        node_heuristic::NodeSelectionHeuristic,
         observer::QueuedStatefulObserver,
         rules::RulesBuilder,
         GenerationStatus, ModelSelectionHeuristic,
@@ -14,7 +15,7 @@ use ghx_proc_gen::{
 };
 
 use {
-    ghx_proc_gen::generator::{builder::GeneratorBuilder, NodeSelectionHeuristic, RngMode},
+    ghx_proc_gen::generator::{builder::GeneratorBuilder, RngMode},
     ghx_proc_gen::grid::GridDefinition,
 };
 
