@@ -15,6 +15,7 @@ use bevy::{
 
 // Built on top of https://bevyengine.org/examples/3D%20Rendering/lines/ (on bevy 0.12)
 
+/// Simple line material
 #[derive(Asset, TypePath, Default, AsBindGroup, Debug, Clone)]
 pub struct LineMaterial {
     #[uniform(0)]
@@ -38,9 +39,10 @@ impl Material for LineMaterial {
     }
 }
 
-/// A list of lines with a start and end position
+/// A list of lines
 #[derive(Debug, Clone)]
 pub struct LineList {
+    /// Line list with a start and end position
     pub lines: Vec<(Vec3, Vec3)>,
 }
 
@@ -59,6 +61,7 @@ impl From<LineList> for Mesh {
 /// A list of points that will have a line drawn between each consecutive points
 #[derive(Debug, Clone)]
 pub struct LineStrip {
+    /// List of distinct points
     pub points: Vec<Vec3>,
 }
 

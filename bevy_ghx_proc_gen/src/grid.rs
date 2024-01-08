@@ -14,23 +14,31 @@ use self::{
     view::{draw_debug_grids_2d, spawn_debug_grids_3d, update_debug_grid_mesh_visibility_3d},
 };
 
+/// Shaders and materials for 3d line rendering
 pub mod lines;
+/// Defines markers drawn as [bevy::prelude::Gizmos], useful for debugging & visualization
 pub mod markers;
+/// Components and systems to visualize 2d & 3d grids
 pub mod view;
 
+/// Additional traits constraints on a [`CoordinateSystem`] to ensure that it can safely be shared between threads.
 pub trait SharableCoordSystem: CoordinateSystem + Clone + Sync + Send + 'static {}
 impl<T: CoordinateSystem + Clone + Sync + Send + 'static> SharableCoordSystem for T {}
 
+/// Component that encapsulates a [`GridDefinition`]
 #[derive(Component)]
 pub struct Grid<D: SharableCoordSystem> {
+    /// Encapsulated grid definition
     pub def: GridDefinition<D>,
 }
 
+/// Bevy plugin used to visualize [`ghx_proc_gen::grid::GridDefinition`] and additional debug markers created with [`markers::MarkerEvent`].
 pub struct GridDebugPlugin<D: SharableCoordSystem> {
     typestate: PhantomData<D>,
 }
 
 impl<T: SharableCoordSystem> GridDebugPlugin<T> {
+    /// Create a new GridDebugPlugin
     pub fn new() -> Self {
         Self {
             typestate: PhantomData,
@@ -61,6 +69,7 @@ impl<D: SharableCoordSystem> Plugin for GridDebugPlugin<D> {
     }
 }
 
+/// Transform a [`GridPosition`] accompanied by a `node_size`, the size of a grid node in world units, into a position as a [`Vec3`] in world units (center of the grid node).
 #[inline]
 pub fn get_translation_from_grid_pos_3d(grid_pos: &GridPosition, node_size: &Vec3) -> Vec3 {
     Vec3 {
@@ -70,6 +79,7 @@ pub fn get_translation_from_grid_pos_3d(grid_pos: &GridPosition, node_size: &Vec
     }
 }
 
+/// Transform a [`GridPosition`] accompanied by a `node_size`, the size of a grid node in world units, into a position as a [`Vec2`] in world units (center of the grid node).
 #[inline]
 pub fn get_translation_from_grid_pos_2d(grid_pos: &GridPosition, node_size: &Vec2) -> Vec2 {
     Vec2 {

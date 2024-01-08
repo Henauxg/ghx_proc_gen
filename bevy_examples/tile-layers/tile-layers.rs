@@ -81,7 +81,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
                     node_size: Vec2::splat(TILE_SIZE),
                     ..Default::default()
                 },
-                view: DebugGridView::new(false, true),
+                view: DebugGridView::new(false, true, Color::WHITE),
             },
         ))
         .id();

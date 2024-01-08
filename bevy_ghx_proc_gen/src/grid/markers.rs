@@ -17,29 +17,45 @@ use super::{
     Grid, SharableCoordSystem,
 };
 
+/// Event used to update markers on a [`DebugGridView`]
+#[derive(Event)]
+pub enum MarkerEvent {
+    /// Send this event to create a new marker on a grid node
+    Add {
+        /// Color of the debug marker
+        color: Color,
+        /// Grid entity where the marker should be added
+        grid_entity: Entity,
+        /// Index of the grid node to mark
+        node_index: usize,
+    },
+    /// Send this event to delete a marker on a grid node
+    Remove {
+        /// Grid entity from which the marker should be removed
+        grid_entity: Entity,
+        /// Index of the grid node to unmark
+        node_index: usize,
+    },
+    /// Send this event to clear all markers on a grid
+    Clear {
+        /// Grid entity from which all markers should be removed
+        grid_entity: Entity,
+    },
+    /// Send this event to clear all markers from all grids
+    ClearAll,
+}
+
 #[derive(Clone)]
-pub struct Marker {
+pub(crate) struct Marker {
     pub color: Color,
     pub pos: GridPosition,
 }
 
-#[derive(Event)]
-pub enum MarkerEvent {
-    Add {
-        color: Color,
-        grid_entity: Entity,
-        node_index: usize,
-    },
-    Remove {
-        grid_entity: Entity,
-        node_index: usize,
-    },
-    Clear {
-        grid_entity: Entity,
-    },
-    ClearAll,
-}
-
+/// This system reads [`MarkerEvent`] and update the [`DebugGridView`] components accordingly
+///
+/// Should be called after the systems that generate [`MarkerEvent`]
+///
+/// Called in the [`bevy::app::PostUpdate`] schedule by default, by the [`crate::grid::GridDebugPlugin`]
 pub fn update_debug_markers<T: SharableCoordSystem>(
     mut marker_events: EventReader<MarkerEvent>,
     mut debug_grids: Query<(&Grid<T>, &mut DebugGridView)>,
@@ -83,6 +99,9 @@ pub fn update_debug_markers<T: SharableCoordSystem>(
     }
 }
 
+/// This system draws 3d [`Gizmos`] on grids that have any markers on them and a [`DebugGridViewConfig3d`] component.
+///
+/// As with any gizmos, should be run once per frame for the rendering to persist.
 pub fn draw_debug_markers_3d(
     mut gizmos: Gizmos,
     debug_grids: Query<(&Transform, &DebugGridView, &DebugGridViewConfig3d)>,
@@ -103,6 +122,9 @@ pub fn draw_debug_markers_3d(
     }
 }
 
+/// This system draws 2d [`Gizmos`] on grids that have any markers on them and a [`DebugGridViewConfig2d`] component.
+///
+/// As with any gizmos, should be run once per frame for the rendering to persist.
 pub fn draw_debug_markers_2d(
     mut gizmos: Gizmos,
     debug_grids: Query<(&Transform, &DebugGridView, &DebugGridViewConfig2d)>,

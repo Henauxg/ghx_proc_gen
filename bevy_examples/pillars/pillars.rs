@@ -168,9 +168,8 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
             DebugGridView3d {
                 config: DebugGridViewConfig3d {
                     node_size: NODE_SCALE,
-                    color: Color::GRAY,
                 },
-                view: DebugGridView::new(false, true),
+                view: DebugGridView::new(false, true, Color::GRAY),
             },
         ))
         .id();
