@@ -1,10 +1,8 @@
-use crate::grid::{direction::DirectionSet, GridData};
+use crate::grid::{direction::CoordinateSystem, GridData};
 
-use super::{
-    node::{GridNode, ModelInstance},
-    Generator,
-};
+use super::{model::ModelInstance, Generator, GridNode};
 
+/// Update sent by a [`crate::generator::Generator`]
 #[derive(Clone, Copy, Debug)]
 pub enum GenerationUpdate {
     /// A node has been generated
@@ -15,12 +13,16 @@ pub enum GenerationUpdate {
     Failed(usize),
 }
 
-pub struct QueuedStatefulObserver<T: DirectionSet + Clone> {
+/// Observer with a queue of the [`GenerationUpdate`] sent by the [`crate::generator::Generator`] which also maintains a coherent state of the current generation in a [`GridData`]
+///
+/// Can be used in a diffrent thread than the generator's thread.
+pub struct QueuedStatefulObserver<T: CoordinateSystem + Clone> {
     grid_data: GridData<T, Option<ModelInstance>>,
     receiver: crossbeam_channel::Receiver<GenerationUpdate>,
 }
 
-impl<T: DirectionSet + Clone> QueuedStatefulObserver<T> {
+impl<T: CoordinateSystem + Clone> QueuedStatefulObserver<T> {
+    /// Creates a new [`QueuedStatefulObserver`] for a given [`crate::generator::Generator`]
     pub fn new(generator: &mut Generator<T>) -> Self {
         let receiver = generator.add_observer_queue();
         QueuedStatefulObserver {
@@ -32,6 +34,7 @@ impl<T: DirectionSet + Clone> QueuedStatefulObserver<T> {
         }
     }
 
+    /// Returns a ref to the observer's [`GridData`]
     pub fn grid_data(&self) -> &GridData<T, Option<ModelInstance>> {
         &self.grid_data
     }
@@ -69,12 +72,16 @@ impl<T: DirectionSet + Clone> QueuedStatefulObserver<T> {
     }
 }
 
+/// Observer with just a queue of the [`GenerationUpdate`] sent by the [`crate::generator::Generator`]
+///
+/// Can be used in a diffrent thread than the generator's thread.
 pub struct QueuedObserver {
     receiver: crossbeam_channel::Receiver<GenerationUpdate>,
 }
 
 impl QueuedObserver {
-    pub fn new<T: DirectionSet + Clone>(generator: &mut Generator<T>) -> Self {
+    /// Creates a new [`QueuedObserver`] for a given [`crate::generator::Generator`]
+    pub fn new<T: CoordinateSystem + Clone>(generator: &mut Generator<T>) -> Self {
         let receiver = generator.add_observer_queue();
         QueuedObserver { receiver }
     }

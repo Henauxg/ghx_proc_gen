@@ -14,7 +14,7 @@ use ghx_proc_gen::grid::GridPosition;
 use super::{
     get_translation_from_grid_pos_2d, get_translation_from_grid_pos_3d,
     view::{DebugGridView, DebugGridViewConfig2d, DebugGridViewConfig3d},
-    Grid, SharableDirectionSet,
+    Grid, SharableCoordSystem,
 };
 
 #[derive(Clone)]
@@ -40,7 +40,7 @@ pub enum MarkerEvent {
     ClearAll,
 }
 
-pub fn update_debug_markers<T: SharableDirectionSet>(
+pub fn update_debug_markers<T: SharableCoordSystem>(
     mut marker_events: EventReader<MarkerEvent>,
     mut debug_grids: Query<(&Grid<T>, &mut DebugGridView)>,
 ) {

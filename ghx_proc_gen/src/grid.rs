@@ -1,13 +1,18 @@
 use std::{fmt, ops::Range};
 
-use self::direction::{Cartesian2D, Cartesian3D, Direction, DirectionSet, GridDelta};
+use self::direction::{Cartesian2D, Cartesian3D, CoordinateSystem, Direction, GridDelta};
 
+/// Defines directions and coordinate systems
 pub mod direction;
 
+/// Represents a position in a grid in a practical format
 #[derive(Debug, Clone)]
 pub struct GridPosition {
+    /// Position on the x axis
     pub x: u32,
+    /// Position on the y axis
     pub y: u32,
+    /// Position on the z axis
     pub z: u32,
 }
 impl GridPosition {
@@ -20,19 +25,21 @@ impl GridPosition {
     }
 }
 
+///
 #[derive(Clone)]
-pub struct GridDefinition<T: DirectionSet + Clone> {
+pub struct GridDefinition<T: CoordinateSystem + Clone> {
     size_x: u32,
     size_y: u32,
     size_z: u32,
     looping_x: bool,
     looping_y: bool,
     looping_z: bool,
-    pub(crate) direction_set: T,
+    pub(crate) coord_system: T,
+    /// Cache value of `size_x` * `size_y` for index computations
     size_xy: u32,
 }
 
-impl<T: DirectionSet + Clone> fmt::Display for GridDefinition<T> {
+impl<T: CoordinateSystem + Clone> fmt::Display for GridDefinition<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -43,6 +50,9 @@ impl<T: DirectionSet + Clone> fmt::Display for GridDefinition<T> {
 }
 
 impl GridDefinition<Cartesian2D> {
+    /// Creates a new grid with a [`Cartesian2D`] coordinate system
+    ///
+    /// Use `looping` to specify if the coordinates on an axis should loop when reaching the end of the axis.
     pub fn new_cartesian_2d(
         size_x: u32,
         size_y: u32,
@@ -78,6 +88,9 @@ impl GridDefinition<Cartesian2D> {
 }
 
 impl GridDefinition<Cartesian3D> {
+    /// Creates a new grid with a [`Cartesian3D`] coordinate system
+    ///
+    /// Use `looping` to specify if the coordinates on an axis should loop when reaching the end of the axis.
     pub fn new_cartesian_3d(
         size_x: u32,
         size_y: u32,
@@ -98,7 +111,7 @@ impl GridDefinition<Cartesian3D> {
     }
 }
 
-impl<T: DirectionSet + Clone> GridDefinition<T> {
+impl<T: CoordinateSystem + Clone> GridDefinition<T> {
     /// Creates a new [`GridDefinition`]
     pub fn new(
         size_x: u32,
@@ -107,7 +120,7 @@ impl<T: DirectionSet + Clone> GridDefinition<T> {
         looping_x: bool,
         looping_y: bool,
         looping_z: bool,
-        direction_set: T,
+        coord_system: T,
     ) -> GridDefinition<T> {
         Self {
             size_x,
@@ -116,7 +129,7 @@ impl<T: DirectionSet + Clone> GridDefinition<T> {
             looping_x,
             looping_y,
             looping_z,
-            direction_set,
+            coord_system,
             size_xy: size_x * size_y,
         }
     }
@@ -143,13 +156,14 @@ impl<T: DirectionSet + Clone> GridDefinition<T> {
             .unwrap()
     }
 
+    /// Returns a [`Range`] over all node indexes in this grid
     pub fn indexes(&self) -> Range<usize> {
         0..self.total_size()
     }
 
     /// Returns the index from a grid position.
     ///
-    ///  NO CHECK is done to verify that the given position is a valid position for this grid.
+    /// NO CHECK is done to verify that the given position is a valid position for this grid.
     #[inline]
     pub fn get_index(&self, x: u32, y: u32, z: u32) -> usize {
         (x + y * self.size_x + z * self.size_xy).try_into().unwrap()
@@ -157,11 +171,14 @@ impl<T: DirectionSet + Clone> GridDefinition<T> {
 
     /// Returns the index from a grid position.
     ///
-    ///  NO CHECK is done to verify that the given position is a valid position for this grid.
+    /// NO CHECK is done to verify that the given position is a valid position for this grid.
     pub fn get_index_from_pos(&self, grid_position: &GridPosition) -> usize {
         self.get_index(grid_position.x, grid_position.y, grid_position.z)
     }
 
+    /// Returns a [`GridPosition`] from the index of a node in this [`GridDefinition`].
+    ///
+    /// Panics if the index is not a valid index.
     pub fn get_position(&self, grid_index: usize) -> GridPosition {
         let index = u32::try_from(grid_index).unwrap();
         GridPosition {
@@ -220,7 +237,7 @@ impl<T: DirectionSet + Clone> GridDefinition<T> {
         grid_position: &GridPosition,
         direction: Direction,
     ) -> Option<usize> {
-        let delta = &self.direction_set.deltas()[direction as usize];
+        let delta = &self.coord_system.deltas()[direction as usize];
         match self.get_next_pos(grid_position, &delta) {
             Some(next_pos) => Some(self.get_index_from_pos(&next_pos)),
             None => None,
@@ -229,7 +246,7 @@ impl<T: DirectionSet + Clone> GridDefinition<T> {
 
     #[inline]
     pub(crate) fn directions(&self) -> &'static [Direction] {
-        self.direction_set.directions()
+        self.coord_system.directions()
     }
 
     /// Creates a default [`GridData`] with the size of the [`GridDefinition`] with each element value set to its default one.
@@ -256,16 +273,16 @@ impl<T: DirectionSet + Clone> GridDefinition<T> {
 /// ```
 /// use ghx_proc_gen::grid::GridDefinition;
 ///
-/// let grid = GridDefinition::new_cartesian_2d(10, 10, false);
+/// let grid = GridDefinition::new_cartesian_2d(10, 10, false, false);
 /// let grid_data = grid.default_grid_data::<u64>();
 /// ```
-/// You can also retrieve a pre-created existing `GridData` from a [`ghx_proc_gen::Generator`], or from an observer like a [`ghx_proc_gen::generator::QueuedStatefulObserver`]
-pub struct GridData<T: DirectionSet + Clone, D> {
+/// You can also retrieve a pre-created existing `GridData` from a [`crate::generator::Generator`], or from an observer like a [`crate::generator::observer::QueuedStatefulObserver`]
+pub struct GridData<T: CoordinateSystem + Clone, D> {
     grid: GridDefinition<T>,
     data: Vec<D>,
 }
 
-impl<T: DirectionSet + Clone, D> GridData<T, D> {
+impl<T: CoordinateSystem + Clone, D> GridData<T, D> {
     /// Prefer using `default_grid_data` or `new_grid_data` directly on an existing grid definition to create a `GridData` with a correct data Vec.
     pub fn new(grid: GridDefinition<T>, data: Vec<D>) -> Self {
         Self { grid, data }
@@ -303,7 +320,7 @@ impl<T: DirectionSet + Clone, D> GridData<T, D> {
     }
 }
 
-impl<T: DirectionSet + Clone, D: Copy> GridData<T, D> {
+impl<T: CoordinateSystem + Clone, D: Copy> GridData<T, D> {
     /// Resets the whole grid buffer by setting the value of each element to `value`
     pub fn reset(&mut self, value: D) {
         for d in self.data.iter_mut() {

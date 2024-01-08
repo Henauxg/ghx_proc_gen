@@ -8,7 +8,7 @@ use bevy::{
     time::Timer,
 };
 use bevy_ghx_proc_gen::{
-    grid::SharableDirectionSet,
+    grid::SharableCoordSystem,
     proc_gen::{
         generator::{observer::QueuedObserver, Generator},
         grid::direction::GridDelta,
@@ -33,7 +33,7 @@ pub enum GenerationViewMode {
 }
 
 #[derive(Resource)]
-pub struct Generation<T: SharableDirectionSet, A: Asset, B: Bundle> {
+pub struct Generation<T: SharableCoordSystem, A: Asset, B: Bundle> {
     pub models_assets: HashMap<usize, Vec<NodeAsset<A>>>,
     pub gen: Generator<T>,
     pub observer: QueuedObserver,
@@ -80,7 +80,7 @@ pub enum GenerationControlStatus {
     Ongoing,
 }
 
-impl<T: SharableDirectionSet, A: Asset, B: Bundle> Generation<T, A, B> {
+impl<T: SharableCoordSystem, A: Asset, B: Bundle> Generation<T, A, B> {
     pub fn new(
         models_assets: HashMap<usize, Vec<NodeAsset<A>>>,
         mut gen: Generator<T>,

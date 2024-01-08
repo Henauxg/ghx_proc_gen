@@ -26,9 +26,9 @@ use bevy::{
     utils::default,
 };
 use bevy_ghx_proc_gen::{
-    grid::{markers::MarkerEvent, GridDebugPlugin, SharableDirectionSet},
+    grid::{markers::MarkerEvent, GridDebugPlugin, SharableCoordSystem},
     proc_gen::{
-        generator::{node::ModelInstance, observer::GenerationUpdate, GenerationStatus},
+        generator::{model::ModelInstance, observer::GenerationUpdate, GenerationStatus},
         GenerationError,
     },
 };
@@ -41,12 +41,12 @@ use crate::{
     StepByStepTimed,
 };
 
-pub struct ProcGenExamplesPlugin<T: SharableDirectionSet, A: Asset, B: Bundle> {
+pub struct ProcGenExamplesPlugin<T: SharableCoordSystem, A: Asset, B: Bundle> {
     generation_view_mode: GenerationViewMode,
     typestate: PhantomData<(T, A, B)>,
 }
 
-impl<T: SharableDirectionSet, A: Asset, B: Bundle> ProcGenExamplesPlugin<T, A, B> {
+impl<T: SharableCoordSystem, A: Asset, B: Bundle> ProcGenExamplesPlugin<T, A, B> {
     pub fn new(generation_view_mode: GenerationViewMode) -> Self {
         Self {
             generation_view_mode,
@@ -55,7 +55,7 @@ impl<T: SharableDirectionSet, A: Asset, B: Bundle> ProcGenExamplesPlugin<T, A, B
     }
 }
 
-impl<D: SharableDirectionSet, A: Asset, B: Bundle> Plugin for ProcGenExamplesPlugin<D, A, B> {
+impl<D: SharableCoordSystem, A: Asset, B: Bundle> Plugin for ProcGenExamplesPlugin<D, A, B> {
     fn build(&self, app: &mut App) {
         app.add_plugins((
             FrameTimeDiagnosticsPlugin::default(),
@@ -130,7 +130,7 @@ pub fn setup_ui(mut commands: Commands, view_mode: Res<GenerationViewMode>) {
     ));
 }
 
-pub fn generate_all<D: SharableDirectionSet, A: Asset, B: Bundle>(
+pub fn generate_all<D: SharableCoordSystem, A: Asset, B: Bundle>(
     mut generation: ResMut<Generation<D, A, B>>,
     mut generation_control: ResMut<GenerationControl>,
 ) {
@@ -170,7 +170,7 @@ pub fn update_generation_control(
     }
 }
 
-pub fn step_by_step_input_update<D: SharableDirectionSet, A: Asset, B: Bundle>(
+pub fn step_by_step_input_update<D: SharableCoordSystem, A: Asset, B: Bundle>(
     keys: Res<Input<KeyCode>>,
     buttons: Res<Input<MouseButton>>,
     mut generation: ResMut<Generation<D, A, B>>,
@@ -185,7 +185,7 @@ pub fn step_by_step_input_update<D: SharableDirectionSet, A: Asset, B: Bundle>(
     }
 }
 
-pub fn step_by_step_timed_update<D: SharableDirectionSet, A: Asset, B: Bundle>(
+pub fn step_by_step_timed_update<D: SharableCoordSystem, A: Asset, B: Bundle>(
     mut generation: ResMut<Generation<D, A, B>>,
     mut generation_control: ResMut<GenerationControl>,
     mut steps_and_timer: ResMut<StepByStepTimed>,
@@ -204,7 +204,7 @@ pub fn step_by_step_timed_update<D: SharableDirectionSet, A: Asset, B: Bundle>(
     }
 }
 
-fn update_generation_view<D: SharableDirectionSet, A: Asset, B: Bundle>(
+fn update_generation_view<D: SharableCoordSystem, A: Asset, B: Bundle>(
     mut commands: Commands,
     mut generation: ResMut<Generation<D, A, B>>,
     mut marker_events: EventWriter<MarkerEvent>,
@@ -248,7 +248,7 @@ fn update_generation_view<D: SharableDirectionSet, A: Asset, B: Bundle>(
     }
 }
 
-fn step_generation<D: SharableDirectionSet, A: Asset, B: Bundle>(
+fn step_generation<D: SharableCoordSystem, A: Asset, B: Bundle>(
     generation: &mut ResMut<Generation<D, A, B>>,
     generation_control: &mut ResMut<GenerationControl>,
 ) {
@@ -303,7 +303,7 @@ fn step_generation<D: SharableDirectionSet, A: Asset, B: Bundle>(
     }
 }
 
-pub fn spawn_node<D: SharableDirectionSet, A: Asset, B: Bundle>(
+pub fn spawn_node<D: SharableCoordSystem, A: Asset, B: Bundle>(
     commands: &mut Commands,
     generation: &ResMut<Generation<D, A, B>>,
     instance: &ModelInstance,

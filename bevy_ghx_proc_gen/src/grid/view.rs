@@ -22,7 +22,7 @@ use bevy::{
 use super::{
     lines::{LineList, LineMaterial},
     markers::Marker,
-    Grid, SharableDirectionSet,
+    Grid, SharableCoordSystem,
 };
 
 #[derive(Bundle)]
@@ -109,7 +109,7 @@ impl DebugGridView {
     }
 }
 
-pub fn spawn_debug_grids_3d<T: SharableDirectionSet>(
+pub fn spawn_debug_grids_3d<T: SharableCoordSystem>(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<LineMaterial>>,
@@ -203,7 +203,7 @@ pub fn update_debug_grid_mesh_visibility_3d(
     }
 }
 
-pub fn draw_debug_grids_2d<T: SharableDirectionSet>(
+pub fn draw_debug_grids_2d<T: SharableCoordSystem>(
     mut gizmos: Gizmos,
     debug_grids: Query<(&Transform, &Grid<T>, &DebugGridView, &DebugGridViewConfig2d)>,
 ) {

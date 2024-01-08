@@ -1,14 +1,23 @@
 // TODO See if std::ops::index can be used here
+
+/// Represents an oriented axis of a coordinate system
 #[derive(Clone, Copy, Debug)]
 pub enum Direction {
+    /// X+ axis
     XForward = 0,
+    /// Y+ axis
     YForward = 1,
+    /// X- axis
     XBackward = 2,
+    /// Y- axis
     YBackward = 3,
+    /// Z+ axis
     ZForward = 4,
+    /// Z- axis
     ZBackward = 5,
 }
 impl Direction {
+    /// Returns the opposite [`Direction`]
     pub fn opposite(&self) -> Direction {
         match self {
             Direction::XForward => Direction::XBackward,
@@ -69,27 +78,36 @@ pub(crate) const Z_NEG_AXIS: &'static [Direction] = &[
     Direction::XBackward,
 ];
 
+/// Represents a displacement on a grid
 #[derive(Clone, Eq, PartialEq)]
 pub struct GridDelta {
+    /// Amount of movement on the X axis
     pub dx: i32,
+    /// Amount of movement on the Y axis
     pub dy: i32,
+    /// Amount of movement on the Z axis
     pub dz: i32,
 }
 
 impl GridDelta {
+    /// Creates a new [`GridDelta`]
     pub fn new(dx: i32, dy: i32, dz: i32) -> Self {
         Self { dx, dy, dz }
     }
 }
 
-pub trait DirectionSet {
+/// Represents a coordinate system
+pub trait CoordinateSystem {
+    /// Returns the [`Direction`] in this coordinate system
     fn directions(&self) -> &'static [Direction];
+    /// Returns the [`GridDelta`] for each direction in this coordinate system
     fn deltas(&self) -> &'static [GridDelta];
 }
 
+/// Right-handed 2d Cartesian coordinate system: 4 directions
 #[derive(Clone)]
 pub struct Cartesian2D {}
-impl DirectionSet for Cartesian2D {
+impl CoordinateSystem for Cartesian2D {
     fn directions(&self) -> &'static [Direction] {
         CARTESIAN_2D_DIRECTIONS
     }
@@ -99,9 +117,10 @@ impl DirectionSet for Cartesian2D {
     }
 }
 
+/// Right-handed 3d Cartesian coordinate system: 6 directions
 #[derive(Clone)]
 pub struct Cartesian3D {}
-impl DirectionSet for Cartesian3D {
+impl CoordinateSystem for Cartesian3D {
     fn directions(&self) -> &'static [Direction] {
         CARTESIAN_3D_DIRECTIONS
     }
@@ -111,12 +130,15 @@ impl DirectionSet for Cartesian3D {
     }
 }
 
+/// All the directions that forms a 2d cartesian coordinate system
 pub const CARTESIAN_2D_DIRECTIONS: &'static [Direction] = &[
     Direction::XForward,
     Direction::YForward,
     Direction::XBackward,
     Direction::YBackward,
 ];
+
+/// All the [`GridDelta`], one for each direction, in a cartesian 2d coordinate system
 pub const CARTESIAN_2D_DELTAS: &'static [GridDelta] = &[
     GridDelta {
         // XForward
@@ -144,6 +166,7 @@ pub const CARTESIAN_2D_DELTAS: &'static [GridDelta] = &[
     },
 ];
 
+/// All the directions that forms a 3d cartesian coordinate system
 pub const CARTESIAN_3D_DIRECTIONS: &'static [Direction] = &[
     Direction::XForward,
     Direction::YForward,
@@ -152,6 +175,8 @@ pub const CARTESIAN_3D_DIRECTIONS: &'static [Direction] = &[
     Direction::ZForward,
     Direction::ZBackward,
 ];
+
+/// All the [`GridDelta`], one for each direction, in a cartesian 3d coordinate system
 pub const CARTESIAN_3D_DELTAS: &'static [GridDelta] = &[
     GridDelta {
         // XForward

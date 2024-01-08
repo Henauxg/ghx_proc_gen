@@ -1,6 +1,6 @@
 use rand::{rngs::StdRng, Rng};
 
-use crate::grid::direction::DirectionSet;
+use crate::grid::direction::CoordinateSystem;
 
 use super::rules::Rules;
 
@@ -65,7 +65,7 @@ fn entropy(weight_sum: f32, weight_log_weight_sum: f32) -> f32 {
 }
 
 impl InternalNodeSelectionHeuristic {
-    pub(crate) fn from_external<T: DirectionSet + Clone>(
+    pub(crate) fn from_external<T: CoordinateSystem + Clone>(
         heuristic: NodeSelectionHeuristic,
         rules: &Rules<T>,
         node_count: usize,
@@ -81,7 +81,7 @@ impl InternalNodeSelectionHeuristic {
         }
     }
 
-    fn new_minimum_entropy<T: DirectionSet + Clone>(
+    fn new_minimum_entropy<T: CoordinateSystem + Clone>(
         rules: &Rules<T>,
         node_count: usize,
     ) -> InternalNodeSelectionHeuristic {

@@ -5,10 +5,11 @@ use std::{
 
 use ghx_proc_gen::{
     generator::{
-        node::{ModelInstance, SocketCollection, SocketsCartesian2D},
+        model::ModelInstance,
         node_heuristic::NodeSelectionHeuristic,
         observer::QueuedStatefulObserver,
         rules::RulesBuilder,
+        socket::{SocketCollection, SocketsCartesian2D},
         GenerationStatus, ModelSelectionHeuristic,
     },
     grid::{direction::Cartesian2D, GridData},

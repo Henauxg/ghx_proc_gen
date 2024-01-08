@@ -1,12 +1,15 @@
 use bevy_examples::AssetDef;
 use bevy_ghx_proc_gen::proc_gen::{
-    generator::node::{NodeModel, SocketCollection, SocketsCartesian3D},
+    generator::{
+        model::Model,
+        socket::{SocketCollection, SocketsCartesian3D},
+    },
     grid::direction::Cartesian3D,
 };
 
 pub(crate) fn rules_and_assets() -> (
     Vec<Vec<AssetDef>>,
-    Vec<NodeModel<Cartesian3D>>,
+    Vec<Model<Cartesian3D>>,
     SocketCollection,
 ) {
     let mut sockets = SocketCollection::new();

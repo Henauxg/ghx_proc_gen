@@ -1,12 +1,13 @@
 use std::{marker::PhantomData, sync::Arc};
 
-use crate::grid::{direction::DirectionSet, GridDefinition};
+use crate::grid::{direction::CoordinateSystem, GridDefinition};
 
 use super::{
     node_heuristic::NodeSelectionHeuristic, rules::Rules, Generator, ModelSelectionHeuristic,
     RngMode,
 };
 
+/// Default retry count for the generator
 pub const DEFAULT_RETRY_COUNT: u32 = 50;
 
 /// Internal type used to provide a type-safe builder with compatible [`GridDefinition`] and [`Rules`]
@@ -14,23 +15,31 @@ pub enum Set {}
 /// Internal type used to provide a type-safe builder with compatible [`GridDefinition`] and [`Rules`]
 pub enum Unset {}
 
-/// Used to instantiate a new [`Generator`]. [`Rules`] and [`GridDefinition`] are the two non-optionnal structs that are needed before being able to call `build`.
+/// Used to instantiate a new [`Generator`].
+///
+/// [`Rules`] and [`GridDefinition`] are the two non-optionnal structs that are needed before being able to call `build`.
+///
 /// ### Example
 ///
 /// Create a `Generator` from a `GeneratorBuilder`.
 /// ```
-/// use ghx_proc_gen::{grid::GridDefinition, generator::{builder::GeneratorBuilder, rules::Rules, node::SocketsCartesian2D}};
+/// use ghx_proc_gen::{grid::GridDefinition, generator::{builder::GeneratorBuilder, rules::{Rules, RulesBuilder}, socket::{SocketsCartesian2D, SocketCollection}}};
 ///
-/// let grid = GridDefinition::new_cartesian_2d(10, 10, false);
-/// let rules = Rules::new_cartesian_2d(
-///     vec![SocketsCartesian2D::Mono(0).new_model()],
-///     vec![(0, vec![0])]).unwrap();
+/// let mut sockets = SocketCollection::new();
+/// let a = sockets.create();
+/// sockets.add_connection(a, vec![a]);
+///
+/// let rules = RulesBuilder::new_cartesian_2d(
+///     vec![SocketsCartesian2D::Mono(a).new_model()],
+///     sockets).build().unwrap();
+///
+/// let grid = GridDefinition::new_cartesian_2d(10, 10, false, false);
 /// let mut generator = GeneratorBuilder::new()
 ///    .with_rules(rules)
 ///    .with_grid(grid)
 ///    .build();
 /// ```
-pub struct GeneratorBuilder<G, R, T: DirectionSet + Clone> {
+pub struct GeneratorBuilder<G, R, T: CoordinateSystem + Clone> {
     rules: Option<Arc<Rules<T>>>,
     grid: Option<GridDefinition<T>>,
     max_retry_count: u32,
@@ -40,7 +49,7 @@ pub struct GeneratorBuilder<G, R, T: DirectionSet + Clone> {
     typestate: PhantomData<(G, R)>,
 }
 
-impl<T: DirectionSet + Clone> GeneratorBuilder<Unset, Unset, T> {
+impl<T: CoordinateSystem + Clone> GeneratorBuilder<Unset, Unset, T> {
     /// Creates a [`GeneratorBuilder`] with its values set to their default.
     pub fn new() -> Self {
         Self {
@@ -55,7 +64,7 @@ impl<T: DirectionSet + Clone> GeneratorBuilder<Unset, Unset, T> {
     }
 }
 
-impl<T: DirectionSet + Clone> GeneratorBuilder<Unset, Unset, T> {
+impl<T: CoordinateSystem + Clone> GeneratorBuilder<Unset, Unset, T> {
     /// Sets the [`Rules`] to be used by the [`Generator`]
     pub fn with_rules(self, rules: Rules<T>) -> GeneratorBuilder<Unset, Set, T> {
         GeneratorBuilder {
@@ -83,7 +92,7 @@ impl<T: DirectionSet + Clone> GeneratorBuilder<Unset, Unset, T> {
     }
 }
 
-impl<T: DirectionSet + Clone> GeneratorBuilder<Unset, Set, T> {
+impl<T: CoordinateSystem + Clone> GeneratorBuilder<Unset, Set, T> {
     /// Sets the [`GridDefinition`] to be used by the [`Generator`].
     pub fn with_grid(self, grid: GridDefinition<T>) -> GeneratorBuilder<Set, Set, T> {
         GeneratorBuilder {
@@ -98,7 +107,7 @@ impl<T: DirectionSet + Clone> GeneratorBuilder<Unset, Set, T> {
     }
 }
 
-impl<G, R, T: DirectionSet + Clone> GeneratorBuilder<G, R, T> {
+impl<G, R, T: CoordinateSystem + Clone> GeneratorBuilder<G, R, T> {
     /// Specifies how many time the [`Generator`] should retry to generate the [`GridDefinition`] when a contradiction is encountered. Set to [`DEFAULT_RETRY_COUNT`] by default.
     pub fn with_max_retry_count(mut self, max_retry_count: u32) -> Self {
         self.max_retry_count = max_retry_count;
@@ -121,7 +130,7 @@ impl<G, R, T: DirectionSet + Clone> GeneratorBuilder<G, R, T> {
     }
 }
 
-impl<T: DirectionSet + Clone> GeneratorBuilder<Set, Set, T> {
+impl<T: CoordinateSystem + Clone> GeneratorBuilder<Set, Set, T> {
     /// Instantiates a [`Generator`] as specified by the various builder parameters.
     pub fn build(self) -> Generator<T> {
         // We know that self.rules and self.grid are `Some` thanks to the typing.

@@ -8,101 +8,112 @@ use ndarray::{Array, Ix1, Ix2};
 #[cfg(feature = "debug-traces")]
 use tracing::trace;
 
-use super::node::{
-    expand_models, ExpandedNodeModel, ModelIndex, NodeModel, Socket, SocketCollection,
+use super::{
+    model::{expand_models, ExpandedModel, Model, ModelIndex},
+    socket::SocketCollection,
 };
 use crate::{
-    grid::direction::{Cartesian2D, Cartesian3D, Direction, DirectionSet},
+    grid::direction::{Cartesian2D, Cartesian3D, CoordinateSystem, Direction},
     RulesError,
 };
 
+/// Rotation axis in a 2D cartesian coordinate system
 pub const CARTESIAN_2D_ROTATION_AXIS: Direction = Direction::ZForward;
 
-pub type SocketConnections = (Socket, Vec<Socket>);
-
-pub struct RulesBuilder<T: DirectionSet + Clone> {
-    models: Vec<NodeModel<T>>,
+/// Used to create new [`Rules`]
+pub struct RulesBuilder<T: CoordinateSystem + Clone> {
+    models: Vec<Model<T>>,
     socket_collection: SocketCollection,
     rotation_axis: Direction,
-    direction_set: T,
+    coord_system: T,
 }
 
 impl RulesBuilder<Cartesian2D> {
     /// Used to create Rules for a 2d cartesian grid.
     ///
-    /// Will only return [`ProcGenError::InvalidRules`] if `models` or `sockets_connections` are empty.
-    ///
-    /// For `sockets_connections`, there is no need to specify a connection in both directions: `[0, vec![1]]` means that socket `0` can be connected to a socket `1`, so `[1, vec![0]]` is implied.
-    ///
     /// ### Example
     ///
     /// Create simple `Rules` for a chess-like pattern
     /// ```
-    /// use ghx_proc_gen::generator::{node::SocketsCartesian2D, rules::Rules};
+    /// use ghx_proc_gen::generator::{socket::{SocketsCartesian2D, SocketCollection}, rules::{Rules, RulesBuilder}};
     ///
-    /// const WHITE: u32 = 0;
-    /// const BLACK: u32 = 1;
+    /// let mut sockets = SocketCollection::new();
+    /// let (white, black) = (sockets.create(), sockets.create());
+    /// sockets.add_connection(white, vec![black]);
     /// let models = vec![
-    ///     SocketsCartesian2D::Mono(WHITE).new_model(),
-    ///     SocketsCartesian2D::Mono(BLACK).new_model(),
+    ///     SocketsCartesian2D::Mono(white).new_model(),
+    ///     SocketsCartesian2D::Mono(black).new_model(),
     /// ];
-    /// let sockets_connections = vec![(WHITE, vec![BLACK])];
-    /// let rules = Rules::new_cartesian_2d(models, sockets_connections).unwrap();
+    /// let rules = RulesBuilder::new_cartesian_2d(models, sockets).build().unwrap();
     /// ```
     pub fn new_cartesian_2d(
-        models: Vec<NodeModel<Cartesian2D>>,
+        models: Vec<Model<Cartesian2D>>,
         socket_collection: SocketCollection,
     ) -> Self {
         Self {
             models,
             socket_collection,
             rotation_axis: CARTESIAN_2D_ROTATION_AXIS,
-            direction_set: Cartesian2D {},
+            coord_system: Cartesian2D {},
         }
     }
 }
 impl RulesBuilder<Cartesian3D> {
     /// Used to create Rules for a 3d cartesian grid.
     ///
-    /// Will only return [`ProcGenError::InvalidRules`] if `models` or `sockets_connections` are empty.
-    ///
-    /// For `sockets_connections`, there is no need to specify a connection in both directions: `[0, vec![1]]` means that socket `0` can be connected to a socket `1`, so `[1, vec![0]]` is implied.
-    ///
     /// ### Example
     ///
     /// Create simple `Rules` to describe an empty room with variable length pillars (with Y up in a right-handed cooridnate system).
     /// ```
     /// use ghx_proc_gen::grid::GridDefinition;
-    /// use ghx_proc_gen::generator::{node::{SocketsCartesian3D, SocketId}, rules::Rules};
+    /// use ghx_proc_gen::generator::{socket::{SocketsCartesian3D, SocketCollection}, rules::{Rules, RulesBuilder}};
     ///
-    /// const VOID: SocketId = 0;
-    /// const PILLAR_BASE_TOP: SocketId = 1;
-    /// const PILLAR_CORE_BOTTOM: SocketId = 2;
-    /// const PILLAR_CORE_TOP: SocketId = 3;
-    /// const PILLAR_CAP_BOTTOM: SocketId = 4;
-    ///
+    /// let mut sockets = SocketCollection::new();
+    /// let void = sockets.create();
+    /// let (pillar_base_top, pillar_core_bottom, pillar_core_top, pillar_cap_bottom) = (sockets.create(), sockets.create(), sockets.create(), sockets.create());
     /// let models = vec![
-    ///     SocketsCartesian3D::Mono(VOID).new_model(),
-    ///     SocketsCartesian3D::Simple(VOID, PILLAR_BASE_TOP, VOID, VOID, VOID, VOID).new_model(),
-    ///     SocketsCartesian3D::Simple(VOID, PILLAR_CORE_TOP, VOID, PILLAR_CORE_BOTTOM, VOID, VOID).new_model(),
-    ///     SocketsCartesian3D::Simple(VOID, VOID, VOID, PILLAR_CAP_BOTTOM, VOID, VOID).new_model(),
+    ///     SocketsCartesian3D::Mono(void).new_model(),
+    ///     SocketsCartesian3D::Simple {
+    ///         x_pos: void,
+    ///         x_neg: void,
+    ///         z_pos: void,
+    ///         z_neg: void,
+    ///         y_pos: pillar_base_top,
+    ///         y_neg: void,
+    ///     }.new_model(),
+    ///     SocketsCartesian3D::Simple {
+    ///         x_pos: void,
+    ///         x_neg: void,
+    ///         z_pos: void,
+    ///         z_neg: void,
+    ///         y_pos: pillar_core_top,
+    ///         y_neg: pillar_core_bottom,
+    ///     }.new_model(),
+    ///     SocketsCartesian3D::Simple {
+    ///         x_pos: void,
+    ///         x_neg: void,
+    ///         z_pos: void,
+    ///         z_neg: void,
+    ///         y_pos: void,
+    ///         y_neg: pillar_cap_bottom,
+    ///     }.new_model(),
     /// ];
-    /// let sockets_connections = vec![
-    ///     (VOID, vec![VOID]),
-    ///     (PILLAR_BASE_TOP, vec![PILLAR_CORE_BOTTOM]),
-    ///     (PILLAR_CORE_TOP, vec![PILLAR_CORE_BOTTOM, PILLAR_CAP_BOTTOM]),
-    /// ];
-    /// let rules = Rules::new_cartesian_3d(models, sockets_connections).unwrap();
+    /// sockets.add_connections(vec![
+    ///     (void, vec![void]),
+    ///     (pillar_base_top, vec![pillar_core_bottom]),
+    ///     (pillar_core_top, vec![pillar_core_bottom, pillar_cap_bottom]),
+    /// ]);
+    /// let rules = RulesBuilder::new_cartesian_3d(models, sockets).build().unwrap();
     /// ```
     pub fn new_cartesian_3d(
-        models: Vec<NodeModel<Cartesian3D>>,
+        models: Vec<Model<Cartesian3D>>,
         socket_collection: SocketCollection,
     ) -> Self {
         Self {
             models,
             socket_collection,
             rotation_axis: Direction::YForward,
-            direction_set: Cartesian3D {},
+            coord_system: Cartesian3D {},
         }
     }
 }
@@ -115,22 +126,28 @@ impl RulesBuilder<Cartesian3D> {
     }
 }
 
-impl<T: DirectionSet + Clone> RulesBuilder<T> {
+impl<T: CoordinateSystem + Clone> RulesBuilder<T> {
+    /// Builds the [`Rules`] from the current configuration of the [`RulesBuilder`]
+    ///
+    /// May return [`crate::RulesError::NoModelsOrSockets`] if `models` or `socket_collection` are empty.
     pub fn build(self) -> Result<Rules<T>, RulesError> {
         Rules::new(
             self.models,
             self.socket_collection,
             self.rotation_axis,
-            self.direction_set,
+            self.coord_system,
         )
     }
 }
 
-pub struct Rules<T: DirectionSet> {
+/// Defines the rules of a generation: the coordinate system, the models, the way they can be rotated, the sockets and their connections.
+///
+/// A same set of [`Rules`] can be shared by multiple generators.
+pub struct Rules<T: CoordinateSystem> {
     /// All the models in this ruleset.
     ///
     /// Expanded from a given set of base models with added variations of rotations around an axis.
-    models: Vec<ExpandedNodeModel>,
+    models: Vec<ExpandedModel>,
     /// The vector `allowed_neighbours[model_index][direction]` holds all the allowed adjacent models (indexes) to `model_index` in `direction`.
     ///
     /// Calculated from expanded models.
@@ -140,12 +157,12 @@ pub struct Rules<T: DirectionSet> {
     typestate: PhantomData<T>,
 }
 
-impl<T: DirectionSet> Rules<T> {
+impl<T: CoordinateSystem> Rules<T> {
     fn new(
-        models: Vec<NodeModel<T>>,
+        models: Vec<Model<T>>,
         socket_collection: SocketCollection,
         rotation_axis: Direction,
-        direction_set: T,
+        coord_system: T,
     ) -> Result<Rules<T>, RulesError> {
         if models.len() == 0 || socket_collection.is_empty() {
             return Err(RulesError::NoModelsOrSockets);
@@ -156,9 +173,9 @@ impl<T: DirectionSet> Rules<T> {
         // Temporary collection to reverse the relation: sockets_to_models.get(socket)[direction] will hold all the models that have 'socket' from 'direction'
         let mut sockets_to_models = HashMap::new();
         let empty_in_all_directions: Array<HashSet<ModelIndex>, Ix1> =
-            Array::from_elem(direction_set.directions().len(), HashSet::new());
+            Array::from_elem(coord_system.directions().len(), HashSet::new());
         for (model_index, model) in expanded_models.iter().enumerate() {
-            for &direction in direction_set.directions() {
+            for &direction in coord_system.directions() {
                 let inverse_dir = direction.opposite() as usize;
                 for socket in &model.sockets()[direction as usize] {
                     let compatible_models = sockets_to_models
@@ -170,11 +187,11 @@ impl<T: DirectionSet> Rules<T> {
         }
 
         let mut allowed_neighbours = Array::from_elem(
-            (expanded_models.len(), direction_set.directions().len()),
+            (expanded_models.len(), coord_system.directions().len()),
             Vec::new(),
         );
         for (model_index, model) in expanded_models.iter().enumerate() {
-            for &direction in direction_set.directions() {
+            for &direction in coord_system.directions() {
                 let mut unique_models = HashSet::new();
                 // For each socket of the model in this direction: get all the sockets that are compatible for connection
                 for socket in &model.sockets()[direction as usize] {
@@ -232,7 +249,7 @@ impl<T: DirectionSet> Rules<T> {
     }
 
     #[inline]
-    pub(crate) fn model(&self, index: usize) -> &ExpandedNodeModel {
+    pub(crate) fn model(&self, index: usize) -> &ExpandedModel {
         &self.models[index]
     }
 }

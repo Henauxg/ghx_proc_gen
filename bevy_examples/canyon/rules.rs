@@ -1,6 +1,9 @@
 use bevy_examples::AssetDef;
 use bevy_ghx_proc_gen::proc_gen::{
-    generator::node::{NodeModel, NodeRotation, Socket, SocketCollection, SocketsCartesian3D},
+    generator::{
+        model::{Model, ModelRotation},
+        socket::{Socket, SocketCollection, SocketsCartesian3D},
+    },
     grid::direction::Cartesian3D,
 };
 
@@ -8,7 +11,7 @@ use crate::SEE_VOID_NODES;
 
 pub(crate) fn rules_and_assets() -> (
     Vec<Vec<AssetDef>>,
-    Vec<NodeModel<Cartesian3D>>,
+    Vec<Model<Cartesian3D>>,
     SocketCollection,
 ) {
     let mut sockets = SocketCollection::new();
@@ -286,7 +289,7 @@ pub(crate) fn rules_and_assets() -> (
         // A bridge start model should face outwards from a rock.
         .add_constrained_rotated_connection(
             bridge_start_bottom,
-            vec![NodeRotation::Rot180, NodeRotation::Rot270],
+            vec![ModelRotation::Rot180, ModelRotation::Rot270],
             vec![rock_border_top, ground_rock_border_top],
         )
         // Platforms
@@ -298,12 +301,12 @@ pub(crate) fn rules_and_assets() -> (
         // Keep the ladders and the wood beams aligned
         .add_constrained_rotated_connection(
             platform_bottom,
-            vec![NodeRotation::Rot0],
+            vec![ModelRotation::Rot0],
             vec![platform_support_top, platform_support_long_top],
         )
         .add_constrained_rotated_connection(
             platform_support_bottom,
-            vec![NodeRotation::Rot0],
+            vec![ModelRotation::Rot0],
             vec![platform_support_top, platform_support_long_top],
         )
         .add_rotated_connection(platform_support_bottom, vec![rock_top])

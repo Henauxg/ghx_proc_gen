@@ -10,7 +10,7 @@ use tracing::{debug, info, trace};
 
 use crate::{
     grid::{
-        direction::{Cartesian2D, DirectionSet},
+        direction::{Cartesian2D, CoordinateSystem},
         GridData, GridDefinition,
     },
     GenerationError,
@@ -18,17 +18,24 @@ use crate::{
 
 use self::{
     builder::{GeneratorBuilder, Unset},
-    node::{GridNode, ModelIndex, ModelInstance},
+    model::{ModelIndex, ModelInstance},
     node_heuristic::{InternalNodeSelectionHeuristic, NodeSelectionHeuristic},
     observer::GenerationUpdate,
     rules::Rules,
 };
 
+/// Defines a [`GeneratorBuilder`] used to create a generator
 pub mod builder;
-pub mod node;
+/// Defines [`crate::generator::model::Model`] and their associated type & utilities
+pub mod model;
+/// Defines the different possible [`NodeSelectionHeuristic`]
 pub mod node_heuristic;
+/// Defines different possible observers to view the results:execution of a [`Generator`]
 pub mod observer;
+/// Defines the [`Rules`] used by a [`Generator`]
 pub mod rules;
+/// Defines [`crate::generator::socket::Socket`] and their associated type & utilities
+pub mod socket;
 
 /// Defines a heuristic for the choice of a model among the possible ones when a node has been selected for generation.
 pub enum ModelSelectionHeuristic {
@@ -36,15 +43,22 @@ pub enum ModelSelectionHeuristic {
     WeightedProbability,
 }
 
+/// Different ways to seed the RNG of the generator.
+///
+/// Note: No matter the selected mode, on each failed generation/reset, the generator will generate and use a new `u64` seed using the previous `u64` seed.
+///
+/// As an example: if a generation with 50 retries is requested with a seed `s1`, but the generations fails 14 times before finally succeeding with seed `s15`, requesting the generation with any of the seeds `s1`, `s2`, ... to `s15` will give the exact same final successful result. However, while `s1` will need to redo the 14 failed generations before succeeding,`s15` will directly generate the successfull result.
 pub enum RngMode {
     /// The generator will use the given seed for its random source.
+    ///
     Seeded(u64),
     /// The generator will use a random seed for its random source.
     ///
-    /// The randomly generated seed can be retrieved by calling `get_seed` on the generator.
+    /// The randomly generated seed can still be retrieved by calling `get_seed` on the generator once created.
     RandomSeed,
 }
 
+/// Represents the current generation state, if not failed.
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
 pub enum GenerationStatus {
     /// The generation has not ended yet.
@@ -65,6 +79,15 @@ enum InternalGeneratorStatus {
     Failed,
 }
 
+/// Output of a [`Generator`] in the context of its [`crate::grid::GridDefinition`].
+#[derive(Clone, Copy, Debug)]
+pub struct GridNode {
+    /// Index of the node in the [`crate::grid::GridDefinition`]
+    pub node_index: usize,
+    /// Generated node data
+    pub model_instance: ModelInstance,
+}
+
 struct PropagationEntry {
     node_index: usize,
     model_index: ModelIndex,
@@ -72,7 +95,7 @@ struct PropagationEntry {
 
 /// Model synthesis/WFC generator.
 /// Use a [`GeneratorBuilder`] to get an instance of a [`Generator`].
-pub struct Generator<T: DirectionSet + Clone> {
+pub struct Generator<T: CoordinateSystem + Clone> {
     // === Read-only configuration ===
     grid: GridDefinition<T>,
     rules: Arc<Rules<T>>,
@@ -98,7 +121,8 @@ pub struct Generator<T: DirectionSet + Clone> {
     supports_count: Array<usize, Ix3>,
 }
 
-impl<T: DirectionSet + Clone> Generator<T> {
+impl<T: CoordinateSystem + Clone> Generator<T> {
+    /// Returns a new `GeneratorBuilder`
     pub fn builder() -> GeneratorBuilder<Unset, Unset, Cartesian2D> {
         GeneratorBuilder::new()
     }
@@ -148,11 +172,12 @@ impl<T: DirectionSet + Clone> Generator<T> {
         generator
     }
 
-    /// Returns the seed that was used to initialize the generator RNG.
+    /// Returns the seed that was used to initialize the generator RNG for this generation. See [`RngMode`] for more information.
     pub fn get_seed(&self) -> u64 {
         self.seed
     }
 
+    /// Returns the [`GridDefinition`] used by the generator
     pub fn grid(&self) -> &GridDefinition<T> {
         &self.grid
     }
@@ -245,13 +270,13 @@ impl<T: DirectionSet + Clone> Generator<T> {
     /// Tries to generate the whole grid. If the generation fails due to a contradiction, it will retry `max_retry_count` times before returning the last encountered [`GenerationError`]
     ///
     /// If the generation has ended (successful or not), calling `generate` will reinitialize the generator before starting the generation.
-    /// If the generation was already started by previous calls to [`select_and_propagate`], this will simply continue the generation.
+    /// If the generation was already started by previous calls to `select_and_propagate`, this will simply continue the generation.
     pub fn generate_collected(&mut self) -> Result<GridData<T, ModelInstance>, GenerationError> {
         self.generate()?;
         Ok(self.to_grid_data())
     }
 
-    /// Same as [`generate_collected`] but does not return a filled [`GridData`] when the generation is done. You can still retrieve a filled [`GridData`] by calling [`to_grid_data`].
+    /// Same as `generate_collected` but does not return a filled [`GridData`] when the generation is done. You can still retrieve a filled [`GridData`] by calling the `to_grid_data` function.
     ///
     /// This can be usefull if you retrieve the data via other means such as observers.
     pub fn generate(&mut self) -> Result<(), GenerationError> {
@@ -291,7 +316,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
 
     /// Advances the generation by one "step": select a node and a model and propagate the changes.
     ///
-    /// Returns the [`GenerationStatus`] if the step executed successfully and [`ProcGenError::GenerationFailure`] if the generation fails due to a contradiction.
+    /// Returns the [`GenerationStatus`] if the step executed successfully and [`crate::GenerationError`] if the generation fails due to a contradiction.
     ///
     /// If the generation has ended (successfully or not), calling `select_and_propagate` again will reinitialize the [`Generator`] before starting a new generation.
     ///
@@ -300,7 +325,7 @@ impl<T: DirectionSet + Clone> Generator<T> {
         self.internal_select_and_propagate(&mut None)
     }
 
-    /// Same as [`select_and_propagate`] but collects and return the generated [`GridNode`] when successful.
+    /// Same as `select_and_propagate` but collects and return the generated [`GridNode`] when successful.
     pub fn select_and_propagate_collected(
         &mut self,
     ) -> Result<(GenerationStatus, Vec<GridNode>), GenerationError> {

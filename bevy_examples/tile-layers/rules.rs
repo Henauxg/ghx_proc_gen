@@ -1,6 +1,9 @@
 use bevy_examples::AssetDef;
 use bevy_ghx_proc_gen::proc_gen::{
-    generator::node::{NodeModel, NodeRotation, Socket, SocketCollection, SocketsCartesian3D},
+    generator::{
+        model::{Model, ModelRotation},
+        socket::{Socket, SocketCollection, SocketsCartesian3D},
+    },
     grid::direction::{Cartesian3D, Direction, GridDelta},
 };
 
@@ -8,7 +11,7 @@ const UP_AXIS: Direction = Direction::ZForward;
 
 pub(crate) fn rules_and_assets() -> (
     Vec<Vec<AssetDef>>,
-    Vec<NodeModel<Cartesian3D>>,
+    Vec<Model<Cartesian3D>>,
     SocketCollection,
 ) {
     let mut sockets = SocketCollection::new();
@@ -110,15 +113,15 @@ pub(crate) fn rules_and_assets() -> (
         ),
         (
             asset("green_grass_corner_out_bl"),
-            green_grass_corner_out.rotated(NodeRotation::Rot90, UP_AXIS),
+            green_grass_corner_out.rotated(ModelRotation::Rot90, UP_AXIS),
         ),
         (
             asset("green_grass_corner_out_br"),
-            green_grass_corner_out.rotated(NodeRotation::Rot180, UP_AXIS),
+            green_grass_corner_out.rotated(ModelRotation::Rot180, UP_AXIS),
         ),
         (
             asset("green_grass_corner_out_tr"),
-            green_grass_corner_out.rotated(NodeRotation::Rot270, UP_AXIS),
+            green_grass_corner_out.rotated(ModelRotation::Rot270, UP_AXIS),
         ),
         (
             asset("green_grass_corner_in_tl"),
@@ -126,28 +129,28 @@ pub(crate) fn rules_and_assets() -> (
         ),
         (
             asset("green_grass_corner_in_bl"),
-            green_grass_corner_in.rotated(NodeRotation::Rot90, UP_AXIS),
+            green_grass_corner_in.rotated(ModelRotation::Rot90, UP_AXIS),
         ),
         (
             asset("green_grass_corner_in_br"),
-            green_grass_corner_in.rotated(NodeRotation::Rot180, UP_AXIS),
+            green_grass_corner_in.rotated(ModelRotation::Rot180, UP_AXIS),
         ),
         (
             asset("green_grass_corner_in_tr"),
-            green_grass_corner_in.rotated(NodeRotation::Rot270, UP_AXIS),
+            green_grass_corner_in.rotated(ModelRotation::Rot270, UP_AXIS),
         ),
         (asset("green_grass_side_t"), green_grass_side.clone()),
         (
             asset("green_grass_side_l"),
-            green_grass_side.rotated(NodeRotation::Rot90, UP_AXIS),
+            green_grass_side.rotated(ModelRotation::Rot90, UP_AXIS),
         ),
         (
             asset("green_grass_side_b"),
-            green_grass_side.rotated(NodeRotation::Rot180, UP_AXIS),
+            green_grass_side.rotated(ModelRotation::Rot180, UP_AXIS),
         ),
         (
             asset("green_grass_side_r"),
-            green_grass_side.rotated(NodeRotation::Rot270, UP_AXIS),
+            green_grass_side.rotated(ModelRotation::Rot270, UP_AXIS),
         ),
     ]);
 
@@ -213,15 +216,15 @@ pub(crate) fn rules_and_assets() -> (
         ),
         (
             asset("yellow_grass_corner_out_bl"),
-            yellow_grass_corner_out.rotated(NodeRotation::Rot90, UP_AXIS),
+            yellow_grass_corner_out.rotated(ModelRotation::Rot90, UP_AXIS),
         ),
         (
             asset("yellow_grass_corner_out_br"),
-            yellow_grass_corner_out.rotated(NodeRotation::Rot180, UP_AXIS),
+            yellow_grass_corner_out.rotated(ModelRotation::Rot180, UP_AXIS),
         ),
         (
             asset("yellow_grass_corner_out_tr"),
-            yellow_grass_corner_out.rotated(NodeRotation::Rot270, UP_AXIS),
+            yellow_grass_corner_out.rotated(ModelRotation::Rot270, UP_AXIS),
         ),
         (
             asset("yellow_grass_corner_in_tl"),
@@ -229,28 +232,28 @@ pub(crate) fn rules_and_assets() -> (
         ),
         (
             asset("yellow_grass_corner_in_bl"),
-            yellow_grass_corner_in.rotated(NodeRotation::Rot90, UP_AXIS),
+            yellow_grass_corner_in.rotated(ModelRotation::Rot90, UP_AXIS),
         ),
         (
             asset("yellow_grass_corner_in_br"),
-            yellow_grass_corner_in.rotated(NodeRotation::Rot180, UP_AXIS),
+            yellow_grass_corner_in.rotated(ModelRotation::Rot180, UP_AXIS),
         ),
         (
             asset("yellow_grass_corner_in_tr"),
-            yellow_grass_corner_in.rotated(NodeRotation::Rot270, UP_AXIS),
+            yellow_grass_corner_in.rotated(ModelRotation::Rot270, UP_AXIS),
         ),
         (asset("yellow_grass_side_t"), yellow_grass_side.clone()),
         (
             asset("yellow_grass_side_l"),
-            yellow_grass_side.rotated(NodeRotation::Rot90, UP_AXIS),
+            yellow_grass_side.rotated(ModelRotation::Rot90, UP_AXIS),
         ),
         (
             asset("yellow_grass_side_b"),
-            yellow_grass_side.rotated(NodeRotation::Rot180, UP_AXIS),
+            yellow_grass_side.rotated(ModelRotation::Rot180, UP_AXIS),
         ),
         (
             asset("yellow_grass_side_r"),
-            yellow_grass_side.rotated(NodeRotation::Rot270, UP_AXIS),
+            yellow_grass_side.rotated(ModelRotation::Rot270, UP_AXIS),
         ),
     ]);
 
@@ -317,41 +320,41 @@ pub(crate) fn rules_and_assets() -> (
         (asset("water_corner_out_tl"), water_corner_out.clone()),
         (
             asset("water_corner_out_bl"),
-            water_corner_out.rotated(NodeRotation::Rot90, UP_AXIS),
+            water_corner_out.rotated(ModelRotation::Rot90, UP_AXIS),
         ),
         (
             asset("water_corner_out_br"),
-            water_corner_out.rotated(NodeRotation::Rot180, UP_AXIS),
+            water_corner_out.rotated(ModelRotation::Rot180, UP_AXIS),
         ),
         (
             asset("water_corner_out_tr"),
-            water_corner_out.rotated(NodeRotation::Rot270, UP_AXIS),
+            water_corner_out.rotated(ModelRotation::Rot270, UP_AXIS),
         ),
         (asset("water_corner_in_tl"), water_corner_in.clone()),
         (
             asset("water_corner_in_bl"),
-            water_corner_in.rotated(NodeRotation::Rot90, UP_AXIS),
+            water_corner_in.rotated(ModelRotation::Rot90, UP_AXIS),
         ),
         (
             asset("water_corner_in_br"),
-            water_corner_in.rotated(NodeRotation::Rot180, UP_AXIS),
+            water_corner_in.rotated(ModelRotation::Rot180, UP_AXIS),
         ),
         (
             asset("water_corner_in_tr"),
-            water_corner_in.rotated(NodeRotation::Rot270, UP_AXIS),
+            water_corner_in.rotated(ModelRotation::Rot270, UP_AXIS),
         ),
         (asset("water_side_t"), water_side.clone()),
         (
             asset("water_side_l"),
-            water_side.rotated(NodeRotation::Rot90, UP_AXIS),
+            water_side.rotated(ModelRotation::Rot90, UP_AXIS),
         ),
         (
             asset("water_side_b"),
-            water_side.rotated(NodeRotation::Rot180, UP_AXIS),
+            water_side.rotated(ModelRotation::Rot180, UP_AXIS),
         ),
         (
             asset("water_side_r"),
-            water_side.rotated(NodeRotation::Rot270, UP_AXIS),
+            water_side.rotated(ModelRotation::Rot270, UP_AXIS),
         ),
     ]);
 

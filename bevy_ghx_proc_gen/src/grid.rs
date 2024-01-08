@@ -6,7 +6,7 @@ use bevy::{
     math::{Vec2, Vec3},
     pbr::MaterialPlugin,
 };
-use ghx_proc_gen::grid::{direction::DirectionSet, GridDefinition, GridPosition};
+use ghx_proc_gen::grid::{direction::CoordinateSystem, GridDefinition, GridPosition};
 
 use self::{
     lines::LineMaterial,
@@ -18,19 +18,19 @@ pub mod lines;
 pub mod markers;
 pub mod view;
 
-pub trait SharableDirectionSet: DirectionSet + Clone + Sync + Send + 'static {}
-impl<T: DirectionSet + Clone + Sync + Send + 'static> SharableDirectionSet for T {}
+pub trait SharableCoordSystem: CoordinateSystem + Clone + Sync + Send + 'static {}
+impl<T: CoordinateSystem + Clone + Sync + Send + 'static> SharableCoordSystem for T {}
 
 #[derive(Component)]
-pub struct Grid<D: SharableDirectionSet> {
+pub struct Grid<D: SharableCoordSystem> {
     pub def: GridDefinition<D>,
 }
 
-pub struct GridDebugPlugin<D: SharableDirectionSet> {
+pub struct GridDebugPlugin<D: SharableCoordSystem> {
     typestate: PhantomData<D>,
 }
 
-impl<T: SharableDirectionSet> GridDebugPlugin<T> {
+impl<T: SharableCoordSystem> GridDebugPlugin<T> {
     pub fn new() -> Self {
         Self {
             typestate: PhantomData,
@@ -38,7 +38,7 @@ impl<T: SharableDirectionSet> GridDebugPlugin<T> {
     }
 }
 
-impl<D: SharableDirectionSet> Plugin for GridDebugPlugin<D> {
+impl<D: SharableCoordSystem> Plugin for GridDebugPlugin<D> {
     fn build(&self, app: &mut App) {
         app.add_plugins(MaterialPlugin::<LineMaterial>::default());
         app.add_systems(
