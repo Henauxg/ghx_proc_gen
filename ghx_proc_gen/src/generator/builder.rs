@@ -7,7 +7,7 @@ use super::{
     RngMode,
 };
 
-pub const DEFAULT_RETRY_COUNT: u32 = 10;
+pub const DEFAULT_RETRY_COUNT: u32 = 50;
 
 /// Internal type used to provide a type-safe builder with compatible [`GridDefinition`] and [`Rules`]
 pub enum Set {}
