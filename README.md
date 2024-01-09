@@ -1,13 +1,18 @@
 [![Bevy tracking](https://img.shields.io/badge/Bevy%20tracking-released%20version-lightblue)](https://github.com/bevyengine/bevy/blob/main/docs/plugins_guidelines.md#main-branch-tracking)
-[![crates.io](https://img.shields.io/crates/v/ghx_proc_gen)](https://crates.io/crates/ghx_proc_gen)
+[![ghx_proc_gen](https://img.shields.io/crates/v/ghx_proc_gen)](https://crates.io/crates/ghx_proc_gen)
+[![bevy_ghx_proc_gen](https://img.shields.io/crates/v/ghx_proc_gen)](https://crates.io/crates/bevy_ghx_proc_gen)
 
 # Ghx Proc(edural) Gen(eneration)
 
-A Rust library for 2D & 3D procedural generation with Model synthesis/Wave function Collapse, also available for the Bevy engine.
+A Rust library for 2D & 3D procedural generation with *Model synthesis/Wave function Collapse*, also available for the Bevy engine.
+
+With *Model synthesis/Wave function Collapse*, you provide **constraints** as an input to the algorithm, and internally, a solver (AC-4 in this case), will try to generate a solution with satisfies those constraints, very much like a sudoku solver.
+
+Altough it can be applied to do texture synthesis (mainly bitmaps), `ghx_proc_gen` focuses more on grid-based use-cases such as terrain/structures/...
 
 - [Ghx Proc(edural) Gen(eneration)](#ghx-procedural-geneneration)
   - [Quickstart](#quickstart)
-  - [Additions for Bevy users](#additions-for-bevy-users)
+  - [Additional information for Bevy users](#additional-information-for-bevy-users)
     - [Bevy plugins](#bevy-plugins)
     - [Compatible Bevy versions](#compatible-bevy-versions)
   - [Examples](#examples)
@@ -25,9 +30,70 @@ A Rust library for 2D & 3D procedural generation with Model synthesis/Wave funct
 cargo add ghx_proc_gen
 ```
 
-## Additions for Bevy users
+In `ghx_proc_gen`, the building pieces of a generation are called `Models`, and adjacency constraints are defined with `Socket`. Every `Model` has one or more `Socket` on each of his sides.
 
-Instead of using `ghx_proc_gen` directly, you can use `bevy_ghx_proc_gen` which exports `ghx_proc_gen` and some additional plugins & utilities dedicated to Bevy.
+Connections are then given between some of those `Sockets`, which allows `Models` with matching `Sockets` on opposite sides to be neighbours.
+
+Let's build a checker board pattern:
+
+1) Start by creating `Rules` and some `Model` for the algorithm:
+```rust
+  // A SocketCollection is what we use to create sockets and define their connections
+  let mut sockets = SocketCollection::new();
+  let (white, black) = (sockets.create(), sockets.create());
+
+  // With the following, a white socket can connect to a black socket and vice-versa
+  sockets.add_connection(white, vec![black]);
+
+  // We define 2 very simple models, a white tile model with the `white` socket on each side and a black tile model with the `black` socket on each side
+  let models = vec![
+      SocketsCartesian2D::Mono(white).new_model(),
+      SocketsCartesian2D::Mono(black).new_model(),
+  ];
+
+  // We give those to a RulesBuilder and get our Rules
+  let rules = RulesBuilder::new_cartesian_2d(models, sockets).build().unwrap();
+```
+
+2) Create a `GridDefinition`
+```rust
+  // Like a chess board, let's do an 8x8 2d grid
+  let grid = GridDefinition::new_cartesian_2d(8, 8, false, false);
+```
+
+3) Create a `Generator` and get a result
+```rust
+  // There many more parameters you can tweak on a Generator before building it, explore the API.
+  let mut generator = GeneratorBuilder::new()
+      .with_rules(rules)
+      .with_grid(grid)
+      .build();
+
+  // Here we directly generate the whole grid, and ask for the result to be returned.
+  // The generation could also be done iteratively, or the results obtained through an `Observer`
+  let checker_pattern = generator.generate_collected().unwrap();
+```
+
+If we simply print the result in the terminal we should obtain:
+```rust
+  let icons = vec!["◻️ ", "⬛"];
+  for y in 0..checker_pattern.grid().size_y() {
+      for x in 0..checker_pattern.grid().size_x() {
+        print!("{}", icons[checker_pattern.get_2d(x, y).model_index]);
+      }
+      println!();
+  }
+```
+<p align="center">
+  <img alt="chess_board_pattern" src="docs/assets/chess_board_pattern.png">
+</p>
+
+
+For more information, check out the [crate documentation](https://docs.rs/ghx_proc_gen/latest/ghx_proc_gen) or the [examples](#examples).
+
+## Additional information for Bevy users
+
+Instead of using the `ghx_proc_gen` crate directly, you can use the `bevy_ghx_proc_gen` crate which exports `ghx_proc_gen` as well as additional plugins & utilities dedicated to Bevy.
 ```
 cargo add bevy_ghx_proc_gen
 ```
@@ -94,7 +160,7 @@ When creating models, you can register a name for them with the `with_name` func
 
 The log level can be configured by the user crates (`tracing::level`, the `LogPlugin` for Bevy, ...).
 
-![debug_traces](assets/debug_traces.png)
+![debug_traces](docs/assets/debug_traces.png)
 
 ## Misc
 
