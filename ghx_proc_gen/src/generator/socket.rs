@@ -118,7 +118,7 @@ impl SocketCollection {
     /// }.new_model().with_all_rotations();
     /// sockets.add_rotated_connection(vertical_a, vec![vertical_b]);
     /// // `model_a` and `model_b` can now be stacked on top of each other (no matter their rotations)
-    /// // Note: here two `model_a` cannot be stacke don top of each other since `vertical_a` was not said to be connected to itself.
+    /// // Note: here two `model_a` cannot be stacked on top of each other since `vertical_a` was not said to be connected to itself.
     /// ```
     pub fn add_rotated_connection(&mut self, from: Socket, to: Vec<Socket>) -> &mut Self {
         for to_rotation in ALL_NODE_ROTATIONS {
@@ -147,7 +147,7 @@ impl SocketCollection {
 
     /// Similar to `add_rotated_connection` but with additional constraints.
     ///
-    /// Adds a connection between only the specified `relative_rotations` of two sockets that are on the rotation axis of the [`super::Rules`]. [`Model`] with sockets `from`, with a given relative rotation to socket `to`, can connect to [`Model`] with sockets `to` and vice versa (with the opposite relative rotation).
+    /// Adds a connection between only the specified `relative_rotations` of two sockets that are on the rotation axis of the [`super::Rules`]. [`Model`] with sockets `from`, with a given relative rotation to socket `to`, can connect to [`Model`] with sockets `to` (and vice versa with the opposite relative rotation).
     ///
     /// `relative_rotations` should be defined with regard to rotation [`ModelRotation::Rot0`] of `to`. So a value of [`ModelRotation::Rot90`] in `relative_rotations` means that a `from` socket can be connected to a `to` socket if and only if the `from` socket is rotated 90° more than the `to` socket, no matter their absolute rotations.
     ///
