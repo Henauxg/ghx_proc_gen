@@ -37,9 +37,9 @@ const SEE_VOID_NODES: bool = false;
 const AUTO_ORBIT_CAMERA: bool = true;
 
 /// Change this to change the map size.
-const GRID_HEIGHT: u32 = 6;
-const GRID_X: u32 = 30;
-const GRID_Z: u32 = 30;
+const GRID_HEIGHT: u32 = 5;
+const GRID_X: u32 = 40;
+const GRID_Z: u32 = 40;
 // --------------------------------------------
 
 const ASSETS_PATH: &str = "canyon";
@@ -122,7 +122,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         .with_grid(grid.clone())
         .with_max_retry_count(250)
         .with_rng(RngMode::RandomSeed)
-        .with_node_heuristic(NodeSelectionHeuristic::MinimumRemainingValue)
+        .with_node_heuristic(NodeSelectionHeuristic::MinimumEntropy)
         .with_model_heuristic(ModelSelectionHeuristic::WeightedProbability)
         .build();
 

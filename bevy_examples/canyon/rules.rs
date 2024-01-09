@@ -16,6 +16,7 @@ pub(crate) fn rules_and_assets() -> (
 ) {
     let mut sockets = SocketCollection::new();
 
+    // Create our sockets
     let mut s = || -> Socket { sockets.create() };
     let (void, void_top, void_bottom) = (s(), s(), s());
     let (water, water_border, water_top, water_bottom) = (s(), s(), s(), s());
@@ -27,17 +28,11 @@ pub(crate) fn rules_and_assets() -> (
     let (rock_to_other, other_to_rock) = (s(), s());
     let (bridge, bridge_side, bridge_top, bridge_bottom) = (s(), s(), s(), s());
     let (bridge_start_in, bridge_start_out, bridge_start_bottom) = (s(), s(), s());
-    let (platform_side, platform_back, platform_top, platform_bottom) = (s(), s(), s(), s());
-    let (
-        platform_support_top,
-        platform_support_bottom,
-        platform_support_long_top,
-        platform_support_long_bottom,
-    ) = (s(), s(), s(), s());
     let (cactus_border, cactus_top, cactus_bottom) = (s(), s(), s());
 
     let asset = |str| -> Vec<AssetDef> { vec![AssetDef::new(str)] };
 
+    // Create our models. We group them with their related assets in the same collection for ease of use (index of the model matches the index of the assets to spawn).
     let assets_and_models = vec![
         (
             match SEE_VOID_NODES {
@@ -67,7 +62,7 @@ pub(crate) fn rules_and_assets() -> (
             }
             .new_model()
             .with_all_rotations()
-            .with_weight(10.25),
+            .with_weight(20.0),
         ),
         (
             asset("sand"),
@@ -81,7 +76,7 @@ pub(crate) fn rules_and_assets() -> (
             }
             .new_model()
             .with_all_rotations()
-            .with_weight(10.25),
+            .with_weight(5.0),
         ),
         (
             asset("cactus"),
@@ -208,49 +203,8 @@ pub(crate) fn rules_and_assets() -> (
             .with_all_rotations()
             .with_weight(0.05),
         ),
-        (
-            asset("platform"),
-            SocketsCartesian3D::Multiple {
-                x_pos: vec![platform_side],
-                x_neg: vec![platform_side],
-                z_pos: vec![bridge_start_in],
-                z_neg: vec![platform_back],
-                y_pos: vec![platform_top],
-                y_neg: vec![platform_bottom],
-            }
-            .new_model()
-            .with_all_rotations()
-            .with_weight(0.01),
-        ),
-        (
-            asset("platform_support"),
-            SocketsCartesian3D::Multiple {
-                x_pos: vec![platform_side],
-                x_neg: vec![platform_side],
-                z_pos: vec![platform_side],
-                z_neg: vec![platform_side],
-                y_pos: vec![platform_support_top],
-                y_neg: vec![platform_support_bottom],
-            }
-            .new_model()
-            .with_all_rotations()
-            .with_weight(0.000001),
-        ),
-        (
-            asset("platform_support_long"),
-            SocketsCartesian3D::Multiple {
-                x_pos: vec![platform_side],
-                x_neg: vec![platform_side],
-                z_pos: vec![platform_side],
-                z_neg: vec![platform_side],
-                y_pos: vec![platform_support_long_top],
-                y_neg: vec![platform_support_long_bottom],
-            }
-            .new_model()
-            .with_all_rotations()
-            .with_weight(0.000001),
-        ),
     ];
+
     sockets
         // Void
         .add_connection(void, vec![void])
@@ -292,38 +246,16 @@ pub(crate) fn rules_and_assets() -> (
             vec![ModelRotation::Rot180, ModelRotation::Rot270],
             vec![rock_border_top, ground_rock_border_top],
         )
-        // Platforms
-        .add_connections(vec![
-            (platform_side, vec![void, rock_border, ground_rock_border]),
-            (platform_back, vec![void]),
-        ])
-        .add_rotated_connection(platform_top, vec![void])
-        // Keep the ladders and the wood beams aligned
-        .add_constrained_rotated_connection(
-            platform_bottom,
-            vec![ModelRotation::Rot0],
-            vec![platform_support_top, platform_support_long_top],
-        )
-        .add_constrained_rotated_connection(
-            platform_support_bottom,
-            vec![ModelRotation::Rot0],
-            vec![platform_support_top, platform_support_long_top],
-        )
-        .add_rotated_connection(platform_support_bottom, vec![rock_top])
-        .add_rotated_connection(platform_support_long_bottom, vec![sand_top, water_top])
         // Cactuses
-        .add_connection(
-            cactus_border,
-            vec![void, rock_border, bridge_side, platform_side],
-        )
+        .add_connection(cactus_border, vec![void, rock_border, bridge_side])
         .add_rotated_connections(vec![
             (cactus_bottom, vec![sand_top]),
             (cactus_top, vec![void_bottom, bridge_bottom]),
         ]);
     (
-        // Assets
+        // Filter assets from the collection
         assets_and_models.iter().map(|t| t.0.clone()).collect(),
-        // Node models
+        // Filter models from the collection (and add a debug name from to them their first asset)
         assets_and_models
             .iter()
             .map(|t| {
