@@ -13,6 +13,7 @@ use bevy_ghx_proc_gen::grid::view::DebugGridView;
 
 use crate::{fps::FpsRoot, AssetDef, NodeAsset};
 
+/// Toggles the debug grids visibility when pressing F1
 pub fn toggle_debug_grid_visibility(
     keys: Res<Input<KeyCode>>,
     mut grid_views: Query<&mut DebugGridView>,
@@ -24,7 +25,7 @@ pub fn toggle_debug_grid_visibility(
     }
 }
 
-/// Toggle the FPS counter when pressing F2
+/// Toggles the FPS counter when pressing F2
 pub fn toggle_fps_counter(
     mut fps_ui: Query<&mut Visibility, With<FpsRoot>>,
     keyboard: Res<Input<KeyCode>>,
@@ -38,6 +39,7 @@ pub fn toggle_fps_counter(
     }
 }
 
+/// Simply load assets with the asset_server and return a map that gives assets from a model_index
 pub fn load_assets<A: Asset>(
     asset_server: &Res<AssetServer>,
     assets_definitions: Vec<Vec<AssetDef>>,

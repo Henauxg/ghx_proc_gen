@@ -69,6 +69,9 @@ pub(crate) fn rules_and_assets() -> (
             (void, vec![void]),
             (pillar_side, vec![pillar_side, void]),
         ])
+        // For this generation, our rotation axis is Y+, so we define connection on the Y axis with `add_rotated_connection` for sockets that still need to be compatible when rotated.
+        // Note: But in reality, in this example, we don't really need it. None of our models uses any rotation, apart from ModelRotation::Rot0 (notice that there's no call to `with_rotations` on any of the models).
+        // Simply using `add_connections` would give the same result (it allows connections with relative_rotation = Rot0)
         .add_rotated_connections(vec![
             (pillar_base_top, vec![pillar_core_bottom]),
             (pillar_core_top, vec![pillar_core_bottom, pillar_cap_bottom]),

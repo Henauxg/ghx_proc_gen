@@ -16,6 +16,7 @@ pub(crate) fn rules_and_assets() -> (
 ) {
     let mut sockets = SocketCollection::new();
 
+    // Create our sockets
     let mut s = || -> Socket { sockets.create() };
     let (void, dirt) = (s(), s());
     let (layer_0_down, layer_0_up) = (s(), s());
@@ -33,6 +34,8 @@ pub(crate) fn rules_and_assets() -> (
     let (big_tree_1_base, big_tree_2_base) = (s(), s());
 
     let asset = |str| -> Vec<AssetDef> { vec![AssetDef::new(str)] };
+
+    // Create our models. We group them with their related assets in the same collection for ease of use (index of the model matches the index of the assets to spawn).
 
     // ---------------------------- Layer 0 ----------------------------
 
@@ -52,6 +55,7 @@ pub(crate) fn rules_and_assets() -> (
 
     // ---------------------------- Layer 1 ----------------------------
 
+    // Here we define models that we'll reuse multiple times
     let green_grass_corner_out = SocketsCartesian3D::Simple {
         x_pos: void_and_grass,
         x_neg: void,
@@ -106,7 +110,7 @@ pub(crate) fn rules_and_assets() -> (
             .new_model()
             .with_weight(5.),
         ),
-        // Here, we have different tiles asset for each rotation (grass blades are facing up), so we chose not to specify `with_all_rotations` but instead re-use a model definition by manually create rotatint it and creating different models.
+        // Here, we have different tiles asset for each rotation (grass blades are facing up), so we chose not to specify `with_all_rotations` but instead re-use a model definition by manually rotating it and creating different models.
         (
             asset("green_grass_corner_out_tl"),
             green_grass_corner_out.clone(),
@@ -391,6 +395,7 @@ pub(crate) fn rules_and_assets() -> (
             }
             .new_model(),
         ),
+        // We define 2 assets here for 1 model. Both will be spawned when the model is selected. We only need the generator to know about the tree base, but in the engine, we want to spawn and see the tree leaves on top
         (
             vec![
                 AssetDef::new("small_tree_bottom"),
@@ -462,6 +467,7 @@ pub(crate) fn rules_and_assets() -> (
             .new_model()
             .with_weight(PROPS_WEIGHT),
         ),
+        // Here we reuse the same models to create variations. (We could also have 1 model, and multiple assets, with the spawner picking one of the assets at random)
         (asset("tree_stump_1"), stump_prop.clone()),
         (asset("tree_stump_2"), stump_prop.clone()),
         (asset("tree_stump_3"), stump_prop.clone()),
@@ -486,17 +492,22 @@ pub(crate) fn rules_and_assets() -> (
             (big_tree_1_base, vec![big_tree_1_base]),
             (big_tree_2_base, vec![big_tree_2_base]),
         ])
-        .add_rotated_connection(layer_0_up, vec![layer_1_down])
-        .add_rotated_connection(layer_1_up, vec![layer_2_down])
-        .add_rotated_connection(layer_2_up, vec![layer_3_down])
-        .add_rotated_connection(layer_3_up, vec![layer_4_down])
-        .add_rotated_connection(yellow_grass_down, vec![grass_up])
-        .add_rotated_connection(props_down, vec![ground_up]);
+        // For this generation, our rotation axis is Z+, so we define connection on the Z axis with `add_rotated_connection` for sockets that still need to be compatible when rotated.
+        // Note: But in reality, in this example, we don't really need it. None of our models uses any rotation, apart from ModelRotation::Rot0 (notice that there's no call to `with_rotations` on any of the models).
+        // Simply using `add_connections` would give the same result (it allows connections with relative_rotation = Rot0)
+        .add_rotated_connections(vec![
+            (layer_0_up, vec![layer_1_down]),
+            (layer_1_up, vec![layer_2_down]),
+            (layer_2_up, vec![layer_3_down]),
+            (layer_3_up, vec![layer_4_down]),
+            (yellow_grass_down, vec![grass_up]),
+            (props_down, vec![ground_up]),
+        ]);
 
     (
-        // Assets
+        // Filter assets from the collection
         assets_and_models.iter().map(|t| t.0.clone()).collect(),
-        // Node models
+        // Filter models from the collection (and add a debug name from to them their first asset)
         assets_and_models
             .iter()
             .map(|t| {

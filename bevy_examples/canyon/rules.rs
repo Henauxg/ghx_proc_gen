@@ -33,7 +33,7 @@ pub(crate) fn rules_and_assets() -> (
     let asset = |str| -> Vec<AssetDef> { vec![AssetDef::new(str)] };
 
     // Create our models. We group them with their related assets in the same collection for ease of use (index of the model matches the index of the assets to spawn).
-    let assets_and_models = vec![
+    let mut assets_and_models = vec![
         (
             match SEE_VOID_NODES {
                 true => asset("void"),
@@ -92,98 +92,94 @@ pub(crate) fn rules_and_assets() -> (
             .with_all_rotations()
             .with_weight(0.25),
         ),
+    ];
+
+    const GROUND_ROCKS_WEIGHT: f32 = 0.5;
+    const ROCKS_WEIGHT: f32 = 0.05;
+    // Here we define a model that we'll reuse multiple times
+    let rock_corner = SocketsCartesian3D::Simple {
+        x_pos: rock_border,
+        x_neg: other_to_rock,
+        z_pos: rock_border,
+        z_neg: rock_to_other,
+        y_pos: rock_border_top,
+        y_neg: rock_border_bottom,
+    }
+    .new_model()
+    .with_all_rotations()
+    .with_weight(ROCKS_WEIGHT);
+
+    assets_and_models.extend(vec![
         (
             asset("ground_rock_corner_in"),
-            SocketsCartesian3D::Multiple {
-                x_pos: vec![ground_rock_border],
-                x_neg: vec![other_to_ground_rock],
-                z_pos: vec![ground_rock_border],
-                z_neg: vec![ground_rock_to_other],
-                y_pos: vec![ground_rock_border_top],
-                y_neg: vec![ground_rock_border_bottom],
+            SocketsCartesian3D::Simple {
+                x_pos: ground_rock_border,
+                x_neg: other_to_ground_rock,
+                z_pos: ground_rock_border,
+                z_neg: ground_rock_to_other,
+                y_pos: ground_rock_border_top,
+                y_neg: ground_rock_border_bottom,
             }
             .new_model()
             .with_all_rotations()
-            .with_weight(0.5),
+            .with_weight(GROUND_ROCKS_WEIGHT),
         ),
         (
             asset("ground_rock_side"),
-            SocketsCartesian3D::Multiple {
-                x_pos: vec![ground_rock_border],
-                x_neg: vec![rock],
-                z_pos: vec![other_to_ground_rock],
-                z_neg: vec![ground_rock_to_other],
-                y_pos: vec![ground_rock_border_top],
-                y_neg: vec![ground_rock_border_bottom],
+            SocketsCartesian3D::Simple {
+                x_pos: ground_rock_border,
+                x_neg: rock,
+                z_pos: other_to_ground_rock,
+                z_neg: ground_rock_to_other,
+                y_pos: ground_rock_border_top,
+                y_neg: ground_rock_border_bottom,
             }
             .new_model()
             .with_all_rotations()
-            .with_weight(0.5),
+            .with_weight(GROUND_ROCKS_WEIGHT),
         ),
-        (
-            asset("rock_corner_in_1"),
-            SocketsCartesian3D::Multiple {
-                x_pos: vec![rock_border],
-                x_neg: vec![other_to_rock],
-                z_pos: vec![rock_border],
-                z_neg: vec![rock_to_other],
-                y_pos: vec![rock_border_top],
-                y_neg: vec![rock_border_bottom],
-            }
-            .new_model()
-            .with_all_rotations()
-            .with_weight(0.05),
-        ),
-        (
-            asset("rock_corner_in_2"),
-            SocketsCartesian3D::Multiple {
-                x_pos: vec![rock_border],
-                x_neg: vec![other_to_rock],
-                z_pos: vec![rock_border],
-                z_neg: vec![rock_to_other],
-                y_pos: vec![rock_border_top],
-                y_neg: vec![rock_border_bottom],
-            }
-            .new_model()
-            .with_all_rotations()
-            .with_weight(0.05),
-        ),
+        // Here we reuse the same model to create variations. (We could also have 1 model, and 2 assets, with the spawner picking one of the assets at random)
+        (asset("rock_corner_in_1"), rock_corner.clone()),
+        (asset("rock_corner_in_2"), rock_corner.clone()),
         (
             asset("rock_side_1"),
-            SocketsCartesian3D::Multiple {
-                x_pos: vec![rock_border],
-                x_neg: vec![rock],
-                z_pos: vec![other_to_rock],
-                z_neg: vec![rock_to_other],
-                y_pos: vec![rock_border_top],
-                y_neg: vec![rock_border_bottom],
+            SocketsCartesian3D::Simple {
+                x_pos: rock_border,
+                x_neg: rock,
+                z_pos: other_to_rock,
+                z_neg: rock_to_other,
+                y_pos: rock_border_top,
+                y_neg: rock_border_bottom,
             }
             .new_model()
             .with_all_rotations()
-            .with_weight(0.05),
+            .with_weight(ROCKS_WEIGHT),
         ),
         (
-            asset("rock"), // rock
-            SocketsCartesian3D::Multiple {
-                x_pos: vec![rock],
-                x_neg: vec![rock],
-                z_pos: vec![rock],
-                z_neg: vec![rock],
-                y_pos: vec![rock_top],
-                y_neg: vec![rock_bottom],
+            asset("rock"),
+            SocketsCartesian3D::Simple {
+                x_pos: rock,
+                x_neg: rock,
+                z_pos: rock,
+                z_neg: rock,
+                y_pos: rock_top,
+                y_neg: rock_bottom,
             }
             .new_model()
-            .with_weight(0.05),
+            .with_weight(ROCKS_WEIGHT),
         ),
+    ]);
+
+    assets_and_models.extend(vec![
         (
             asset("bridge_start"),
-            SocketsCartesian3D::Multiple {
-                x_pos: vec![bridge_side],
-                x_neg: vec![bridge_side],
-                z_pos: vec![bridge_start_out],
-                z_neg: vec![bridge_start_in],
-                y_pos: vec![bridge_top],
-                y_neg: vec![bridge_start_bottom],
+            SocketsCartesian3D::Simple {
+                x_pos: bridge_side,
+                x_neg: bridge_side,
+                z_pos: bridge_start_out,
+                z_neg: bridge_start_in,
+                y_pos: bridge_top,
+                y_neg: bridge_start_bottom,
             }
             .new_model()
             .with_all_rotations()
@@ -191,20 +187,21 @@ pub(crate) fn rules_and_assets() -> (
         ),
         (
             asset("bridge"),
-            SocketsCartesian3D::Multiple {
-                x_pos: vec![bridge_side],
-                x_neg: vec![bridge_side],
-                z_pos: vec![bridge],
-                z_neg: vec![bridge],
-                y_pos: vec![bridge_top],
-                y_neg: vec![bridge_bottom],
+            SocketsCartesian3D::Simple {
+                x_pos: bridge_side,
+                x_neg: bridge_side,
+                z_pos: bridge,
+                z_neg: bridge,
+                y_pos: bridge_top,
+                y_neg: bridge_bottom,
             }
             .new_model()
             .with_all_rotations()
             .with_weight(0.05),
         ),
-    ];
+    ]);
 
+    // For this generation, our rotation axis is Y+, so we define connection on the Y axis with `add_rotated_connection` for sockets that still need to be compatible when rotated.
     sockets
         // Void
         .add_connection(void, vec![void])
@@ -252,6 +249,7 @@ pub(crate) fn rules_and_assets() -> (
             (cactus_bottom, vec![sand_top]),
             (cactus_top, vec![void_bottom, bridge_bottom]),
         ]);
+
     (
         // Filter assets from the collection
         assets_and_models.iter().map(|t| t.0.clone()).collect(),

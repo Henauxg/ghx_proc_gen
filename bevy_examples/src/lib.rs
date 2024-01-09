@@ -32,6 +32,7 @@ pub enum GenerationViewMode {
     Final,
 }
 
+/// Since we do only 1 generation at a time, we put it all in a resource
 #[derive(Resource)]
 pub struct Generation<T: SharableCoordSystem, A: Asset, B: Bundle> {
     pub models_assets: HashMap<usize, Vec<NodeAsset<A>>>,
@@ -52,6 +53,7 @@ pub struct Generation<T: SharableCoordSystem, A: Asset, B: Bundle> {
     pub z_offset_from_y: bool,
 }
 
+/// Read by the examples plugin when generating
 #[derive(Resource)]
 pub struct GenerationControl {
     status: GenerationControlStatus,
@@ -113,10 +115,11 @@ pub struct StepByStepTimed {
     pub timer: Timer,
 }
 
-/// Node spawned by the generator
+/// Marker for nodes spawned by the generator
 #[derive(Component)]
 pub struct SpawnedNode;
 
+/// Used in the bevy examples to define an asset (not yet loaded) for a model: via an asset path, and an optionnal grid offset when spawned in Bevy
 #[derive(Clone)]
 pub struct AssetDef {
     path: &'static str,
@@ -151,6 +154,7 @@ impl AssetDef {
     }
 }
 
+/// Represents an asset for a model, when the asset is loaded
 pub struct NodeAsset<A: Asset> {
     handle: Handle<A>,
     offset: GridDelta,
