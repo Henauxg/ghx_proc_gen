@@ -59,15 +59,7 @@ impl GridDefinition<Cartesian2D> {
         looping_x: bool,
         looping_y: bool,
     ) -> GridDefinition<Cartesian2D> {
-        Self::new(
-            size_x,
-            size_y,
-            1,
-            looping_x,
-            looping_y,
-            false,
-            Cartesian2D {},
-        )
+        Self::new(size_x, size_y, 1, looping_x, looping_y, false, Cartesian2D)
     }
 
     /// Returns the index from a grid position, ignoring the Z axis.
@@ -106,7 +98,7 @@ impl GridDefinition<Cartesian3D> {
             looping_x,
             looping_y,
             looping_z,
-            Cartesian3D {},
+            Cartesian3D,
         )
     }
 }

@@ -106,7 +106,7 @@ pub trait CoordinateSystem {
 
 /// Right-handed 2d Cartesian coordinate system: 4 directions
 #[derive(Clone)]
-pub struct Cartesian2D {}
+pub struct Cartesian2D;
 impl CoordinateSystem for Cartesian2D {
     fn directions(&self) -> &'static [Direction] {
         CARTESIAN_2D_DIRECTIONS
@@ -119,7 +119,7 @@ impl CoordinateSystem for Cartesian2D {
 
 /// Right-handed 3d Cartesian coordinate system: 6 directions
 #[derive(Clone)]
-pub struct Cartesian3D {}
+pub struct Cartesian3D;
 impl CoordinateSystem for Cartesian3D {
     fn directions(&self) -> &'static [Direction] {
         CARTESIAN_3D_DIRECTIONS

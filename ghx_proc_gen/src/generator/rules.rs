@@ -54,7 +54,7 @@ impl RulesBuilder<Cartesian2D> {
             models,
             socket_collection,
             rotation_axis: CARTESIAN_2D_ROTATION_AXIS,
-            coord_system: Cartesian2D {},
+            coord_system: Cartesian2D,
         }
     }
 }
@@ -113,7 +113,7 @@ impl RulesBuilder<Cartesian3D> {
             models,
             socket_collection,
             rotation_axis: Direction::YForward,
-            coord_system: Cartesian3D {},
+            coord_system: Cartesian3D,
         }
     }
 }
