@@ -338,7 +338,7 @@ pub fn spawn_node<D: SharableCoordSystem, A: Asset, B: Bundle>(
                 (generation.bundle_spawner)(
                     node_asset.handle.clone(),
                     translation,
-                    generation.assets_scale,
+                    generation.initial_assets_scale,
                     f32::to_radians(instance.rotation.value() as f32),
                 ),
                 SpawnedNode,

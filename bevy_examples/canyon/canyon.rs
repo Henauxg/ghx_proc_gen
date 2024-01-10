@@ -151,14 +151,12 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         gen,
         NODE_SCALE,
         grid_entity,
-        Vec3::ZERO,
         scene_node_spawner,
         Some(SpawningScaleAnimation::new(
             0.8,
             ASSETS_SCALE,
             ease_in_cubic,
         )),
-        false,
     ));
 
     commands.insert_resource(GenerationControl::new(true, true, true));

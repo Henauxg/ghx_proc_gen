@@ -86,16 +86,16 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         ))
         .id();
 
-    commands.insert_resource(Generation::new(
+    let mut generation = Generation::new(
         models_assets,
         gen,
         NODE_SIZE,
         grid_entity,
-        Vec3::ZERO,
         sprite_node_spawner,
         Some(SpawningScaleAnimation::new(0.4, Vec3::ONE, ease_in_cubic)),
-        true,
-    ));
+    );
+    generation.z_offset_from_y = true;
+    commands.insert_resource(generation);
 
     commands.insert_resource(GenerationControl::new(true, true, true));
 }

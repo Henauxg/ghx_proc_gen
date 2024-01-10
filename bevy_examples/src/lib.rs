@@ -43,7 +43,7 @@ pub struct Generation<T: SharableCoordSystem, A: Asset, B: Bundle> {
     /// Grid entity
     pub grid_entity: Entity,
     /// Scale of the spawned assets (before any animation, if any).
-    pub assets_scale: Vec3,
+    pub initial_assets_scale: Vec3,
     /// Called to spawn the appropriate [`Bundle`] for a node
     pub bundle_spawner: fn(asset: Handle<A>, translation: Vec3, scale: Vec3, rot_rad: f32) -> B,
     /// Animation used by all spawned assets
@@ -88,10 +88,8 @@ impl<T: SharableCoordSystem, A: Asset, B: Bundle> Generation<T, A, B> {
         mut gen: Generator<T>,
         node_scale: Vec3,
         grid_entity: Entity,
-        assets_scale: Vec3,
         bundle_spawner: fn(asset: Handle<A>, translation: Vec3, scale: Vec3, rot_rad: f32) -> B,
         spawn_animation: Option<SpawningScaleAnimation>,
-        z_offset_from_y: bool,
     ) -> Generation<T, A, B> {
         let observer = QueuedObserver::new(&mut gen);
         Self {
@@ -100,10 +98,10 @@ impl<T: SharableCoordSystem, A: Asset, B: Bundle> Generation<T, A, B> {
             observer,
             node_scale,
             grid_entity,
-            assets_scale,
+            initial_assets_scale: Vec3::ZERO,
             bundle_spawner,
             spawn_animation,
-            z_offset_from_y,
+            z_offset_from_y: false,
         }
     }
 }
