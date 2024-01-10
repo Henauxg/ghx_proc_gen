@@ -6,10 +6,21 @@ repository = "https://github.com/Henauxg/ghx_proc_gen"
 documentation = "https://docs.rs/bevy_ghx_proc_gen"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-keywords = ["gamedev", "procedural", "wfc", "model synthesis", "bevy"]
+keywords = [
+    "gamedev",
+    "procedural-generation",
+    "wfc",
+    "model synthesis",
+    "bevy",
+]
 categories = ["game-development", "algorithms"]
 readme = "README.md"
 
 [dependencies]
 ghx_proc_gen = { path = "../ghx_proc_gen" }
-bevy = { version = "0.12.0", default-features = true }
+bevy = { version = "0.12.0", default-features = false, features = [
+    "bevy_asset",  # Assets management
+    "bevy_pbr",    # 3D (physically-based) rendering
+    "bevy_gizmos", # Support drawing debug lines and shapes
+    "bevy_render", # Rendering framework core
+] }
