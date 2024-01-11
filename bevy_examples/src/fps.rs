@@ -1,4 +1,5 @@
 use bevy::{
+    app::{App, Plugin, Startup, Update},
     diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
     ecs::{
         component::Component,
@@ -16,6 +17,15 @@ use bevy::{
 };
 
 /// Based on https://bevy-cheatbook.github.io/cookbook/print-framerate.html
+
+pub struct FpsDisplayPlugin;
+
+impl Plugin for FpsDisplayPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Startup, setup_fps_counter)
+            .add_systems(Update, fps_text_update_system);
+    }
+}
 
 /// Marker to find the container entity so we can show/hide the FPS counter
 #[derive(Component)]
