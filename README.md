@@ -40,18 +40,20 @@ Let's build a checker board pattern:
 ```rust
   // A SocketCollection is what we use to create sockets and define their connections
   let mut sockets = SocketCollection::new();
+  // For this example, we will only need two sockets
   let (white, black) = (sockets.create(), sockets.create());
 
-  // With the following, a white socket can connect to a black socket and vice-versa
+  // With the following, a `white` socket can connect to a `black` socket and vice-versa
   sockets.add_connection(white, vec![black]);
 
-  // We define 2 very simple models, a white tile model with the `white` socket on each side and a black tile model with the `black` socket on each side
+  // We define 2 very simple models: a white tile model with the `white` socket on each side
+  // and a black tile model with the `black` socket on each side
   let models = vec![
       SocketsCartesian2D::Mono(white).new_model(),
       SocketsCartesian2D::Mono(black).new_model(),
   ];
 
-  // We give those to a RulesBuilder and get our Rules
+  // We give the models and socket collection to a RulesBuilder and get our Rules
   let rules = RulesBuilder::new_cartesian_2d(models, sockets).build().unwrap();
 ```
 
@@ -87,7 +89,6 @@ If we simply print the result in the terminal we should obtain:
 <p align="center">
   <img alt="chess_board_pattern" src="docs/assets/chess_board_pattern.png">
 </p>
-
 
 For more information, check out the [crate documentation](https://docs.rs/ghx_proc_gen/latest/ghx_proc_gen) or the [examples](#examples).
 
@@ -167,7 +168,7 @@ The log level can be configured by the user crates (`tracing::level`, the `LogPl
 Rules-writing tips:
  - Start simple, then add complexity iteratively
  - Changing the Node selection heuristic may drastically change the generated results
- - Diagonals constraints are harder and need intermediary models
+ - On rectangle grids, diagonals constraints are harder and need intermediary models
 
 Why "ghx" ?
 - It serves as a namespace to avoid picking cargo names such as `proc_gen` or `bevy_proc_gen`
