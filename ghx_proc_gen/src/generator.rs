@@ -67,7 +67,7 @@ pub enum GenerationStatus {
     Done,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 enum InternalGeneratorStatus {
     /// Initial state.
     Init,
@@ -182,6 +182,54 @@ impl<T: CoordinateSystem + Clone> Generator<T> {
         &self.grid
     }
 
+    /// Tries to generate the whole grid. If the generation fails due to a contradiction, it will retry `max_retry_count` times before returning the last encountered [`GenerationError`]
+    ///
+    /// If the generation has ended (successful or not), calling `generate` will reinitialize the generator before starting the generation.
+    /// If the generation was already started by previous calls to `select_and_propagate`, this will simply continue the generation.
+    pub fn generate_collected(&mut self) -> Result<GridData<T, ModelInstance>, GenerationError> {
+        self.generate()?;
+        Ok(self.to_grid_data())
+    }
+
+    /// Same as `generate_collected` but does not return a filled [`GridData`] when the generation is done. You can still retrieve a filled [`GridData`] by calling the `to_grid_data` function.
+    ///
+    /// This can be usefull if you retrieve the data via other means such as observers.
+    pub fn generate(&mut self) -> Result<(), GenerationError> {
+        for _i in 1..self.max_retry_count {
+            #[cfg(feature = "debug-traces")]
+            info!("Try n°{}", _i);
+
+            match self.internal_generate() {
+                Ok(_) => return Ok(()),
+                Err(_) => (),
+            }
+        }
+        #[cfg(feature = "debug-traces")]
+        info!("Try n°{}", self.max_retry_count + 1);
+        self.internal_generate()
+    }
+
+    /// Advances the generation by one "step": select a node and a model and propagate the changes.
+    ///
+    /// Returns the [`GenerationStatus`] if the step executed successfully and [`crate::GenerationError`] if the generation fails due to a contradiction.
+    ///
+    /// If the generation has ended (successfully or not), calling `select_and_propagate` again will reinitialize the [`Generator`] before starting a new generation.
+    ///
+    /// **Note**: One call to `select_and_propagate` **can** lead to more than one node generated if the propagation phase forces some other node(s) into a definite state (due to only one possible model remaining on a node)
+    pub fn select_and_propagate(&mut self) -> Result<GenerationStatus, GenerationError> {
+        self.internal_select_and_propagate(&mut None)
+    }
+
+    /// Same as `select_and_propagate` but collects and return the generated [`GridNode`] when successful.
+    pub fn select_and_propagate_collected(
+        &mut self,
+    ) -> Result<(GenerationStatus, Vec<GridNode>), GenerationError> {
+        let mut collector = Some(Vec::new());
+        let res = self.internal_select_and_propagate(&mut collector)?;
+        // We know that collector is Some.
+        Ok((res, collector.unwrap()))
+    }
+
     fn reinitialize(
         &mut self,
         collector: &mut Option<Vec<GridNode>>,
@@ -267,33 +315,6 @@ impl<T: CoordinateSystem + Clone> Generator<T> {
         Ok(())
     }
 
-    /// Tries to generate the whole grid. If the generation fails due to a contradiction, it will retry `max_retry_count` times before returning the last encountered [`GenerationError`]
-    ///
-    /// If the generation has ended (successful or not), calling `generate` will reinitialize the generator before starting the generation.
-    /// If the generation was already started by previous calls to `select_and_propagate`, this will simply continue the generation.
-    pub fn generate_collected(&mut self) -> Result<GridData<T, ModelInstance>, GenerationError> {
-        self.generate()?;
-        Ok(self.to_grid_data())
-    }
-
-    /// Same as `generate_collected` but does not return a filled [`GridData`] when the generation is done. You can still retrieve a filled [`GridData`] by calling the `to_grid_data` function.
-    ///
-    /// This can be usefull if you retrieve the data via other means such as observers.
-    pub fn generate(&mut self) -> Result<(), GenerationError> {
-        for _i in 1..self.max_retry_count {
-            #[cfg(feature = "debug-traces")]
-            info!("Try n°{}", _i);
-
-            match self.internal_generate() {
-                Ok(_) => return Ok(()),
-                Err(_) => (),
-            }
-        }
-        #[cfg(feature = "debug-traces")]
-        info!("Try n°{}", self.max_retry_count + 1);
-        self.internal_generate()
-    }
-
     fn internal_generate(&mut self) -> Result<(), GenerationError> {
         match self.status {
             InternalGeneratorStatus::Init => self.initialize_supports_count(&mut None)?,
@@ -312,27 +333,6 @@ impl<T: CoordinateSystem + Clone> Generator<T> {
             };
         }
         Ok(())
-    }
-
-    /// Advances the generation by one "step": select a node and a model and propagate the changes.
-    ///
-    /// Returns the [`GenerationStatus`] if the step executed successfully and [`crate::GenerationError`] if the generation fails due to a contradiction.
-    ///
-    /// If the generation has ended (successfully or not), calling `select_and_propagate` again will reinitialize the [`Generator`] before starting a new generation.
-    ///
-    /// **Note**: One call to `select_and_propagate` **can** lead to more than one node generated if the propagation phase forces some other node(s) into a definite state (due to only one possible model remaining on a node)
-    pub fn select_and_propagate(&mut self) -> Result<GenerationStatus, GenerationError> {
-        self.internal_select_and_propagate(&mut None)
-    }
-
-    /// Same as `select_and_propagate` but collects and return the generated [`GridNode`] when successful.
-    pub fn select_and_propagate_collected(
-        &mut self,
-    ) -> Result<(GenerationStatus, Vec<GridNode>), GenerationError> {
-        let mut collector = Some(Vec::new());
-        let res = self.internal_select_and_propagate(&mut collector)?;
-        // We know that collector is Some.
-        Ok((res, collector.unwrap()))
     }
 
     fn internal_select_and_propagate(
