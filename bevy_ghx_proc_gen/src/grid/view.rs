@@ -25,7 +25,7 @@ use super::{
     Grid, SharableCoordSystem,
 };
 
-/// Add this bundle to a grid if you are using a 3d camera ([`bevy::prelude::Camera3d`]).
+/// Add this bundle to an [`Entity`] with a [`Grid`] if you are using a 3d camera ([`bevy::prelude::Camera3d`]).
 #[derive(Bundle)]
 pub struct DebugGridView3d {
     /// 3d-specific configuration of the debug view
@@ -42,7 +42,7 @@ impl Default for DebugGridView3d {
     }
 }
 
-/// Add this bundle to a grid if you are using a 2d camera ([`bevy::prelude::Camera2d`]).
+/// Add this bundle to an [`Entity`] with a [`Grid`] if you are using a 2d camera ([`bevy::prelude::Camera2d`]).
 #[derive(Bundle)]
 pub struct DebugGridView2d {
     /// 2d-specific configuration of the debug view
@@ -87,15 +87,15 @@ impl Default for DebugGridViewConfig2d {
     }
 }
 
-/// When an Entity with a [`Grid`] component has a [`DebugGridView3d`] bundle added to it. The plugin creates a child Entity with a 3d mesh representing the 3d grid.
+/// When an [`Entity`] with a [`Grid`] component has a [`DebugGridView3d`] bundle added to it. The plugin creates a child `Entity` with a 3d mesh representing the 3d grid.
 ///
-/// This component is used to used to mark this child-entity to make it easy to change its [`Visibility`]
+/// This component is used to used to mark this child `Entity` to make it easy to change its [`Visibility`]
 #[derive(Component, Default)]
 pub struct DebugGridMesh;
 
-/// When an Entity with a [`Grid`] component has a [`DebugGridView3d`] bundle added to it. The plugin creates a child Entity with a 3d mesh representing the 3d grid.
+/// When an [`Entity`] with a [`Grid`] component has a [`DebugGridView3d`] bundle added to it. The plugin creates a child `Entity` with a 3d mesh representing the 3d grid.
 ///
-/// This component is used to used to mark the parent entity, and holds the child-entity id to make it easy to change the child entity [`Visibility`]
+/// This component is used to used to mark the parent `Entity`, and holds the child `Entity` id to make it easy to change its [`Visibility`]
 #[derive(Component)]
 pub struct DebugGridMeshParent(Entity);
 
@@ -110,8 +110,6 @@ pub struct DebugGridView {
     /// Whether or not to display the grid markers
     pub display_markers: bool,
     /// Color of the displayed grid.
-    ///
-    /// Known limitation in 3d: updating the color will not update the grid
     pub color: Color,
 }
 impl Default for DebugGridView {
