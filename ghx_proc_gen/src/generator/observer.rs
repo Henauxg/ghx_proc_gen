@@ -74,7 +74,7 @@ impl<T: CoordinateSystem + Clone> QueuedStatefulObserver<T> {
 
 /// Observer with just a queue of the [`GenerationUpdate`] sent by the [`crate::generator::Generator`]
 ///
-/// Can be used in a diffrent thread than the generator's thread.
+/// Can be used in a different thread than the generator's thread.
 pub struct QueuedObserver {
     receiver: crossbeam_channel::Receiver<GenerationUpdate>,
 }
