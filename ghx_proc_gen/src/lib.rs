@@ -65,7 +65,7 @@ mod tests {
             .build();
 
         // Here we directly generate the whole grid, and ask for the result to be returned.
-        // The generation could also be done iteratively, or the results obtained through an `Observer`
+        // The generation could also be done iteratively via `generator.select_and_propagate()`, or the results could be obtained through an `Observer`
         let checker_pattern = generator.generate_collected().unwrap();
 
         let icons = vec!["◻️ ", "⬛"];
