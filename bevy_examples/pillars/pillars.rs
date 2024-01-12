@@ -1,26 +1,23 @@
-use std::f32::consts::PI;
+use std::{f32::consts::PI, sync::Arc};
 
 use bevy::{log::LogPlugin, pbr::DirectionalLightShadowMap, prelude::*};
 
 use bevy_examples::{
-    anim::{ease_in_cubic, SpawningScaleAnimation},
     camera::{pan_orbit_camera, PanOrbitCamera},
-    plugin::{scene_node_spawner, ProcGenExamplesPlugin},
+    plugin::ProcGenExamplesPlugin,
     utils::load_assets,
-    Generation, GenerationControl, GenerationViewMode,
 };
 use bevy_ghx_proc_gen::{
+    gen::{debug_plugin::GenerationViewMode, scene_node_spawner, Generation},
     grid::{
         view::{DebugGridView, DebugGridView3d, DebugGridViewConfig3d},
         Grid,
     },
     proc_gen::{
-        generator::{
-            builder::GeneratorBuilder, node_heuristic::NodeSelectionHeuristic, rules::RulesBuilder,
-            ModelSelectionHeuristic, RngMode,
-        },
+        generator::{builder::GeneratorBuilder, rules::RulesBuilder},
         grid::{direction::Cartesian3D, GridDefinition},
     },
+    GeneratorBundle,
 };
 
 use crate::rules::rules_and_assets;
@@ -38,10 +35,10 @@ const GRID_Z: u32 = 80;
 // --------------------------------------------
 
 /// Size of a block in world units
-const NODE_SIZE: f32 = 1.;
-const NODE_SCALE: Vec3 = Vec3::new(NODE_SIZE, NODE_SIZE, NODE_SIZE);
+const BLOCK_SIZE: f32 = 1.;
+const NODE_SIZE: Vec3 = Vec3::new(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
 
-const ASSETS_SCALE_FACTOR: f32 = NODE_SIZE / 4.; // Models are 4 units wide
+const ASSETS_SCALE_FACTOR: f32 = BLOCK_SIZE / 4.; // Models are 4 units wide
 const ASSETS_SCALE: Vec3 = Vec3::new(
     ASSETS_SCALE_FACTOR,
     ASSETS_SCALE_FACTOR,
@@ -97,7 +94,7 @@ fn setup_scene(
         }),
         transform: Transform::from_scale(Vec3::splat(100.0)).with_translation(Vec3::new(
             0.,
-            NODE_SIZE / 2.,
+            BLOCK_SIZE / 2.,
             0.,
         )),
         ..default()
@@ -149,45 +146,34 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
     let gen = GeneratorBuilder::new()
         .with_rules(rules)
         .with_grid(grid.clone())
-        .with_max_retry_count(250)
-        .with_rng(RngMode::RandomSeed)
-        .with_node_heuristic(NodeSelectionHeuristic::MinimumRemainingValue)
-        .with_model_heuristic(ModelSelectionHeuristic::WeightedProbability)
         .build();
 
     let models_assets = load_assets(&asset_server, models_asset_paths, "pillars", "glb#Scene0");
 
-    let grid_entity = commands
-        .spawn((
-            SpatialBundle::from_transform(Transform::from_translation(Vec3 {
+    commands.spawn((
+        GeneratorBundle {
+            spatial: SpatialBundle::from_transform(Transform::from_translation(Vec3 {
                 x: -(grid.size_x() as f32) / 2.,
                 y: 0.,
                 z: -(grid.size_z() as f32) / 2.,
             })),
-            Grid { def: grid },
-            DebugGridView3d {
-                config: DebugGridViewConfig3d {
-                    node_size: NODE_SCALE,
-                },
-                view: DebugGridView::new(false, true, Color::GRAY),
+            grid: Grid { def: grid },
+            generation: Generation::new(
+                gen,
+                Arc::new(models_assets),
+                NODE_SIZE,
+                // We spawn assets with a scale of 0 since we animate their scale in the examples
+                Vec3::ZERO,
+                scene_node_spawner,
+            ),
+        },
+        DebugGridView3d {
+            config: DebugGridViewConfig3d {
+                node_size: NODE_SIZE,
             },
-        ))
-        .id();
-
-    commands.insert_resource(Generation::new(
-        models_assets,
-        gen,
-        NODE_SCALE,
-        grid_entity,
-        scene_node_spawner,
-        Some(SpawningScaleAnimation::new(
-            0.8,
-            ASSETS_SCALE,
-            ease_in_cubic,
-        )),
+            view: DebugGridView::new(false, true, Color::GRAY),
+        },
     ));
-
-    commands.insert_resource(GenerationControl::new(true, true, true));
 }
 
 fn main() {
@@ -198,7 +184,10 @@ fn main() {
             filter: "info,wgpu_core=warn,wgpu_hal=warn,ghx_proc_gen=debug".into(),
             level: bevy::log::Level::DEBUG,
         }),
-        ProcGenExamplesPlugin::<Cartesian3D, Scene, SceneBundle>::new(GENERATION_VIEW_MODE),
+        ProcGenExamplesPlugin::<Cartesian3D, Scene, SceneBundle>::new(
+            GENERATION_VIEW_MODE,
+            ASSETS_SCALE,
+        ),
     ));
     app.add_systems(Startup, (setup_generator, setup_scene))
         .add_systems(Update, pan_orbit_camera);

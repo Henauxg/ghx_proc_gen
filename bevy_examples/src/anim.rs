@@ -2,7 +2,7 @@ use bevy::{
     ecs::{
         component::Component,
         entity::Entity,
-        system::{Commands, Query, Res},
+        system::{Commands, Query, Res, Resource},
     },
     math::Vec3,
     time::Time,
@@ -10,13 +10,14 @@ use bevy::{
 };
 
 /// Used for the examples
-#[derive(Component, Clone)]
+#[derive(Component, Clone, Resource)]
 pub struct SpawningScaleAnimation {
     duration_sec: f32,
     progress: f32,
     easing: fn(f32) -> f32,
     final_scale: Vec3,
 }
+
 impl SpawningScaleAnimation {
     pub fn new(duration_sec: f32, final_scale: Vec3, easing: fn(f32) -> f32) -> Self {
         Self {
@@ -48,7 +49,7 @@ impl SpawningScaleAnimation {
     }
 }
 
-pub fn animate_spawning_nodes_scale(
+pub fn animate_scale(
     mut commands: Commands,
     time: Res<Time>,
     mut spawning_nodes: Query<(Entity, &mut Transform, &mut SpawningScaleAnimation)>,

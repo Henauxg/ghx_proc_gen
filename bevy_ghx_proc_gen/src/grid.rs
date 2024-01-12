@@ -33,8 +33,8 @@ pub struct Grid<D: SharableCoordSystem> {
 }
 
 /// Bevy plugin used to visualize [`ghx_proc_gen::grid::GridDefinition`] and additional debug markers created with [`markers::MarkerEvent`].
-pub struct GridDebugPlugin<D: SharableCoordSystem> {
-    typestate: PhantomData<D>,
+pub struct GridDebugPlugin<C: SharableCoordSystem> {
+    typestate: PhantomData<C>,
 }
 
 impl<T: SharableCoordSystem> GridDebugPlugin<T> {
@@ -46,21 +46,21 @@ impl<T: SharableCoordSystem> GridDebugPlugin<T> {
     }
 }
 
-impl<D: SharableCoordSystem> Plugin for GridDebugPlugin<D> {
+impl<C: SharableCoordSystem> Plugin for GridDebugPlugin<C> {
     fn build(&self, app: &mut App) {
         app.add_plugins(MaterialPlugin::<LineMaterial>::default());
         app.add_systems(
             Update,
             (
-                spawn_debug_grids_3d::<D>,
+                spawn_debug_grids_3d::<C>,
                 update_debug_grid_mesh_visibility_3d,
-                draw_debug_grids_2d::<D>,
+                draw_debug_grids_2d::<C>,
             ),
         )
         .add_systems(
             PostUpdate,
             (
-                update_debug_markers::<D>,
+                update_debug_markers::<C>,
                 draw_debug_markers_3d,
                 draw_debug_markers_2d,
             ),

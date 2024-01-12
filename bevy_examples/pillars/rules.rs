@@ -1,4 +1,4 @@
-use bevy_examples::AssetDef;
+use bevy_examples::utils::AssetDef;
 use bevy_ghx_proc_gen::proc_gen::{
     generator::{
         model::Model,

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use bevy::{
-    asset::{Asset, AssetServer},
+    asset::{Asset, AssetServer, Handle},
     ecs::{
         query::With,
         system::{Query, Res},
@@ -9,12 +9,16 @@ use bevy::{
     input::{keyboard::KeyCode, Input},
     render::view::Visibility,
 };
-use bevy_ghx_proc_gen::grid::view::DebugGridView;
+use bevy_ghx_proc_gen::{
+    gen::{ModelAsset, RulesModelsAssets},
+    grid::view::DebugGridView,
+    proc_gen::grid::direction::GridDelta,
+};
 
-use crate::{fps::FpsRoot, AssetDef, NodeAsset};
+use crate::fps::FpsRoot;
 
 /// Toggles the debug grids visibility when pressing F1
-pub fn toggle_debug_grid_visibility(
+pub fn toggle_debug_grids_visibilities(
     keys: Res<Input<KeyCode>>,
     mut grid_views: Query<&mut DebugGridView>,
 ) {
@@ -39,13 +43,48 @@ pub fn toggle_fps_counter(
     }
 }
 
+/// Used to define an asset (not yet loaded) for a model: via an asset path, and an optionnal grid offset when spawned in Bevy
+#[derive(Clone)]
+pub struct AssetDef {
+    path: &'static str,
+    offset: GridDelta,
+}
+
+impl AssetDef {
+    pub fn new(path: &'static str) -> Self {
+        Self {
+            path,
+            offset: GridDelta::new(0, 0, 0),
+        }
+    }
+
+    pub fn with_offset(mut self, offset: GridDelta) -> Self {
+        self.offset = offset;
+        self
+    }
+
+    pub fn to_asset<A: Asset>(&self, handle: Handle<A>) -> ModelAsset<A> {
+        ModelAsset {
+            handle,
+            offset: self.offset.clone(),
+        }
+    }
+
+    pub fn path(&self) -> &'static str {
+        self.path
+    }
+    pub fn offset(&self) -> &GridDelta {
+        &self.offset
+    }
+}
+
 /// Simply load assets with the asset_server and return a map that gives assets from a model_index
 pub fn load_assets<A: Asset>(
     asset_server: &Res<AssetServer>,
     assets_definitions: Vec<Vec<AssetDef>>,
     assets_directory: &str,
     extension: &str,
-) -> HashMap<usize, Vec<NodeAsset<A>>> {
+) -> RulesModelsAssets<A> {
     let mut models_assets = HashMap::new();
     for (model_index, assets) in assets_definitions.iter().enumerate() {
         let mut node_assets = Vec::new();

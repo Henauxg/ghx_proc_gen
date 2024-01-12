@@ -1,12 +1,10 @@
+use std::sync::Arc;
+
 use bevy::{app::PluginGroup, log::LogPlugin, prelude::*};
 
-use bevy_examples::{
-    anim::{ease_in_cubic, SpawningScaleAnimation},
-    plugin::{sprite_node_spawner, ProcGenExamplesPlugin},
-    utils::load_assets,
-    Generation, GenerationControl, GenerationViewMode,
-};
+use bevy_examples::{plugin::ProcGenExamplesPlugin, utils::load_assets};
 use bevy_ghx_proc_gen::{
+    gen::{debug_plugin::GenerationViewMode, sprite_node_spawner, Generation},
     grid::{
         view::{DebugGridView, DebugGridView2d, DebugGridViewConfig2d},
         Grid,
@@ -21,6 +19,7 @@ use bevy_ghx_proc_gen::{
             GridDefinition,
         },
     },
+    GeneratorBundle,
 };
 
 use crate::rules::rules_and_assets;
@@ -36,11 +35,15 @@ const GRID_Y: u32 = 20;
 const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::StepByStepTimed(2, 1);
 // --------------------------------------------
 
+const ASSETS_PATH: &str = "tile_layers";
 /// Size of a block in world units (in Bevy 2d, 1 pixel is 1 world unit)
 const TILE_SIZE: f32 = 32.;
+/// Size of a grid node in world units
 const NODE_SIZE: Vec3 = Vec3::new(TILE_SIZE, TILE_SIZE, 1.);
-const ASSETS_PATH: &str = "tile_layers";
-/// Number of z layers in the map, do not chnage without adapting the rules.
+
+const ASSETS_SCALE: Vec3 = Vec3::ONE;
+
+/// Number of z layers in the map, do not change without adapting the rules.
 const GRID_Z: u32 = 5;
 
 fn setup_scene(mut commands: Commands) {
@@ -68,36 +71,32 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     let models_assets = load_assets(&asset_server, assets_definitions, ASSETS_PATH, "png");
 
-    let grid_entity = commands
-        .spawn((
-            SpatialBundle::from_transform(Transform::from_translation(Vec3 {
+    let mut generation = Generation::new(
+        gen,
+        Arc::new(models_assets),
+        NODE_SIZE,
+        Vec3::ZERO,
+        sprite_node_spawner,
+    );
+    generation.z_offset_from_y = true;
+    commands.spawn((
+        GeneratorBundle {
+            spatial: SpatialBundle::from_transform(Transform::from_translation(Vec3 {
                 x: -TILE_SIZE * grid.size_x() as f32 / 2.,
                 y: -TILE_SIZE * grid.size_y() as f32 / 2.,
                 z: 0.,
             })),
-            Grid { def: grid },
-            DebugGridView2d {
-                config: DebugGridViewConfig2d {
-                    node_size: Vec2::splat(TILE_SIZE),
-                    ..Default::default()
-                },
-                view: DebugGridView::new(false, true, Color::WHITE),
+            grid: Grid { def: grid },
+            generation,
+        },
+        DebugGridView2d {
+            config: DebugGridViewConfig2d {
+                node_size: Vec2::splat(TILE_SIZE),
+                ..Default::default()
             },
-        ))
-        .id();
-
-    let mut generation = Generation::new(
-        models_assets,
-        gen,
-        NODE_SIZE,
-        grid_entity,
-        sprite_node_spawner,
-        Some(SpawningScaleAnimation::new(0.4, Vec3::ONE, ease_in_cubic)),
-    );
-    generation.z_offset_from_y = true;
-    commands.insert_resource(generation);
-
-    commands.insert_resource(GenerationControl::new(true, true, true));
+            view: DebugGridView::new(false, true, Color::WHITE),
+        },
+    ));
 }
 
 fn main() {
@@ -109,7 +108,10 @@ fn main() {
                 level: bevy::log::Level::DEBUG,
             })
             .set(ImagePlugin::default_nearest()),
-        ProcGenExamplesPlugin::<Cartesian3D, Image, SpriteBundle>::new(GENERATION_VIEW_MODE),
+        ProcGenExamplesPlugin::<Cartesian3D, Image, SpriteBundle>::new(
+            GENERATION_VIEW_MODE,
+            ASSETS_SCALE,
+        ),
     ));
     app.add_systems(Startup, (setup_generator, setup_scene));
     app.run();
