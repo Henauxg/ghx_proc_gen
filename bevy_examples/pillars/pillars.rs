@@ -88,8 +88,6 @@ fn setup_scene(
         mesh: meshes.add(Mesh::from(shape::Plane::default())),
         material: materials.add(StandardMaterial {
             base_color: Color::hex("888888").unwrap(),
-            // unlit: true,
-            // cull_mode: None,
             ..default()
         }),
         transform: Transform::from_scale(Vec3::splat(100.0)).with_translation(Vec3::new(
