@@ -11,15 +11,14 @@ use bevy::{
         schedule::IntoSystemConfigs,
         system::{Commands, Query, Res, ResMut, Resource},
     },
-    hierarchy::{BuildChildren, DespawnRecursiveExt},
+    hierarchy::DespawnRecursiveExt,
     input::{keyboard::KeyCode, Input},
     log::{info, warn},
-    math::Vec3,
     render::color::Color,
     time::{Time, Timer, TimerMode},
 };
 use ghx_proc_gen::{
-    generator::{model::ModelInstance, observer::GenerationUpdate, GenerationStatus},
+    generator::{observer::GenerationUpdate, GenerationStatus},
     GenerationError,
 };
 
