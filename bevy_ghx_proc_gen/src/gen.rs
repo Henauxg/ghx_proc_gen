@@ -61,7 +61,6 @@ pub type BundleSpawner<A: Asset, B: Bundle> =
 pub struct Generation<C: SharableCoordSystem, A: Asset, B: Bundle> {
     pub gen: Generator<C>,
     pub models_assets: Arc<RulesModelsAssets<A>>,
-    pub observer: QueuedObserver,
     /// Size of a node in world units
     pub node_size: Vec3,
     /// Scale of the assets when spawned
@@ -80,10 +79,8 @@ impl<C: SharableCoordSystem, A: Asset, B: Bundle> Generation<C, A, B> {
         assets_spawn_scale: Vec3,
         asset_bundle_spawner: BundleSpawner<A, B>,
     ) -> Generation<C, A, B> {
-        let observer = QueuedObserver::new(&mut gen);
         Self {
             gen,
-            observer,
             node_size,
             models_assets,
             assets_spawn_scale,

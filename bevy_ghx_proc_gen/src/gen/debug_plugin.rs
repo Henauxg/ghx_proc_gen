@@ -5,9 +5,10 @@ use bevy::{
     asset::Asset,
     ecs::{
         bundle::Bundle,
+        component::Component,
         entity::Entity,
         event::EventWriter,
-        query::With,
+        query::{With, Without},
         schedule::IntoSystemConfigs,
         system::{Commands, Query, Res, ResMut, Resource},
     },
@@ -18,7 +19,10 @@ use bevy::{
     time::{Time, Timer, TimerMode},
 };
 use ghx_proc_gen::{
-    generator::{observer::GenerationUpdate, GenerationStatus},
+    generator::{
+        observer::{GenerationUpdate, QueuedObserver},
+        GenerationStatus,
+    },
     GenerationError,
 };
 
@@ -58,6 +62,7 @@ impl<C: SharableCoordSystem, A: Asset, B: Bundle> Plugin for ProcGenDebugPlugin<
                 app.add_systems(
                     Update,
                     (
+                        observe_new_generations::<C, A, B>,
                         step_by_step_timed_update::<C, A, B>,
                         update_generation_view::<C, A, B>,
                     )
@@ -72,6 +77,7 @@ impl<C: SharableCoordSystem, A: Asset, B: Bundle> Plugin for ProcGenDebugPlugin<
                 app.add_systems(
                     Update,
                     (
+                        observe_new_generations::<C, A, B>,
                         step_by_step_input_update::<C, A, B>,
                         update_generation_view::<C, A, B>,
                     )
@@ -81,7 +87,12 @@ impl<C: SharableCoordSystem, A: Asset, B: Bundle> Plugin for ProcGenDebugPlugin<
             GenerationViewMode::Final => {
                 app.add_systems(
                     Update,
-                    (generate_all::<C, A, B>, update_generation_view::<C, A, B>).chain(),
+                    (
+                        observe_new_generations::<C, A, B>,
+                        generate_all::<C, A, B>,
+                        update_generation_view::<C, A, B>,
+                    )
+                        .chain(),
                 );
             }
         }
@@ -163,9 +174,49 @@ impl Default for ProcGenKeyBindings {
     }
 }
 
+#[derive(Component)]
+pub struct Observed {
+    pub obs: QueuedObserver,
+}
+impl Observed {
+    fn new<C: SharableCoordSystem, A: Asset, B: Bundle>(
+        generation: &mut Generation<C, A, B>,
+    ) -> Self {
+        Self {
+            obs: QueuedObserver::new(&mut generation.gen),
+        }
+    }
+}
+
+pub fn observe_new_generations<C: SharableCoordSystem, A: Asset, B: Bundle>(
+    mut commands: Commands,
+    mut new_generations: Query<(Entity, &mut Generation<C, A, B>), Without<Observed>>,
+) {
+    for (gen_entity, mut generation) in new_generations.iter_mut() {
+        commands
+            .entity(gen_entity)
+            .insert(Observed::new(&mut generation));
+    }
+}
+
+pub fn update_generation_control(
+    keys: Res<Input<KeyCode>>,
+    proc_gen_key_bindings: Res<ProcGenKeyBindings>,
+    mut generation_control: ResMut<GenerationControl>,
+) {
+    if keys.just_pressed(proc_gen_key_bindings.unpause) {
+        match generation_control.status {
+            GenerationControlStatus::Paused => {
+                generation_control.status = GenerationControlStatus::Ongoing;
+            }
+            GenerationControlStatus::Ongoing => (),
+        }
+    }
+}
+
 pub fn generate_all<C: SharableCoordSystem, A: Asset, B: Bundle>(
     mut generation_control: ResMut<GenerationControl>,
-    mut generations: Query<&mut Generation<C, A, B>>,
+    mut generations: Query<&mut Generation<C, A, B>, With<Observed>>,
 ) {
     for mut generation in generations.iter_mut() {
         if generation_control.status == GenerationControlStatus::Ongoing {
@@ -191,26 +242,11 @@ pub fn generate_all<C: SharableCoordSystem, A: Asset, B: Bundle>(
     }
 }
 
-pub fn update_generation_control(
-    keys: Res<Input<KeyCode>>,
-    proc_gen_key_bindings: Res<ProcGenKeyBindings>,
-    mut generation_control: ResMut<GenerationControl>,
-) {
-    if keys.just_pressed(proc_gen_key_bindings.unpause) {
-        match generation_control.status {
-            GenerationControlStatus::Paused => {
-                generation_control.status = GenerationControlStatus::Ongoing;
-            }
-            GenerationControlStatus::Ongoing => (),
-        }
-    }
-}
-
 pub fn step_by_step_input_update<C: SharableCoordSystem, A: Asset, B: Bundle>(
     keys: Res<Input<KeyCode>>,
     proc_gen_key_bindings: Res<ProcGenKeyBindings>,
     mut generation_control: ResMut<GenerationControl>,
-    mut generations: Query<&mut Generation<C, A, B>>,
+    mut generations: Query<&mut Generation<C, A, B>, With<Observed>>,
 ) {
     if generation_control.status == GenerationControlStatus::Ongoing
         && (keys.just_pressed(proc_gen_key_bindings.step)
@@ -226,7 +262,7 @@ pub fn step_by_step_timed_update<C: SharableCoordSystem, A: Asset, B: Bundle>(
     mut generation_control: ResMut<GenerationControl>,
     mut steps_and_timer: ResMut<StepByStepTimed>,
     time: Res<Time>,
-    mut generations: Query<&mut Generation<C, A, B>>,
+    mut generations: Query<&mut Generation<C, A, B>, With<Observed>>,
 ) {
     steps_and_timer.timer.tick(time.delta());
     if steps_and_timer.timer.finished()
@@ -246,13 +282,13 @@ pub fn step_by_step_timed_update<C: SharableCoordSystem, A: Asset, B: Bundle>(
 fn update_generation_view<C: SharableCoordSystem, A: Asset, B: Bundle>(
     mut commands: Commands,
     mut marker_events: EventWriter<MarkerEvent>,
-    mut generators: Query<(Entity, &mut Generation<C, A, B>)>,
+    mut generators: Query<(Entity, &Generation<C, A, B>, &mut Observed)>,
     existing_nodes: Query<Entity, With<SpawnedNode>>,
 ) {
-    for (gen_entity, mut generation) in generators.iter_mut() {
+    for (gen_entity, generation, mut observer) in generators.iter_mut() {
         let mut reinitialized = false;
         let mut nodes_to_spawn = Vec::new();
-        for update in generation.observer.dequeue_all() {
+        for update in observer.obs.dequeue_all() {
             match update {
                 GenerationUpdate::Generated(grid_node) => {
                     nodes_to_spawn.push(grid_node);

@@ -29,7 +29,7 @@ impl<C: SharableCoordSystem, A: Asset, B: Bundle> Plugin for ProcGenSimplePlugin
         app.add_systems(
             Update,
             (
-                register_new_generation::<C, A, B>,
+                register_new_generations::<C, A, B>,
                 generate_and_spawn::<C, A, B>,
             )
                 .chain(),
@@ -58,7 +58,7 @@ impl Default for PendingGenerations {
     }
 }
 
-pub fn register_new_generation<C: SharableCoordSystem, A: Asset, B: Bundle>(
+pub fn register_new_generations<C: SharableCoordSystem, A: Asset, B: Bundle>(
     mut pending_generations: ResMut<PendingGenerations>,
     mut new_generations: Query<Entity, Added<Generation<C, A, B>>>,
 ) {
