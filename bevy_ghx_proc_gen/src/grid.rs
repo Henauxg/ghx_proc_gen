@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use bevy::{
     app::{App, Plugin, PostUpdate, Update},
-    ecs::component::Component,
+    ecs::{bundle::Bundle, component::Component},
     math::{Vec2, Vec3},
     pbr::MaterialPlugin,
 };
@@ -11,7 +11,10 @@ use ghx_proc_gen::grid::{direction::CoordinateSystem, GridDefinition, GridPositi
 use self::{
     lines::LineMaterial,
     markers::{draw_debug_markers_2d, draw_debug_markers_3d, update_debug_markers, MarkerEvent},
-    view::{draw_debug_grids_2d, spawn_debug_grids_3d, update_debug_grid_mesh_visibility_3d},
+    view::{
+        draw_debug_grids_2d, spawn_debug_grids_3d, update_debug_grid_mesh_visibility_3d,
+        DebugGridView, DebugGridViewConfig2d, DebugGridViewConfig3d,
+    },
 };
 
 /// Shaders and materials for 3d line rendering
@@ -24,13 +27,6 @@ pub mod view;
 /// Additional traits constraints on a [`CoordinateSystem`] to ensure that it can safely be shared between threads.
 pub trait SharableCoordSystem: CoordinateSystem + Clone + Sync + Send + 'static {}
 impl<T: CoordinateSystem + Clone + Sync + Send + 'static> SharableCoordSystem for T {}
-
-/// Component that encapsulates a [`GridDefinition`]
-#[derive(Component)]
-pub struct Grid<D: SharableCoordSystem> {
-    /// Encapsulated grid definition
-    pub def: GridDefinition<D>,
-}
 
 /// Bevy plugin used to visualize [`ghx_proc_gen::grid::GridDefinition`] and additional debug markers created with [`markers::MarkerEvent`].
 pub struct GridDebugPlugin<C: SharableCoordSystem> {
@@ -67,6 +63,47 @@ impl<C: SharableCoordSystem> Plugin for GridDebugPlugin<C> {
         )
         .add_event::<MarkerEvent>();
     }
+}
+
+/// Add this bundle to an [`Entity`] with a [`Grid`] if you are using a 3d camera ([`bevy::prelude::Camera3d`]).
+#[derive(Bundle)]
+pub struct DebugGridView3d {
+    /// 3d-specific configuration of the debug view
+    pub config: DebugGridViewConfig3d,
+    /// Debug view of the grid
+    pub view: DebugGridView,
+}
+impl Default for DebugGridView3d {
+    fn default() -> Self {
+        Self {
+            config: Default::default(),
+            view: Default::default(),
+        }
+    }
+}
+
+/// Add this bundle to an [`Entity`] with a [`Grid`] if you are using a 2d camera ([`bevy::prelude::Camera2d`]).
+#[derive(Bundle)]
+pub struct DebugGridView2d {
+    /// 2d-specific configuration of the debug view
+    pub config: DebugGridViewConfig2d,
+    /// Debug view of the grid
+    pub view: DebugGridView,
+}
+impl Default for DebugGridView2d {
+    fn default() -> Self {
+        Self {
+            config: Default::default(),
+            view: Default::default(),
+        }
+    }
+}
+
+/// Component that encapsulates a [`GridDefinition`]
+#[derive(Component)]
+pub struct Grid<D: SharableCoordSystem> {
+    /// Encapsulated grid definition
+    pub def: GridDefinition<D>,
 }
 
 /// Transform a [`GridPosition`] accompanied by a `node_size`, the size of a grid node in world units, into a position as a [`Vec3`] in world units (center of the grid node).

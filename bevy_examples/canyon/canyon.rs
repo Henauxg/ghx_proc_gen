@@ -10,8 +10,8 @@ use bevy_examples::{
 use bevy_ghx_proc_gen::{
     gen::{debug_plugin::GenerationViewMode, scene_node_spawner, Generation},
     grid::{
-        view::{DebugGridView, DebugGridView3d, DebugGridViewConfig3d},
-        Grid,
+        view::{DebugGridView, DebugGridViewConfig3d},
+        DebugGridView3d, Grid,
     },
     proc_gen::{
         generator::{

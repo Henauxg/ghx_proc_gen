@@ -6,8 +6,8 @@ use bevy_examples::{plugin::ProcGenExamplesPlugin, utils::load_assets};
 use bevy_ghx_proc_gen::{
     gen::{debug_plugin::GenerationViewMode, sprite_node_spawner, Generation},
     grid::{
-        view::{DebugGridView, DebugGridView2d, DebugGridViewConfig2d},
-        Grid,
+        view::{DebugGridView, DebugGridViewConfig2d},
+        DebugGridView2d, Grid,
     },
     proc_gen::{
         generator::{

@@ -4,7 +4,6 @@ use bevy::{
     asset::{Assets, Handle},
     core::Name,
     ecs::{
-        bundle::Bundle,
         component::Component,
         entity::Entity,
         query::{Added, Changed, With},
@@ -24,40 +23,6 @@ use super::{
     markers::Marker,
     Grid, SharableCoordSystem,
 };
-
-/// Add this bundle to an [`Entity`] with a [`Grid`] if you are using a 3d camera ([`bevy::prelude::Camera3d`]).
-#[derive(Bundle)]
-pub struct DebugGridView3d {
-    /// 3d-specific configuration of the debug view
-    pub config: DebugGridViewConfig3d,
-    /// Debug view of the grid
-    pub view: DebugGridView,
-}
-impl Default for DebugGridView3d {
-    fn default() -> Self {
-        Self {
-            config: Default::default(),
-            view: Default::default(),
-        }
-    }
-}
-
-/// Add this bundle to an [`Entity`] with a [`Grid`] if you are using a 2d camera ([`bevy::prelude::Camera2d`]).
-#[derive(Bundle)]
-pub struct DebugGridView2d {
-    /// 2d-specific configuration of the debug view
-    pub config: DebugGridViewConfig2d,
-    /// Debug view of the grid
-    pub view: DebugGridView,
-}
-impl Default for DebugGridView2d {
-    fn default() -> Self {
-        Self {
-            config: Default::default(),
-            view: Default::default(),
-        }
-    }
-}
 
 /// 3d-specific ([`bevy::prelude::Camera3d`]) configuration of a grid debug view
 #[derive(Component)]
