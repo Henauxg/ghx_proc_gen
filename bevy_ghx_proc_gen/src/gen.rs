@@ -11,7 +11,6 @@ use bevy::{
     },
     hierarchy::BuildChildren,
     math::{Quat, Vec3},
-    prelude::SpatialBundle,
     render::texture::Image,
     scene::{Scene, SceneBundle},
     sprite::SpriteBundle,
@@ -21,15 +20,16 @@ use bevy::{
 use ghx_proc_gen::{
     generator::{
         model::{ModelIndex, ModelInstance},
-        observer::QueuedObserver,
         Generator,
     },
     grid::direction::GridDelta,
 };
 
-use crate::grid::{Grid, SharableCoordSystem};
+use crate::grid::SharableCoordSystem;
 
+/// Debug plugin to run the generation & spawn assets automatically with different visualization options
 pub mod debug_plugin;
+/// Simple plugin to run the generation & spawn assets automatically
 pub mod simple_plugin;
 
 /// Marker for nodes spawned by the generator
@@ -38,28 +38,25 @@ pub struct SpawnedNode;
 
 /// Represents an asset for a model
 pub struct ModelAsset<A: Asset> {
+    /// Handle to the asset
     pub handle: Handle<A>,
+    /// Offset from the generated grid node. The asset will be instantiated at `generated_node_grid_pos + offset`
     pub offset: GridDelta,
 }
 
-impl<A: Asset> ModelAsset<A> {
-    pub fn handle(&self) -> &Handle<A> {
-        &self.handle
-    }
-    pub fn offset(&self) -> &GridDelta {
-        &self.offset
-    }
-}
+/// Type alias. Defines a map which links a `Model` via its [`ModelIndex`] to his spawnable assets
+pub type RulesModelsAssets<A> = HashMap<ModelIndex, Vec<ModelAsset<A>>>;
 
-pub type RulesModelsAssets<A: Asset> = HashMap<ModelIndex, Vec<ModelAsset<A>>>;
-
-pub type BundleSpawner<A: Asset, B: Bundle> =
+/// Type alias. Defines a function which from an [`Handle`] to an [`Asset`], a position, a scale and a rotation (in radians) returns a spawnable [`Bundle`]
+pub type BundleSpawner<A, B> =
     fn(asset: Handle<A>, translation: Vec3, scale: Vec3, rot_rad: f32) -> B;
 
-// Since we do only 1 generation at a time, we put it all in a resource
+/// Encapsulates a [`Generator`] and other information needed to correclty spawn assets
 #[derive(Component)]
 pub struct Generation<C: SharableCoordSystem, A: Asset, B: Bundle> {
+    /// The generator that will produce the [`ModelInstance`]
     pub gen: Generator<C>,
+    /// Link a `Model` via its [`ModelIndex`] to his spawnable assets (can be shared by multiple [`Generation`])
     pub models_assets: Arc<RulesModelsAssets<A>>,
     /// Size of a node in world units
     pub node_size: Vec3,
@@ -72,8 +69,9 @@ pub struct Generation<C: SharableCoordSystem, A: Asset, B: Bundle> {
 }
 
 impl<C: SharableCoordSystem, A: Asset, B: Bundle> Generation<C, A, B> {
+    /// Constructor for a `Generation`, `z_offset_from_y` defaults to `false`
     pub fn new(
-        mut gen: Generator<C>,
+        gen: Generator<C>,
         models_assets: Arc<RulesModelsAssets<A>>,
         node_size: Vec3,
         assets_spawn_scale: Vec3,
@@ -90,6 +88,31 @@ impl<C: SharableCoordSystem, A: Asset, B: Bundle> Generation<C, A, B> {
     }
 }
 
+/// Utility system. Adds a [`Bundle`] (or a [`Component`]) to every [`Entity`] that has [`SpawnedNode`] Component (this is the case of nodes spawned by the `spawn_node` system). The `Bundle` will have its default value.
+///
+/// ### Example
+///
+/// Add a `MyAnimation` Component with its default value to every newly spawned node Entity
+/// ```ignore
+/// #[derive(Component, Default)]
+/// pub struct MyAnimation {
+///     duration_sec: f32,
+///     final_scale: Vec3,
+/// }
+/// impl Default for MyAnimation {
+///     fn default() -> Self {
+///         Self {
+///             duration_sec: 5.,
+///             final_scale: Vec3::splat(2.0),
+///         }
+///     }
+/// }
+/// // ... In the `App` initialization code:
+/// app.add_systems(
+///     Update,
+///     insert_default_bundle_to_spawned_nodes::<MyAnimation>
+/// );
+/// ```
 pub fn insert_default_bundle_to_spawned_nodes<B: Bundle + Default>(
     mut commands: Commands,
     spawned_nodes: Query<Entity, Added<SpawnedNode>>,
@@ -99,6 +122,26 @@ pub fn insert_default_bundle_to_spawned_nodes<B: Bundle + Default>(
     }
 }
 
+/// Utility system. Adds a [`Bundle`] (or a [`Component`]) to every [`Entity`] that has [`SpawnedNode`] Component (this is the case of nodes spawned by the `spawn_node` system). The `Bundle` will be cloned from a `Resource`
+///
+/// ### Example
+///
+/// Add a `MyAnimation` Component cloned from a `Resource` to every newly spawned node Entity
+/// ```ignore
+/// #[derive(Component, Resource)]
+/// pub struct MyAnimation {
+///     duration_sec: f32,
+///     final_scale: Vec3,
+/// }
+/// app.insert_resource(MyAnimation {
+///     duration_sec: 0.8,
+///     final_scale: Vec3::ONE,
+/// });
+/// app.add_systems(
+///     Update,
+///     insert_bundle_from_resource_to_spawned_nodes::<MyAnimation>
+/// );
+/// ```
 pub fn insert_bundle_from_resource_to_spawned_nodes<B: Bundle + Resource + Clone>(
     mut commands: Commands,
     bundle_to_clone: Res<B>,
@@ -109,6 +152,8 @@ pub fn insert_bundle_from_resource_to_spawned_nodes<B: Bundle + Resource + Clone
     }
 }
 
+/// Utility [`BundleSpawner`]
+///
 /// Uses the z+ axis as the rotation axis
 pub fn sprite_node_spawner(
     texture: Handle<Image>,
@@ -125,6 +170,8 @@ pub fn sprite_node_spawner(
     }
 }
 
+/// Utility [`BundleSpawner`]
+///
 /// Uses the y+ axis as the rotation axis
 pub fn scene_node_spawner(
     scene: Handle<Scene>,
@@ -141,6 +188,20 @@ pub fn scene_node_spawner(
     }
 }
 
+/// Utility system to spawn grid nodes. Can work for multiple asset types.
+///
+/// Used by [`ProcGenSimplePlugin`] and [`ProcGenDebugPlugin`] to spawn assets automatically.
+///
+/// ### Examples
+///
+/// Spawn 3d models (gltf) assets with a `Cartesian3D` grid
+/// ```ignore
+/// spawn_node::<Cartesian3D, Scene, SceneBundle>(...);
+/// ```
+/// Spawn 2d sprites (png, ...) assets with a `Cartesian3D` grid
+/// ```ignore
+/// spawn_node::<Cartesian3D, Image, SpriteBundle>(...);
+/// ```
 pub fn spawn_node<C: SharableCoordSystem, A: Asset, B: Bundle>(
     commands: &mut Commands,
     gen_entity: Entity,
@@ -159,7 +220,7 @@ pub fn spawn_node<C: SharableCoordSystem, A: Asset, B: Bundle>(
 
     let pos = generation.gen.grid().get_position(node_index);
     for node_asset in node_assets {
-        let offset = node_asset.offset();
+        let offset = &node_asset.offset;
         // +0.5*scale to center the node because its center is at its origin
         let mut translation = Vec3::new(
             generation.node_size.x * (pos.x as f32 + offset.dx as f32 + 0.5),
