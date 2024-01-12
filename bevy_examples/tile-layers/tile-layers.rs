@@ -32,7 +32,11 @@ const GRID_X: u32 = 25;
 const GRID_Y: u32 = 20;
 
 /// Change this value to change the way the generation is visualized
-const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::StepByStepTimed(2, 1);
+const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::StepByStepTimed {
+    steps_count: 2,
+    interval_ms: 1,
+};
+
 // --------------------------------------------
 
 const ASSETS_PATH: &str = "tile_layers";

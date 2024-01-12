@@ -19,6 +19,9 @@ use crate::{gen::spawn_node, grid::SharableCoordSystem};
 
 use super::Generation;
 
+/// A simple [`Plugin`] that automatically detects any [`Entity`] with a [`Generation`] `Component` and tries to run the contained generator once per frame until it succeeds.
+///
+/// Once the generation is successful, the plugin will spawn the generated nodes assets.
 pub struct ProcGenSimplePlugin<C: SharableCoordSystem, A: Asset, B: Bundle> {
     typestate: PhantomData<(C, A, B)>,
 }
@@ -38,6 +41,7 @@ impl<C: SharableCoordSystem, A: Asset, B: Bundle> Plugin for ProcGenSimplePlugin
 }
 
 impl<C: SharableCoordSystem, A: Asset, B: Bundle> ProcGenSimplePlugin<C, A, B> {
+    /// Constructor
     pub fn new() -> Self {
         Self {
             typestate: PhantomData,
@@ -45,6 +49,7 @@ impl<C: SharableCoordSystem, A: Asset, B: Bundle> ProcGenSimplePlugin<C, A, B> {
     }
 }
 
+/// Resource used by [`ProcGenSimplePlugin`] to track generations that are yet to generate a result
 #[derive(Resource)]
 pub struct PendingGenerations {
     pendings: HashSet<Entity>,
@@ -58,6 +63,7 @@ impl Default for PendingGenerations {
     }
 }
 
+/// System used by [`ProcGenSimplePlugin`] to track entities with newly added [`Generation`] components
 pub fn register_new_generations<C: SharableCoordSystem, A: Asset, B: Bundle>(
     mut pending_generations: ResMut<PendingGenerations>,
     mut new_generations: Query<Entity, Added<Generation<C, A, B>>>,
@@ -67,6 +73,7 @@ pub fn register_new_generations<C: SharableCoordSystem, A: Asset, B: Bundle>(
     }
 }
 
+/// System used by [`ProcGenSimplePlugin`] to run generators and spawn their node's assets
 pub fn generate_and_spawn<C: SharableCoordSystem, A: Asset, B: Bundle>(
     mut commands: Commands,
     mut pending_generations: ResMut<PendingGenerations>,

@@ -33,12 +33,16 @@ use crate::{
 
 use super::{spawn_node, SpawnedNode};
 
+/// A [`Plugin`] useful for debug/analysis/demo.
+///
+/// It takes in a [`GenerationViewMode`] to control how the generators in the [`Generation`] components will be run.
 pub struct ProcGenDebugPlugin<C: SharableCoordSystem, A: Asset, B: Bundle> {
     generation_view_mode: GenerationViewMode,
     typestate: PhantomData<(C, A, B)>,
 }
 
 impl<C: SharableCoordSystem, A: Asset, B: Bundle> ProcGenDebugPlugin<C, A, B> {
+    /// Plugin constructor
     pub fn new(generation_view_mode: GenerationViewMode) -> Self {
         Self {
             generation_view_mode,
@@ -51,14 +55,17 @@ impl<C: SharableCoordSystem, A: Asset, B: Bundle> Plugin for ProcGenDebugPlugin<
     fn build(&self, app: &mut App) {
         app.insert_resource(self.generation_view_mode);
 
-        // If the resources already exists, nothing happens, else, add with default values.
+        // If the resources already exists, nothing happens, else, add them with default values.
         app.init_resource::<ProcGenKeyBindings>();
         app.init_resource::<GenerationControl>();
 
         app.add_systems(Update, update_generation_control);
 
         match self.generation_view_mode {
-            GenerationViewMode::StepByStepTimed(steps, interval) => {
+            GenerationViewMode::StepByStepTimed {
+                steps_count,
+                interval_ms,
+            } => {
                 app.add_systems(
                     Update,
                     (
@@ -69,8 +76,8 @@ impl<C: SharableCoordSystem, A: Asset, B: Bundle> Plugin for ProcGenDebugPlugin<
                         .chain(),
                 );
                 app.insert_resource(StepByStepTimed {
-                    steps,
-                    timer: Timer::new(Duration::from_millis(interval), TimerMode::Repeating),
+                    steps_count,
+                    timer: Timer::new(Duration::from_millis(interval_ms), TimerMode::Repeating),
                 });
             }
             GenerationViewMode::StepByStepPaused => {
@@ -102,19 +109,34 @@ impl<C: SharableCoordSystem, A: Asset, B: Bundle> Plugin for ProcGenDebugPlugin<
 /// Controls how the generation occurs.
 #[derive(Resource, Clone, Copy, PartialEq, Eq)]
 pub enum GenerationViewMode {
-    /// Generates step by step and waits at least the specified amount (in milliseconds) between each step.
-    StepByStepTimed(u32, u64),
+    /// Generates steps by steps and waits at least the specified amount (in milliseconds) between each step.
+    StepByStepTimed {
+        /// How many steps to run once the timer has finished a cycle
+        steps_count: u32,
+        /// Time to wait in ms before the next steps
+        interval_ms: u64,
+    },
     /// Generates step by step and waits for a user input between each step.
     StepByStepPaused,
     /// Generates it all at once at the start
     Final,
 }
 
-// Read by the examples plugin when generating
+/// Used to track the status of the generation control
+#[derive(Resource, Eq, PartialEq, Debug)]
+pub enum GenerationControlStatus {
+    /// Generation control is paused, systems won't automatically step the generation
+    Paused,
+    /// Generation control is "ongoing", systems can currently step a generator
+    Ongoing,
+}
+
+/// Read by the systems while generating
 #[derive(Resource)]
 pub struct GenerationControl {
-    status: GenerationControlStatus,
-    /// Whether or not the spawning systems should skip over when nodes without assets are generated.
+    /// Current status of the generation
+    pub status: GenerationControlStatus,
+    /// Whether or not the spawning systems do one more generation step when nodes without assets are generated.
     pub skip_void_nodes: bool,
     /// Whether or not the generation should pause when successful
     pub pause_when_done: bool,
@@ -134,6 +156,7 @@ impl Default for GenerationControl {
 }
 
 impl GenerationControl {
+    /// Create a new `GenerationControl` with the status set to [`GenerationControlStatus::Ongoing`]
     pub fn new(skip_void_nodes: bool, pause_when_done: bool, pause_on_error: bool) -> Self {
         Self {
             status: GenerationControlStatus::Ongoing,
@@ -144,23 +167,23 @@ impl GenerationControl {
     }
 }
 
-#[derive(Resource, Eq, PartialEq, Debug)]
-pub enum GenerationControlStatus {
-    Paused,
-    Ongoing,
-}
-
-// Resource to track the generation steps when using [`GenerationViewMode::StepByStepTimed`]
+/// Resource to track the generation steps when using [`GenerationViewMode::StepByStepTimed`]
 #[derive(Resource)]
 pub struct StepByStepTimed {
-    pub steps: u32,
+    /// How many steps should be done once the timer has expired
+    pub steps_count: u32,
+    /// Timer, tracking the time between the steps
     pub timer: Timer,
 }
 
+/// Resource available to override the default keybindings used by the [`ProcGenDebugPlugin`]
 #[derive(Resource)]
 pub struct ProcGenKeyBindings {
+    /// Key to unpause the current [`GenerationControlStatus`]
     pub unpause: KeyCode,
+    /// Key used only with [`GenerationViewMode::StepByStepPaused`] to step once per press
     pub step: KeyCode,
+    /// Key used only with [`GenerationViewMode::StepByStepPaused`] to step continuously as long as pressed
     pub continuous_step: KeyCode,
 }
 
@@ -174,8 +197,10 @@ impl Default for ProcGenKeyBindings {
     }
 }
 
+/// Component added by the [`ProcGenDebugPlugin`] to entities with a [`Generation`] component. Used to analyze the generation process.
 #[derive(Component)]
 pub struct Observed {
+    /// Generator observer
     pub obs: QueuedObserver,
 }
 impl Observed {
@@ -188,6 +213,7 @@ impl Observed {
     }
 }
 
+/// This system adds an [`Observed`] component to every `Entity` with a [`Generation`] component
 pub fn observe_new_generations<C: SharableCoordSystem, A: Asset, B: Bundle>(
     mut commands: Commands,
     mut new_generations: Query<(Entity, &mut Generation<C, A, B>), Without<Observed>>,
@@ -199,6 +225,9 @@ pub fn observe_new_generations<C: SharableCoordSystem, A: Asset, B: Bundle>(
     }
 }
 
+/// This system unpauses the [`GenerationControlStatus`] in the [`GenerationControl`] `Resource` on a keypress.
+///
+/// The keybind is read from the [`ProcGenKeyBindings`] `Resource`
 pub fn update_generation_control(
     keys: Res<Input<KeyCode>>,
     proc_gen_key_bindings: Res<ProcGenKeyBindings>,
@@ -214,11 +243,12 @@ pub fn update_generation_control(
     }
 }
 
+/// This system request the full generation to all [`Generation`] components, if they already are observed through an [`Observed`] component and if the current control status is [`GenerationControlStatus::Ongoing`]
 pub fn generate_all<C: SharableCoordSystem, A: Asset, B: Bundle>(
     mut generation_control: ResMut<GenerationControl>,
-    mut generations: Query<&mut Generation<C, A, B>, With<Observed>>,
+    mut observed_generations: Query<&mut Generation<C, A, B>, With<Observed>>,
 ) {
-    for mut generation in generations.iter_mut() {
+    for mut generation in observed_generations.iter_mut() {
         if generation_control.status == GenerationControlStatus::Ongoing {
             match generation.gen.generate() {
                 Ok(()) => {
@@ -242,34 +272,38 @@ pub fn generate_all<C: SharableCoordSystem, A: Asset, B: Bundle>(
     }
 }
 
+/// This system steps all [`Generation`] components if they already are observed through an [`Observed`] component, if the current control status is [`GenerationControlStatus::Ongoing`] and if the appropriate keys are pressed.
+///
+/// The keybinds are read from the [`ProcGenKeyBindings`] `Resource`
 pub fn step_by_step_input_update<C: SharableCoordSystem, A: Asset, B: Bundle>(
     keys: Res<Input<KeyCode>>,
     proc_gen_key_bindings: Res<ProcGenKeyBindings>,
     mut generation_control: ResMut<GenerationControl>,
-    mut generations: Query<&mut Generation<C, A, B>, With<Observed>>,
+    mut observed_generations: Query<&mut Generation<C, A, B>, With<Observed>>,
 ) {
     if generation_control.status == GenerationControlStatus::Ongoing
         && (keys.just_pressed(proc_gen_key_bindings.step)
             || keys.pressed(proc_gen_key_bindings.continuous_step))
     {
-        for mut generation in generations.iter_mut() {
+        for mut generation in observed_generations.iter_mut() {
             step_generation(&mut generation, &mut generation_control);
         }
     }
 }
 
+/// This system steps all [`Generation`] components if they already are observed through an [`Observed`] component, if the current control status is [`GenerationControlStatus::Ongoing`] and if the timer in the [`StepByStepTimed`] `Resource` has finished.
 pub fn step_by_step_timed_update<C: SharableCoordSystem, A: Asset, B: Bundle>(
     mut generation_control: ResMut<GenerationControl>,
     mut steps_and_timer: ResMut<StepByStepTimed>,
     time: Res<Time>,
-    mut generations: Query<&mut Generation<C, A, B>, With<Observed>>,
+    mut observed_generations: Query<&mut Generation<C, A, B>, With<Observed>>,
 ) {
     steps_and_timer.timer.tick(time.delta());
     if steps_and_timer.timer.finished()
         && generation_control.status == GenerationControlStatus::Ongoing
     {
-        for mut generation in generations.iter_mut() {
-            for _ in 0..steps_and_timer.steps {
+        for mut generation in observed_generations.iter_mut() {
+            for _ in 0..steps_and_timer.steps_count {
                 step_generation(&mut generation, &mut generation_control);
                 if generation_control.status != GenerationControlStatus::Ongoing {
                     break;
