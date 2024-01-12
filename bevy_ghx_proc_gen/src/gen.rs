@@ -9,6 +9,7 @@ use bevy::{
         query::Added,
         system::{Commands, Query, Res, Resource},
     },
+    hierarchy::BuildChildren,
     math::{Quat, Vec3},
     prelude::SpatialBundle,
     render::texture::Image,
@@ -18,7 +19,11 @@ use bevy::{
     utils::default,
 };
 use ghx_proc_gen::{
-    generator::{model::ModelIndex, observer::QueuedObserver, Generator},
+    generator::{
+        model::{ModelIndex, ModelInstance},
+        observer::QueuedObserver,
+        Generator,
+    },
     grid::direction::GridDelta,
 };
 
@@ -48,6 +53,9 @@ impl<A: Asset> ModelAsset<A> {
 
 pub type RulesModelsAssets<A: Asset> = HashMap<ModelIndex, Vec<ModelAsset<A>>>;
 
+pub type BundleSpawner<A: Asset, B: Bundle> =
+    fn(asset: Handle<A>, translation: Vec3, scale: Vec3, rot_rad: f32) -> B;
+
 // Since we do only 1 generation at a time, we put it all in a resource
 #[derive(Component)]
 pub struct Generation<C: SharableCoordSystem, A: Asset, B: Bundle> {
@@ -59,8 +67,7 @@ pub struct Generation<C: SharableCoordSystem, A: Asset, B: Bundle> {
     /// Scale of the assets when spawned
     pub assets_spawn_scale: Vec3,
     /// Called to spawn the appropriate [`Bundle`] for a node
-    pub asset_bundle_spawner:
-        fn(asset: Handle<A>, translation: Vec3, scale: Vec3, rot_rad: f32) -> B,
+    pub asset_bundle_spawner: BundleSpawner<A, B>,
     /// Whether to offset the z coordinate of spawned nodes from the y coordinate (used for 2d ordering of sprites)
     pub z_offset_from_y: bool,
 }
@@ -71,12 +78,7 @@ impl<C: SharableCoordSystem, A: Asset, B: Bundle> Generation<C, A, B> {
         models_assets: Arc<RulesModelsAssets<A>>,
         node_size: Vec3,
         assets_spawn_scale: Vec3,
-        asset_bundle_spawner: fn(
-            asset: Handle<A>,
-            translation: Vec3,
-            scale: Vec3,
-            rot_rad: f32,
-        ) -> B,
+        asset_bundle_spawner: BundleSpawner<A, B>,
     ) -> Generation<C, A, B> {
         let observer = QueuedObserver::new(&mut gen);
         Self {
@@ -139,5 +141,51 @@ pub fn scene_node_spawner(
             .with_scale(scale)
             .with_rotation(Quat::from_rotation_y(rot_rad)),
         ..default()
+    }
+}
+
+pub fn spawn_node<C: SharableCoordSystem, A: Asset, B: Bundle>(
+    commands: &mut Commands,
+    gen_entity: Entity,
+    generation: &Generation<C, A, B>,
+    instance: &ModelInstance,
+    node_index: usize,
+) {
+    let empty = vec![];
+    let node_assets = generation
+        .models_assets
+        .get(&instance.model_index)
+        .unwrap_or(&empty);
+    if node_assets.is_empty() {
+        return;
+    }
+
+    let pos = generation.gen.grid().get_position(node_index);
+    for node_asset in node_assets {
+        let offset = node_asset.offset();
+        // +0.5*scale to center the node because its center is at its origin
+        let mut translation = Vec3::new(
+            generation.node_size.x * (pos.x as f32 + offset.dx as f32 + 0.5),
+            generation.node_size.y * (pos.y as f32 + offset.dy as f32 + 0.5),
+            generation.node_size.z * (pos.z as f32 + offset.dz as f32 + 0.5),
+        );
+
+        if generation.z_offset_from_y {
+            translation.z += generation.node_size.z
+                * (1. - pos.y as f32 / generation.gen.grid().size_y() as f32);
+        }
+
+        let node_entity = commands
+            .spawn((
+                (generation.asset_bundle_spawner)(
+                    node_asset.handle.clone(),
+                    translation,
+                    generation.assets_spawn_scale,
+                    f32::to_radians(instance.rotation.value() as f32),
+                ),
+                SpawnedNode,
+            ))
+            .id();
+        commands.entity(gen_entity).add_child(node_entity);
     }
 }
