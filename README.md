@@ -6,9 +6,9 @@
 
 A Rust library for 2D & 3D procedural generation with *Model synthesis/Wave function Collapse*, also available for the Bevy engine.
 
-With *Model synthesis/Wave function Collapse*, you provide **constraints** as an input to the algorithm, and internally, a solver (AC-4 in this case), will try to generate a solution with satisfies those constraints, very much like a sudoku solver.
+With *Model synthesis/Wave function Collapse*, you provide adjacency **constraints** as an input to the algorithm, and internally, a solver (AC-4 in this case), will try to generate a solution with satisfies those constraints, very much like a sudoku solver.
 
-Altough it can be applied to do texture synthesis (mainly bitmaps), `ghx_proc_gen` focuses more on grid-based use-cases such as terrain/structures/...
+Altough it can be applied to do texture synthesis (mainly with bitmaps), `ghx_proc_gen` focuses more on grid-based use-cases such as terrain/structures/...
 
 - [Ghx Proc(edural) Gen(eneration)](#ghx-procedural-geneneration)
   - [Quickstart](#quickstart)
@@ -36,7 +36,7 @@ Connections are then given between some of those `Sockets`, which allows `Models
 
 Let's build a checker board pattern:
 
-1) Start by creating `Rules` and some `Model` for the algorithm:
+1) Start by creating the `Rules` for the algorithm:
 ```rust
   // A SocketCollection is what we use to create sockets and define their connections
   let mut sockets = SocketCollection::new();
