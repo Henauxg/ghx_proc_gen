@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use bevy::{
     asset::{Asset, AssetServer, Handle},
     ecs::{
@@ -85,21 +83,20 @@ pub fn load_assets<S: Asset>(
     assets_directory: &str,
     extension: &str,
 ) -> RulesModelsAssets<Handle<S>> {
-    let mut models_assets = HashMap::new();
+    let mut models_assets = RulesModelsAssets::new();
     for (model_index, assets) in assets_definitions.iter().enumerate() {
-        let mut node_assets = Vec::new();
         for asset_def in assets {
-            let handle = asset_server.load(format!(
-                "{assets_directory}/{}.{extension}",
-                asset_def.path()
-            ));
-            // node_assets.push(asset_def.to_asset(handle));
-            node_assets.push(ModelAsset {
-                handles: handle,
-                offset: asset_def.offset.clone(),
-            });
+            models_assets.add(
+                model_index,
+                ModelAsset {
+                    handles: asset_server.load(format!(
+                        "{assets_directory}/{}.{extension}",
+                        asset_def.path()
+                    )),
+                    offset: asset_def.offset.clone(),
+                },
+            )
         }
-        models_assets.insert(model_index, node_assets);
     }
-    RulesModelsAssets { map: models_assets }
+    models_assets
 }

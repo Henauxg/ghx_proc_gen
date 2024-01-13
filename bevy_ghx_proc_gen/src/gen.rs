@@ -1,4 +1,8 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    ops::{Deref, DerefMut},
+    sync::Arc,
+};
 
 use bevy::{
     asset::Handle,
@@ -37,6 +41,7 @@ pub mod simple_plugin;
 #[derive(Component)]
 pub struct SpawnedNode;
 
+/// Used as a custom trait for types which store things such as handles to assets
 pub trait AssetHandles: Clone + Sync + Send + 'static {}
 impl<T: Clone + Sync + Send + 'static> AssetHandles for T {}
 
@@ -51,14 +56,35 @@ pub struct ModelAsset<A: AssetHandles> {
 
 /// Defines a map which links a `Model` via its [`ModelIndex`] to his spawnable assets
 pub struct RulesModelsAssets<A: AssetHandles> {
-    pub map: HashMap<ModelIndex, Vec<ModelAsset<A>>>,
+    map: HashMap<ModelIndex, Vec<ModelAsset<A>>>,
+}
+
+impl<A: AssetHandles> Deref for RulesModelsAssets<A> {
+    type Target = HashMap<ModelIndex, Vec<ModelAsset<A>>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.map
+    }
+}
+
+impl<A: AssetHandles> DerefMut for RulesModelsAssets<A> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.map
+    }
 }
 
 impl<A: AssetHandles> RulesModelsAssets<A> {
+    /// Create a new RulesModelsAssets with an empty map
     pub fn new() -> Self {
         Self { map: default() }
     }
 
+    /// Create a new RulesModelsAssets with an existing map
+    pub fn new_from_map(map: HashMap<ModelIndex, Vec<ModelAsset<A>>>) -> Self {
+        Self { map }
+    }
+
+    /// Adds a [`ModelAsset`] with no grid offset, to the model `index`
     pub fn add_asset(&mut self, index: ModelIndex, asset: A) {
         let model_asset = ModelAsset {
             handles: asset,
@@ -67,19 +93,26 @@ impl<A: AssetHandles> RulesModelsAssets<A> {
         self.add(index, model_asset);
     }
 
+    /// Adds a [`ModelAsset`] to the model `index`
     pub fn add(&mut self, index: ModelIndex, model_asset: ModelAsset<A>) {
-        match self.map.get_mut(&index) {
+        match self.get_mut(&index) {
             Some(assets) => {
                 assets.push(model_asset);
             }
             None => {
-                self.map.insert(index, vec![model_asset]);
+                self.insert(index, vec![model_asset]);
             }
         }
     }
 }
 
 /// Type alias. Defines a function which from an [`AssetHandles`], a position, a scale and a rotation (in radians) returns a spawnable [`Bundle`]
+///
+/// You can make your own, or use one of the simple ones provided:
+/// - `sprite_node_spawner` for A: `Handle<Image>` and B: `SpriteBundle`
+/// - `scene_node_spawner` for A: `Handle<Scene>` and B: `SceneBundle`
+/// - `material_mesh_node_spawner` for A: `MaterialMesh` and B: `MaterialMeshBundle`
+/// - `pbr_node_spawner` for A: `PbrMesh` and B: `PbrBundle` (specialized version of `material_mesh_node_spawner` with `Material` = `StandardMaterial`)
 pub type BundleSpawner<A, B> = fn(assets: A, translation: Vec3, scale: Vec3, rot_rad: f32) -> B;
 
 /// Encapsulates a [`Generator`] and other information needed to correclty spawn assets
@@ -219,18 +252,29 @@ pub fn scene_node_spawner(
     }
 }
 
+/// Custom type to store [`Handle`] to a [`Mesh`] asset and its [`Material`]
 #[derive(Clone)]
 pub struct MaterialMesh<M: Material> {
+    /// Mesh handle
     pub mesh: Handle<Mesh>,
+    /// Material handle
     pub mat: Handle<M>,
 }
 
+/// Custom type to store [`Handle`] to a [`Mesh`] asset and its [`StandardMaterial`]
+///
+/// Specialization of [`MaterialMesh`] with [`StandardMaterial`]
 #[derive(Clone)]
 pub struct PbrMesh {
+    /// Mesh handle
     pub mesh: Handle<Mesh>,
+    /// Standard material handle
     pub mat: Handle<StandardMaterial>,
 }
 
+/// Utility [`BundleSpawner`]
+///
+/// Uses the y+ axis as the rotation axis
 pub fn material_mesh_node_spawner<M: Material>(
     asset: MaterialMesh<M>,
     translation: Vec3,
@@ -247,6 +291,9 @@ pub fn material_mesh_node_spawner<M: Material>(
     }
 }
 
+/// Utility [`BundleSpawner`], specialization of `material_mesh_node_spawner` with `Material` = `StandardMaterial`
+///
+/// Uses the y+ axis as the rotation axis
 pub fn pbr_node_spawner(asset: PbrMesh, translation: Vec3, scale: Vec3, rot_rad: f32) -> PbrBundle {
     PbrBundle {
         mesh: asset.mesh,
@@ -282,7 +329,6 @@ pub fn spawn_node<C: SharableCoordSystem, A: AssetHandles, B: Bundle>(
     let empty = vec![];
     let node_assets = generation
         .assets
-        .map
         .get(&instance.model_index)
         .unwrap_or(&empty);
     if node_assets.is_empty() {
