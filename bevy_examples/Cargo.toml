@@ -45,10 +45,6 @@ name = "bevy-checkerboard"
 path = "checkerboard/checkerboard.rs"
 
 [[example]]
-name = "tiles"
-path = "tiles/tiles.rs"
-
-[[example]]
 name = "tile-layers"
 path = "tile-layers/tile-layers.rs"
 
