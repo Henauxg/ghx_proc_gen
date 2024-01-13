@@ -41,6 +41,10 @@ bevy = { version = "0.12.0", default-features = false, features = [
 ] }
 
 [[example]]
+name = "bevy-checkerboard"
+path = "checkerboard/checkerboard.rs"
+
+[[example]]
 name = "tiles"
 path = "tiles/tiles.rs"
 
