@@ -118,7 +118,16 @@ Compatibility with Bevy versions:
 ## Examples
 
 <details>
-  <summary>Terminal example</summary>
+  <summary>[Command-line] Checkerboard example</summary>
+
+```
+cargo run --example checkerboard
+```
+
+</details>
+
+<details>
+  <summary>[Command-line] Unicode terrain example</summary>
 
 ```
 cargo run --example unicode-terrain
@@ -127,7 +136,16 @@ cargo run --example unicode-terrain
 </details>
 
 <details>
-  <summary>Pillars example (using Bevy)</summary>
+  <summary>[Bevy + ProcGenSimplePlugin] Bevy checkerboard example</summary>
+
+```
+cargo run --example bevy-checkerboard
+```
+
+</details>
+
+<details>
+  <summary>[Bevy + ProcGenDebugPlugin] Pillars example</summary>
 
 ```
 cargo run --example pillars
@@ -137,7 +155,7 @@ cargo run --example pillars
 
 
 <details>
-  <summary>Tile-layers example (using Bevy)</summary>
+  <summary>[Bevy + ProcGenDebugPlugin] Tile-layers example</summary>
 
 ```
 cargo run --example tile-layers
@@ -146,7 +164,7 @@ cargo run --example tile-layers
 </details>
 
 <details>
-  <summary>Canyon example (using Bevy)</summary>
+  <summary>[Bevy + ProcGenDebugPlugin] Canyon example</summary>
 
 ```
 cargo run --example canyon
