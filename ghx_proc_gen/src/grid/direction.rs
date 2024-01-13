@@ -79,7 +79,7 @@ pub(crate) const Z_NEG_AXIS: &'static [Direction] = &[
 ];
 
 /// Represents a displacement on a grid
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Default, Eq, PartialEq)]
 pub struct GridDelta {
     /// Amount of movement on the X axis
     pub dx: i32,
