@@ -10,7 +10,7 @@ use bevy::{
     render::view::Visibility,
 };
 use bevy_ghx_proc_gen::{
-    gen::{ModelAsset, RulesModelsAssets},
+    gen::{AssetHandles, ModelAsset, RulesModelsAssets},
     grid::view::DebugGridView,
     proc_gen::grid::direction::GridDelta,
 };
@@ -63,9 +63,9 @@ impl AssetDef {
         self
     }
 
-    pub fn to_asset<A: Asset>(&self, handle: Handle<A>) -> ModelAsset<A> {
+    pub fn to_asset<A: AssetHandles>(&self, asset_ref: A) -> ModelAsset<A> {
         ModelAsset {
-            handle,
+            handles: asset_ref,
             offset: self.offset.clone(),
         }
     }
@@ -79,12 +79,12 @@ impl AssetDef {
 }
 
 /// Simply load assets with the asset_server and return a map that gives assets from a model_index
-pub fn load_assets<A: Asset>(
+pub fn load_assets<S: Asset>(
     asset_server: &Res<AssetServer>,
     assets_definitions: Vec<Vec<AssetDef>>,
     assets_directory: &str,
     extension: &str,
-) -> RulesModelsAssets<A> {
+) -> RulesModelsAssets<Handle<S>> {
     let mut models_assets = HashMap::new();
     for (model_index, assets) in assets_definitions.iter().enumerate() {
         let mut node_assets = Vec::new();
@@ -93,9 +93,13 @@ pub fn load_assets<A: Asset>(
                 "{assets_directory}/{}.{extension}",
                 asset_def.path()
             ));
-            node_assets.push(asset_def.to_asset(handle));
+            // node_assets.push(asset_def.to_asset(handle));
+            node_assets.push(ModelAsset {
+                handles: handle,
+                offset: asset_def.offset.clone(),
+            });
         }
         models_assets.insert(model_index, node_assets);
     }
-    models_assets
+    RulesModelsAssets { map: models_assets }
 }

@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use bevy::{app::PluginGroup, log::LogPlugin, prelude::*};
 
 use bevy_examples::{plugin::ProcGenExamplesPlugin, utils::load_assets};
@@ -77,7 +75,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     let mut generation = Generation::new(
         gen,
-        Arc::new(models_assets),
+        models_assets,
         NODE_SIZE,
         Vec3::ZERO,
         sprite_node_spawner,

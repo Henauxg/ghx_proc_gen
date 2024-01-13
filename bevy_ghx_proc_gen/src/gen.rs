@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use bevy::{
-    asset::{Asset, Handle},
+    asset::Handle,
     ecs::{
         bundle::Bundle,
         component::Component,
@@ -11,7 +11,8 @@ use bevy::{
     },
     hierarchy::BuildChildren,
     math::{Quat, Vec3},
-    render::texture::Image,
+    pbr::{Material, MaterialMeshBundle, PbrBundle, StandardMaterial},
+    render::{mesh::Mesh, texture::Image},
     scene::{Scene, SceneBundle},
     sprite::SpriteBundle,
     transform::components::Transform,
@@ -36,28 +37,58 @@ pub mod simple_plugin;
 #[derive(Component)]
 pub struct SpawnedNode;
 
+pub trait AssetHandles: Clone + Sync + Send + 'static {}
+impl<T: Clone + Sync + Send + 'static> AssetHandles for T {}
+
 /// Represents an asset for a model
-pub struct ModelAsset<A: Asset> {
-    /// Handle to the asset
-    pub handle: Handle<A>,
+#[derive(Clone)]
+pub struct ModelAsset<A: AssetHandles> {
+    /// Handle(s) to the asset(s)
+    pub handles: A,
     /// Offset from the generated grid node. The asset will be instantiated at `generated_node_grid_pos + offset`
     pub offset: GridDelta,
 }
 
-/// Type alias. Defines a map which links a `Model` via its [`ModelIndex`] to his spawnable assets
-pub type RulesModelsAssets<A> = HashMap<ModelIndex, Vec<ModelAsset<A>>>;
+/// Defines a map which links a `Model` via its [`ModelIndex`] to his spawnable assets
+pub struct RulesModelsAssets<A: AssetHandles> {
+    pub map: HashMap<ModelIndex, Vec<ModelAsset<A>>>,
+}
 
-/// Type alias. Defines a function which from an [`Handle`] to an [`Asset`], a position, a scale and a rotation (in radians) returns a spawnable [`Bundle`]
-pub type BundleSpawner<A, B> =
-    fn(asset: Handle<A>, translation: Vec3, scale: Vec3, rot_rad: f32) -> B;
+impl<A: AssetHandles> RulesModelsAssets<A> {
+    pub fn new() -> Self {
+        Self { map: default() }
+    }
+
+    pub fn add_asset(&mut self, index: ModelIndex, asset: A) {
+        let model_asset = ModelAsset {
+            handles: asset,
+            offset: default(),
+        };
+        self.add(index, model_asset);
+    }
+
+    pub fn add(&mut self, index: ModelIndex, model_asset: ModelAsset<A>) {
+        match self.map.get_mut(&index) {
+            Some(assets) => {
+                assets.push(model_asset);
+            }
+            None => {
+                self.map.insert(index, vec![model_asset]);
+            }
+        }
+    }
+}
+
+/// Type alias. Defines a function which from an [`AssetHandles`], a position, a scale and a rotation (in radians) returns a spawnable [`Bundle`]
+pub type BundleSpawner<A, B> = fn(assets: A, translation: Vec3, scale: Vec3, rot_rad: f32) -> B;
 
 /// Encapsulates a [`Generator`] and other information needed to correclty spawn assets
 #[derive(Component)]
-pub struct Generation<C: SharableCoordSystem, A: Asset, B: Bundle> {
+pub struct Generation<C: SharableCoordSystem, A: AssetHandles, B: Bundle> {
     /// The generator that will produce the [`ModelInstance`]
     pub gen: Generator<C>,
     /// Link a `Model` via its [`ModelIndex`] to his spawnable assets (can be shared by multiple [`Generation`])
-    pub models_assets: Arc<RulesModelsAssets<A>>,
+    pub assets: Arc<RulesModelsAssets<A>>,
     /// Size of a node in world units
     pub node_size: Vec3,
     /// Scale of the assets when spawned
@@ -68,11 +99,11 @@ pub struct Generation<C: SharableCoordSystem, A: Asset, B: Bundle> {
     pub z_offset_from_y: bool,
 }
 
-impl<C: SharableCoordSystem, A: Asset, B: Bundle> Generation<C, A, B> {
+impl<C: SharableCoordSystem, A: AssetHandles, B: Bundle> Generation<C, A, B> {
     /// Constructor for a `Generation`, `z_offset_from_y` defaults to `false`
     pub fn new(
         gen: Generator<C>,
-        models_assets: Arc<RulesModelsAssets<A>>,
+        models_assets: RulesModelsAssets<A>,
         node_size: Vec3,
         assets_spawn_scale: Vec3,
         asset_bundle_spawner: BundleSpawner<A, B>,
@@ -80,7 +111,7 @@ impl<C: SharableCoordSystem, A: Asset, B: Bundle> Generation<C, A, B> {
         Self {
             gen,
             node_size,
-            models_assets,
+            assets: Arc::new(models_assets),
             assets_spawn_scale,
             asset_bundle_spawner,
             z_offset_from_y: false,
@@ -188,6 +219,45 @@ pub fn scene_node_spawner(
     }
 }
 
+#[derive(Clone)]
+pub struct MaterialMesh<M: Material> {
+    pub mesh: Handle<Mesh>,
+    pub mat: Handle<M>,
+}
+
+#[derive(Clone)]
+pub struct PbrMesh {
+    pub mesh: Handle<Mesh>,
+    pub mat: Handle<StandardMaterial>,
+}
+
+pub fn material_mesh_node_spawner<M: Material>(
+    asset: MaterialMesh<M>,
+    translation: Vec3,
+    scale: Vec3,
+    rot_rad: f32,
+) -> MaterialMeshBundle<M> {
+    MaterialMeshBundle {
+        mesh: asset.mesh,
+        material: asset.mat,
+        transform: Transform::from_translation(translation)
+            .with_scale(scale)
+            .with_rotation(Quat::from_rotation_y(rot_rad)),
+        ..default()
+    }
+}
+
+pub fn pbr_node_spawner(asset: PbrMesh, translation: Vec3, scale: Vec3, rot_rad: f32) -> PbrBundle {
+    PbrBundle {
+        mesh: asset.mesh,
+        material: asset.mat,
+        transform: Transform::from_translation(translation)
+            .with_scale(scale)
+            .with_rotation(Quat::from_rotation_y(rot_rad)),
+        ..default()
+    }
+}
+
 /// Utility system to spawn grid nodes. Can work for multiple asset types.
 ///
 /// Used by [`ProcGenSimplePlugin`] and [`ProcGenDebugPlugin`] to spawn assets automatically.
@@ -202,7 +272,7 @@ pub fn scene_node_spawner(
 /// ```ignore
 /// spawn_node::<Cartesian3D, Image, SpriteBundle>(...);
 /// ```
-pub fn spawn_node<C: SharableCoordSystem, A: Asset, B: Bundle>(
+pub fn spawn_node<C: SharableCoordSystem, A: AssetHandles, B: Bundle>(
     commands: &mut Commands,
     gen_entity: Entity,
     generation: &Generation<C, A, B>,
@@ -211,7 +281,8 @@ pub fn spawn_node<C: SharableCoordSystem, A: Asset, B: Bundle>(
 ) {
     let empty = vec![];
     let node_assets = generation
-        .models_assets
+        .assets
+        .map
         .get(&instance.model_index)
         .unwrap_or(&empty);
     if node_assets.is_empty() {
@@ -236,7 +307,7 @@ pub fn spawn_node<C: SharableCoordSystem, A: Asset, B: Bundle>(
         let node_entity = commands
             .spawn((
                 (generation.asset_bundle_spawner)(
-                    node_asset.handle.clone(),
+                    node_asset.handles.clone(),
                     translation,
                     generation.assets_spawn_scale,
                     f32::to_radians(instance.rotation.value() as f32),

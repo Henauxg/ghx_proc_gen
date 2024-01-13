@@ -2,7 +2,6 @@ use std::marker::PhantomData;
 
 use bevy::{
     app::{App, Plugin, Startup, Update},
-    asset::Asset,
     diagnostic::FrameTimeDiagnosticsPlugin,
     ecs::{
         bundle::Bundle,
@@ -15,7 +14,7 @@ use bevy::{
 use bevy_ghx_proc_gen::{
     gen::{
         debug_plugin::{GenerationViewMode, ProcGenDebugPlugin},
-        insert_bundle_from_resource_to_spawned_nodes,
+        insert_bundle_from_resource_to_spawned_nodes, AssetHandles,
     },
     grid::{GridDebugPlugin, SharableCoordSystem},
 };
@@ -26,13 +25,13 @@ use crate::{
     utils::{toggle_debug_grids_visibilities, toggle_fps_counter},
 };
 
-pub struct ProcGenExamplesPlugin<C: SharableCoordSystem, A: Asset, B: Bundle> {
+pub struct ProcGenExamplesPlugin<C: SharableCoordSystem, A: AssetHandles, B: Bundle> {
     generation_view_mode: GenerationViewMode,
     assets_scale: Vec3,
     typestate: PhantomData<(C, A, B)>,
 }
 
-impl<C: SharableCoordSystem, A: Asset, B: Bundle> ProcGenExamplesPlugin<C, A, B> {
+impl<C: SharableCoordSystem, A: AssetHandles, B: Bundle> ProcGenExamplesPlugin<C, A, B> {
     pub fn new(generation_view_mode: GenerationViewMode, assets_scale: Vec3) -> Self {
         Self {
             generation_view_mode,
@@ -42,7 +41,7 @@ impl<C: SharableCoordSystem, A: Asset, B: Bundle> ProcGenExamplesPlugin<C, A, B>
     }
 }
 
-impl<C: SharableCoordSystem, A: Asset, B: Bundle> Plugin for ProcGenExamplesPlugin<C, A, B> {
+impl<C: SharableCoordSystem, A: AssetHandles, B: Bundle> Plugin for ProcGenExamplesPlugin<C, A, B> {
     fn build(&self, app: &mut App) {
         app.add_plugins((
             FrameTimeDiagnosticsPlugin::default(),

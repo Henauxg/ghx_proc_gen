@@ -2,7 +2,6 @@ use std::marker::PhantomData;
 
 use bevy::{
     app::{App, Plugin, Update},
-    asset::Asset,
     ecs::{
         bundle::Bundle,
         entity::Entity,
@@ -17,16 +16,16 @@ use ghx_proc_gen::GenerationError;
 
 use crate::{gen::spawn_node, grid::SharableCoordSystem};
 
-use super::Generation;
+use super::{AssetHandles, Generation};
 
 /// A simple [`Plugin`] that automatically detects any [`Entity`] with a [`Generation`] `Component` and tries to run the contained generator once per frame until it succeeds.
 ///
 /// Once the generation is successful, the plugin will spawn the generated nodes assets.
-pub struct ProcGenSimplePlugin<C: SharableCoordSystem, A: Asset, B: Bundle> {
+pub struct ProcGenSimplePlugin<C: SharableCoordSystem, A: AssetHandles, B: Bundle> {
     typestate: PhantomData<(C, A, B)>,
 }
 
-impl<C: SharableCoordSystem, A: Asset, B: Bundle> Plugin for ProcGenSimplePlugin<C, A, B> {
+impl<C: SharableCoordSystem, A: AssetHandles, B: Bundle> Plugin for ProcGenSimplePlugin<C, A, B> {
     fn build(&self, app: &mut App) {
         app.insert_resource(PendingGenerations::default());
         app.add_systems(
@@ -40,7 +39,7 @@ impl<C: SharableCoordSystem, A: Asset, B: Bundle> Plugin for ProcGenSimplePlugin
     }
 }
 
-impl<C: SharableCoordSystem, A: Asset, B: Bundle> ProcGenSimplePlugin<C, A, B> {
+impl<C: SharableCoordSystem, A: AssetHandles, B: Bundle> ProcGenSimplePlugin<C, A, B> {
     /// Constructor
     pub fn new() -> Self {
         Self {
@@ -64,7 +63,7 @@ impl Default for PendingGenerations {
 }
 
 /// System used by [`ProcGenSimplePlugin`] to track entities with newly added [`Generation`] components
-pub fn register_new_generations<C: SharableCoordSystem, A: Asset, B: Bundle>(
+pub fn register_new_generations<C: SharableCoordSystem, A: AssetHandles, B: Bundle>(
     mut pending_generations: ResMut<PendingGenerations>,
     mut new_generations: Query<Entity, Added<Generation<C, A, B>>>,
 ) {
@@ -74,7 +73,7 @@ pub fn register_new_generations<C: SharableCoordSystem, A: Asset, B: Bundle>(
 }
 
 /// System used by [`ProcGenSimplePlugin`] to run generators and spawn their node's assets
-pub fn generate_and_spawn<C: SharableCoordSystem, A: Asset, B: Bundle>(
+pub fn generate_and_spawn<C: SharableCoordSystem, A: AssetHandles, B: Bundle>(
     mut commands: Commands,
     mut pending_generations: ResMut<PendingGenerations>,
     mut generations: Query<&mut Generation<C, A, B>>,

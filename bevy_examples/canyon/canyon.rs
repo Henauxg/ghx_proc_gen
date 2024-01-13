@@ -1,4 +1,4 @@
-use std::{f32::consts::PI, sync::Arc};
+use std::f32::consts::PI;
 
 use bevy::{log::LogPlugin, pbr::DirectionalLightShadowMap, prelude::*};
 
@@ -136,7 +136,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
             grid: Grid { def: grid },
             generation: Generation::new(
                 gen,
-                Arc::new(models_assets),
+                models_assets,
                 NODE_SIZE,
                 // We spawn assets with a scale of 0 since we animate their scale in the examples
                 Vec3::ZERO,
@@ -160,7 +160,7 @@ fn main() {
             filter: "info,wgpu_core=warn,wgpu_hal=warn,ghx_proc_gen=debug".into(),
             level: bevy::log::Level::DEBUG,
         }),
-        ProcGenExamplesPlugin::<Cartesian3D, Scene, SceneBundle>::new(
+        ProcGenExamplesPlugin::<Cartesian3D, Handle<Scene>, SceneBundle>::new(
             GENERATION_VIEW_MODE,
             ASSETS_SCALE,
         ),

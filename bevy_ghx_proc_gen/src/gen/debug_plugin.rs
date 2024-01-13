@@ -2,7 +2,6 @@ use std::{marker::PhantomData, time::Duration};
 
 use bevy::{
     app::{App, Plugin, Update},
-    asset::Asset,
     ecs::{
         bundle::Bundle,
         component::Component,
@@ -31,17 +30,17 @@ use crate::{
     Generation,
 };
 
-use super::{spawn_node, SpawnedNode};
+use super::{spawn_node, AssetHandles, SpawnedNode};
 
 /// A [`Plugin`] useful for debug/analysis/demo.
 ///
 /// It takes in a [`GenerationViewMode`] to control how the generators in the [`Generation`] components will be run.
-pub struct ProcGenDebugPlugin<C: SharableCoordSystem, A: Asset, B: Bundle> {
+pub struct ProcGenDebugPlugin<C: SharableCoordSystem, A: AssetHandles, B: Bundle> {
     generation_view_mode: GenerationViewMode,
     typestate: PhantomData<(C, A, B)>,
 }
 
-impl<C: SharableCoordSystem, A: Asset, B: Bundle> ProcGenDebugPlugin<C, A, B> {
+impl<C: SharableCoordSystem, A: AssetHandles, B: Bundle> ProcGenDebugPlugin<C, A, B> {
     /// Plugin constructor
     pub fn new(generation_view_mode: GenerationViewMode) -> Self {
         Self {
@@ -51,7 +50,7 @@ impl<C: SharableCoordSystem, A: Asset, B: Bundle> ProcGenDebugPlugin<C, A, B> {
     }
 }
 
-impl<C: SharableCoordSystem, A: Asset, B: Bundle> Plugin for ProcGenDebugPlugin<C, A, B> {
+impl<C: SharableCoordSystem, A: AssetHandles, B: Bundle> Plugin for ProcGenDebugPlugin<C, A, B> {
     fn build(&self, app: &mut App) {
         app.insert_resource(self.generation_view_mode);
 
@@ -204,7 +203,7 @@ pub struct Observed {
     pub obs: QueuedObserver,
 }
 impl Observed {
-    fn new<C: SharableCoordSystem, A: Asset, B: Bundle>(
+    fn new<C: SharableCoordSystem, A: AssetHandles, B: Bundle>(
         generation: &mut Generation<C, A, B>,
     ) -> Self {
         Self {
@@ -214,7 +213,7 @@ impl Observed {
 }
 
 /// This system adds an [`Observed`] component to every `Entity` with a [`Generation`] component
-pub fn observe_new_generations<C: SharableCoordSystem, A: Asset, B: Bundle>(
+pub fn observe_new_generations<C: SharableCoordSystem, A: AssetHandles, B: Bundle>(
     mut commands: Commands,
     mut new_generations: Query<(Entity, &mut Generation<C, A, B>), Without<Observed>>,
 ) {
@@ -244,7 +243,7 @@ pub fn update_generation_control(
 }
 
 /// This system request the full generation to all [`Generation`] components, if they already are observed through an [`Observed`] component and if the current control status is [`GenerationControlStatus::Ongoing`]
-pub fn generate_all<C: SharableCoordSystem, A: Asset, B: Bundle>(
+pub fn generate_all<C: SharableCoordSystem, A: AssetHandles, B: Bundle>(
     mut generation_control: ResMut<GenerationControl>,
     mut observed_generations: Query<&mut Generation<C, A, B>, With<Observed>>,
 ) {
@@ -275,7 +274,7 @@ pub fn generate_all<C: SharableCoordSystem, A: Asset, B: Bundle>(
 /// This system steps all [`Generation`] components if they already are observed through an [`Observed`] component, if the current control status is [`GenerationControlStatus::Ongoing`] and if the appropriate keys are pressed.
 ///
 /// The keybinds are read from the [`ProcGenKeyBindings`] `Resource`
-pub fn step_by_step_input_update<C: SharableCoordSystem, A: Asset, B: Bundle>(
+pub fn step_by_step_input_update<C: SharableCoordSystem, A: AssetHandles, B: Bundle>(
     keys: Res<Input<KeyCode>>,
     proc_gen_key_bindings: Res<ProcGenKeyBindings>,
     mut generation_control: ResMut<GenerationControl>,
@@ -292,7 +291,7 @@ pub fn step_by_step_input_update<C: SharableCoordSystem, A: Asset, B: Bundle>(
 }
 
 /// This system steps all [`Generation`] components if they already are observed through an [`Observed`] component, if the current control status is [`GenerationControlStatus::Ongoing`] and if the timer in the [`StepByStepTimed`] `Resource` has finished.
-pub fn step_by_step_timed_update<C: SharableCoordSystem, A: Asset, B: Bundle>(
+pub fn step_by_step_timed_update<C: SharableCoordSystem, A: AssetHandles, B: Bundle>(
     mut generation_control: ResMut<GenerationControl>,
     mut steps_and_timer: ResMut<StepByStepTimed>,
     time: Res<Time>,
@@ -313,7 +312,7 @@ pub fn step_by_step_timed_update<C: SharableCoordSystem, A: Asset, B: Bundle>(
     }
 }
 
-fn update_generation_view<C: SharableCoordSystem, A: Asset, B: Bundle>(
+fn update_generation_view<C: SharableCoordSystem, A: AssetHandles, B: Bundle>(
     mut commands: Commands,
     mut marker_events: EventWriter<MarkerEvent>,
     mut generators: Query<(Entity, &Generation<C, A, B>, &mut Observed)>,
@@ -360,7 +359,7 @@ fn update_generation_view<C: SharableCoordSystem, A: Asset, B: Bundle>(
     }
 }
 
-fn step_generation<C: SharableCoordSystem, A: Asset, B: Bundle>(
+fn step_generation<C: SharableCoordSystem, A: AssetHandles, B: Bundle>(
     generation: &mut Generation<C, A, B>,
     generation_control: &mut ResMut<GenerationControl>,
 ) {
@@ -371,7 +370,8 @@ fn step_generation<C: SharableCoordSystem, A: Asset, B: Bundle>(
                 for grid_node in nodes_to_spawn {
                     // We still collect the generated nodes here even though we don't really use them to spawn entities. We just check them for void nodes (for visualization purposes)
                     if let Some(assets) = generation
-                        .models_assets
+                        .assets
+                        .map
                         .get(&grid_node.model_instance.model_index)
                     {
                         if !assets.is_empty() {
