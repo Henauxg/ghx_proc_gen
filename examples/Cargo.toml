@@ -11,5 +11,9 @@ tracing-subscriber = "0.3.18"
 tracing = "0.1.40"
 
 [[example]]
+name = "checkerboard"
+path = "checkerboard.rs"
+
+[[example]]
 name = "unicode-terrain"
 path = "unicode-terrain.rs"
