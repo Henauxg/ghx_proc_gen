@@ -29,6 +29,13 @@ pub(crate) fn rules_and_assets() -> (
     let (bridge, bridge_side, bridge_top, bridge_bottom) = (s(), s(), s(), s());
     let (bridge_start_in, bridge_start_out, bridge_start_bottom) = (s(), s(), s());
     let (cactus_border, cactus_top, cactus_bottom) = (s(), s(), s());
+    let (
+        windmill_side,
+        windmill_base_top,
+        windmill_base_bottom,
+        windmill_cap_top,
+        windmill_cap_bottom,
+    ) = (s(), s(), s(), s(), s());
 
     let asset = |str| -> Vec<AssetDef> { vec![AssetDef::new(str)] };
 
@@ -201,6 +208,42 @@ pub(crate) fn rules_and_assets() -> (
         ),
     ]);
 
+    const WINDMILLS_WEIGHT: f32 = 0.004;
+    assets_and_models.extend(vec![
+        (
+            asset("windmill_base"),
+            SocketsCartesian3D::Simple {
+                x_pos: windmill_side,
+                x_neg: windmill_side,
+                z_pos: windmill_side,
+                z_neg: windmill_side,
+                y_pos: windmill_base_top,
+                y_neg: windmill_base_bottom,
+            }
+            .new_model()
+            .with_all_rotations()
+            .with_weight(WINDMILLS_WEIGHT),
+        ),
+        (
+            vec![
+                AssetDef::new("windmill_top"),
+                AssetDef::new("windmill_vane"),
+                AssetDef::new("windmill_blades"),
+            ],
+            SocketsCartesian3D::Simple {
+                x_pos: windmill_side,
+                x_neg: windmill_side,
+                z_pos: windmill_side,
+                z_neg: windmill_side,
+                y_pos: windmill_cap_top,
+                y_neg: windmill_cap_bottom,
+            }
+            .new_model()
+            .with_all_rotations()
+            .with_weight(WINDMILLS_WEIGHT),
+        ),
+    ]);
+
     // For this generation, our rotation axis is Y+, so we define connection on the Y axis with `add_rotated_connection` for sockets that still need to be compatible when rotated.
     sockets
         // Void
@@ -248,6 +291,13 @@ pub(crate) fn rules_and_assets() -> (
         .add_rotated_connections(vec![
             (cactus_bottom, vec![sand_top]),
             (cactus_top, vec![void_bottom, bridge_bottom]),
+        ])
+        // Windmills
+        .add_connection(windmill_side, vec![void, rock_border, bridge_side])
+        .add_rotated_connections(vec![
+            (windmill_base_bottom, vec![rock_top]),
+            (windmill_base_top, vec![windmill_cap_bottom]),
+            (windmill_cap_top, vec![void_bottom]),
         ]);
 
     (
