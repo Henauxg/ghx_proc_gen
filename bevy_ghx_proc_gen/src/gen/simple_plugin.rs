@@ -12,11 +12,11 @@ use bevy::{
     log::{info, warn},
     utils::HashSet,
 };
-use ghx_proc_gen::{grid::direction::CoordinateSystem, GenerationError};
+use ghx_proc_gen::{generator::Generator, grid::direction::CoordinateSystem, GenerationError};
 
 use crate::{gen::spawn_node, ComponentWrapper};
 
-use super::{AssetHandles, AssetSpawner, Generation, NoComponents};
+use super::{AssetHandles, AssetSpawner, NoComponents};
 
 /// A simple [`Plugin`] that automatically detects any [`Entity`] with a [`Generation`] `Component` and tries to run the contained generator once per frame until it succeeds.
 ///
@@ -74,7 +74,7 @@ impl Default for PendingGenerations {
 /// System used by [`ProcGenSimplePlugin`] to track entities with newly added [`Generation`] components
 pub fn register_new_generations<C: CoordinateSystem>(
     mut pending_generations: ResMut<PendingGenerations>,
-    mut new_generations: Query<Entity, Added<Generation<C>>>,
+    mut new_generations: Query<Entity, Added<Generator<C>>>,
 ) {
     for gen_entity in new_generations.iter_mut() {
         pending_generations.pendings.insert(gen_entity);
@@ -85,24 +85,24 @@ pub fn register_new_generations<C: CoordinateSystem>(
 pub fn generate_and_spawn<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentWrapper>(
     mut commands: Commands,
     mut pending_generations: ResMut<PendingGenerations>,
-    mut generations: Query<(&mut Generation<C>, &AssetSpawner<A, B, T>)>,
+    mut generations: Query<(&mut Generator<C>, &AssetSpawner<A, B, T>)>,
 ) {
     let mut generations_done = vec![];
     for &gen_entity in pending_generations.pendings.iter() {
         if let Ok((mut generation, asset_spawner)) = generations.get_mut(gen_entity) {
-            match generation.gen.generate_collected() {
+            match generation.generate_collected() {
                 Ok(grid_data) => {
                     info!(
                         "Generation {:?} done, seed: {}; grid: {}",
                         gen_entity,
-                        generation.gen.get_seed(),
-                        generation.gen.grid()
+                        generation.get_seed(),
+                        generation.grid()
                     );
                     for (node_index, node) in grid_data.nodes().iter().enumerate() {
                         spawn_node(
                             &mut commands,
                             gen_entity,
-                            &generation.gen.grid(),
+                            &generation.grid(),
                             asset_spawner,
                             node,
                             node_index,
@@ -115,8 +115,8 @@ pub fn generate_and_spawn<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: Co
                         "Generation {:?} failed at node {}, seed: {}; grid: {}",
                         gen_entity,
                         node_index,
-                        generation.gen.get_seed(),
-                        generation.gen.grid()
+                        generation.get_seed(),
+                        generation.grid()
                     );
                 }
             }

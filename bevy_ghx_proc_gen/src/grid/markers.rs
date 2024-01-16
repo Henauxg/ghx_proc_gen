@@ -9,12 +9,12 @@ use bevy::{
     render::color::Color,
     transform::components::Transform,
 };
-use ghx_proc_gen::grid::GridPosition;
+use ghx_proc_gen::grid::{GridDefinition, GridPosition};
 
 use super::{
     get_translation_from_grid_pos_2d, get_translation_from_grid_pos_3d,
     view::{DebugGridView, DebugGridViewConfig2d, DebugGridViewConfig3d},
-    CoordinateSystem, Grid,
+    CoordinateSystem,
 };
 
 /// Event used to update markers on a [`DebugGridView`]
@@ -58,7 +58,7 @@ pub(crate) struct Marker {
 /// Called in the [`bevy::app::PostUpdate`] schedule by default, by the [`crate::grid::GridDebugPlugin`]
 pub fn update_debug_markers<T: CoordinateSystem>(
     mut marker_events: EventReader<MarkerEvent>,
-    mut debug_grids: Query<(&Grid<T>, &mut DebugGridView)>,
+    mut debug_grids: Query<(&GridDefinition<T>, &mut DebugGridView)>,
 ) {
     for marker_event in marker_events.read() {
         match marker_event {
@@ -72,7 +72,7 @@ pub fn update_debug_markers<T: CoordinateSystem>(
                         *node_index,
                         Marker {
                             color: *color,
-                            pos: grid.def.get_position(*node_index),
+                            pos: grid.get_position(*node_index),
                         },
                     );
                 }

@@ -23,10 +23,7 @@ use bevy::{
     utils::default,
 };
 use ghx_proc_gen::{
-    generator::{
-        model::{ModelIndex, ModelInstance, ModelRotation},
-        Generator,
-    },
+    generator::model::{ModelIndex, ModelInstance, ModelRotation},
     grid::{
         direction::{CoordinateSystem, GridDelta},
         GridDefinition,
@@ -159,13 +156,6 @@ impl<A: AssetHandles, B: Bundle, T: ComponentWrapper> AssetSpawner<A, B, T> {
         self.z_offset_from_y = z_offset_from_y;
         self
     }
-}
-
-/// Encapsulates a [`Generator`] and other information needed to correclty spawn assets
-#[derive(Component)]
-pub struct Generation<C: CoordinateSystem> {
-    /// The generator that will produce the [`ModelInstance`]
-    pub gen: Generator<C>,
 }
 
 /// Utility system. Adds a [`Bundle`] (or a [`Component`]) to every [`Entity`] that has [`SpawnedNode`] Component (this is the case of nodes spawned by the `spawn_node` system). The `Bundle` will have its default value.

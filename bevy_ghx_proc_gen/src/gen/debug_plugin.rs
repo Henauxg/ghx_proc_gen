@@ -22,16 +22,13 @@ use ghx_proc_gen::{
     generator::{
         model::ModelIndex,
         observer::{GenerationUpdate, QueuedObserver},
-        GenerationStatus,
+        GenerationStatus, Generator,
     },
-    grid::direction::CoordinateSystem,
+    grid::{direction::CoordinateSystem, GridDefinition},
     GenerationError,
 };
 
-use crate::{
-    grid::{markers::MarkerEvent, Grid},
-    ComponentWrapper, Generation,
-};
+use crate::{grid::markers::MarkerEvent, ComponentWrapper};
 
 use super::{spawn_node, AssetHandles, AssetSpawner, NoComponents, SpawnedNode};
 
@@ -220,9 +217,9 @@ pub struct Observed {
     pub obs: QueuedObserver,
 }
 impl Observed {
-    fn new<C: CoordinateSystem>(generation: &mut Generation<C>) -> Self {
+    fn new<C: CoordinateSystem>(mut generation: &mut Generator<C>) -> Self {
         Self {
-            obs: QueuedObserver::new(&mut generation.gen),
+            obs: QueuedObserver::new(&mut generation),
         }
     }
 }
@@ -230,7 +227,7 @@ impl Observed {
 /// This system adds an [`Observed`] component to every `Entity` with a [`Generation`] component
 pub fn observe_new_generations<C: CoordinateSystem>(
     mut commands: Commands,
-    mut new_generations: Query<(Entity, &mut Generation<C>), Without<Observed>>,
+    mut new_generations: Query<(Entity, &mut Generator<C>), Without<Observed>>,
 ) {
     for (gen_entity, mut generation) in new_generations.iter_mut() {
         commands
@@ -247,13 +244,13 @@ pub fn register_void_nodes_for_new_generations<
 >(
     mut commands: Commands,
     mut new_generations: Query<
-        (Entity, &mut Generation<C>, &AssetSpawner<A, B, T>),
+        (Entity, &mut Generator<C>, &AssetSpawner<A, B, T>),
         Without<VoidNodes>,
     >,
 ) {
     for (gen_entity, generation, asset_spawner) in new_generations.iter_mut() {
         let mut void_nodes = HashSet::new();
-        for model_index in 0..generation.gen.rules().original_models_count() {
+        for model_index in 0..generation.rules().original_models_count() {
             if !asset_spawner.assets.contains_key(&model_index) {
                 void_nodes.insert(model_index);
             }
@@ -283,24 +280,24 @@ pub fn update_generation_control(
 /// This system request the full generation to all [`Generation`] components, if they already are observed through an [`Observed`] component and if the current control status is [`GenerationControlStatus::Ongoing`]
 pub fn generate_all<C: CoordinateSystem>(
     mut generation_control: ResMut<GenerationControl>,
-    mut observed_generations: Query<&mut Generation<C>, With<Observed>>,
+    mut observed_generations: Query<&mut Generator<C>, With<Observed>>,
 ) {
     for mut generation in observed_generations.iter_mut() {
         if generation_control.status == GenerationControlStatus::Ongoing {
-            match generation.gen.generate() {
+            match generation.generate() {
                 Ok(()) => {
                     info!(
                         "Generation done, seed: {}; grid: {}",
-                        generation.gen.get_seed(),
-                        generation.gen.grid()
+                        generation.get_seed(),
+                        generation.grid()
                     );
                 }
                 Err(GenerationError { node_index }) => {
                     warn!(
                         "Generation Failed at node {}, seed: {}; grid: {}",
                         node_index,
-                        generation.gen.get_seed(),
-                        generation.gen.grid()
+                        generation.get_seed(),
+                        generation.grid()
                     );
                 }
             }
@@ -316,7 +313,7 @@ pub fn step_by_step_input_update<C: CoordinateSystem>(
     keys: Res<Input<KeyCode>>,
     proc_gen_key_bindings: Res<ProcGenKeyBindings>,
     mut generation_control: ResMut<GenerationControl>,
-    mut observed_generations: Query<(&mut Generation<C>, &VoidNodes), With<Observed>>,
+    mut observed_generations: Query<(&mut Generator<C>, &VoidNodes), With<Observed>>,
 ) {
     if generation_control.status == GenerationControlStatus::Ongoing
         && (keys.just_pressed(proc_gen_key_bindings.step)
@@ -333,7 +330,7 @@ pub fn step_by_step_timed_update<C: CoordinateSystem>(
     mut generation_control: ResMut<GenerationControl>,
     mut steps_and_timer: ResMut<StepByStepTimed>,
     time: Res<Time>,
-    mut observed_generations: Query<(&mut Generation<C>, &VoidNodes), With<Observed>>,
+    mut observed_generations: Query<(&mut Generator<C>, &VoidNodes), With<Observed>>,
 ) {
     steps_and_timer.timer.tick(time.delta());
     if steps_and_timer.timer.finished()
@@ -353,7 +350,12 @@ pub fn step_by_step_timed_update<C: CoordinateSystem>(
 fn update_generation_view<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentWrapper>(
     mut commands: Commands,
     mut marker_events: EventWriter<MarkerEvent>,
-    mut generators: Query<(Entity, &Grid<C>, &AssetSpawner<A, B, T>, &mut Observed)>,
+    mut generators: Query<(
+        Entity,
+        &GridDefinition<C>,
+        &AssetSpawner<A, B, T>,
+        &mut Observed,
+    )>,
     existing_nodes: Query<Entity, With<SpawnedNode>>,
 ) {
     for (gen_entity, grid, asset_spawner, mut observer) in generators.iter_mut() {
@@ -389,7 +391,7 @@ fn update_generation_view<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: Co
             spawn_node(
                 &mut commands,
                 gen_entity,
-                &grid.def,
+                &grid,
                 asset_spawner,
                 &grid_node.model_instance,
                 grid_node.node_index,
@@ -399,13 +401,13 @@ fn update_generation_view<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: Co
 }
 
 fn step_generation<C: CoordinateSystem>(
-    generation: &mut Generation<C>,
+    generation: &mut Generator<C>,
     void_nodes: &VoidNodes,
     generation_control: &mut ResMut<GenerationControl>,
 ) {
     loop {
         let mut non_void_spawned = false;
-        match generation.gen.select_and_propagate_collected() {
+        match generation.select_and_propagate_collected() {
             Ok((status, nodes_to_spawn)) => {
                 for grid_node in nodes_to_spawn {
                     // We still collect the generated nodes here even though we don't really use them to spawn entities. We just check them for void nodes (for visualization purposes)
@@ -418,8 +420,8 @@ fn step_generation<C: CoordinateSystem>(
                     GenerationStatus::Done => {
                         info!(
                             "Generation done, seed: {}; grid: {}",
-                            generation.gen.get_seed(),
-                            generation.gen.grid()
+                            generation.get_seed(),
+                            generation.grid()
                         );
                         if generation_control.pause_when_done {
                             generation_control.status = GenerationControlStatus::Paused;
@@ -432,8 +434,8 @@ fn step_generation<C: CoordinateSystem>(
                 warn!(
                     "Generation Failed at node {}, seed: {}; grid: {}",
                     node_index,
-                    generation.gen.get_seed(),
-                    generation.gen.grid()
+                    generation.get_seed(),
+                    generation.grid()
                 );
                 if generation_control.pause_on_error {
                     generation_control.status = GenerationControlStatus::Paused;

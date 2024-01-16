@@ -2,11 +2,11 @@ use std::marker::PhantomData;
 
 use bevy::{
     app::{App, Plugin, PostUpdate, Update},
-    ecs::{bundle::Bundle, component::Component},
+    ecs::bundle::Bundle,
     math::{Vec2, Vec3},
     pbr::MaterialPlugin,
 };
-use ghx_proc_gen::grid::{direction::CoordinateSystem, GridDefinition, GridPosition};
+use ghx_proc_gen::grid::{direction::CoordinateSystem, GridPosition};
 
 use self::{
     lines::LineMaterial,
@@ -97,13 +97,6 @@ impl Default for DebugGridView2d {
             view: Default::default(),
         }
     }
-}
-
-/// Component that encapsulates a [`GridDefinition`]
-#[derive(Component)]
-pub struct Grid<D: CoordinateSystem> {
-    /// Encapsulated grid definition
-    pub def: GridDefinition<D>,
 }
 
 /// Transform a [`GridPosition`] accompanied by a `node_size`, the size of a grid node in world units, into a position as a [`Vec3`] in world units (center of the grid node).

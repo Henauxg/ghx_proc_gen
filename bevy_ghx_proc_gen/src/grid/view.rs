@@ -17,11 +17,12 @@ use bevy::{
     transform::components::Transform,
     utils::default,
 };
+use ghx_proc_gen::grid::GridDefinition;
 
 use super::{
     lines::{LineList, LineMaterial},
     markers::Marker,
-    CoordinateSystem, Grid,
+    CoordinateSystem,
 };
 
 /// 3d-specific ([`bevy::prelude::Camera3d`]) configuration of a grid debug view
@@ -107,45 +108,42 @@ pub fn spawn_debug_grids_3d<T: CoordinateSystem>(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<LineMaterial>>,
     debug_grids: Query<
-        (Entity, &Grid<T>, &DebugGridView, &DebugGridViewConfig3d),
+        (
+            Entity,
+            &GridDefinition<T>,
+            &DebugGridView,
+            &DebugGridViewConfig3d,
+        ),
         Added<DebugGridViewConfig3d>,
     >,
 ) {
     // TODO Gizmos ? Performances may be worse than this mesh built once
     for (grid_entity, grid, view, view_config) in debug_grids.iter() {
         let mut lines = Vec::new();
-        for y in 0..=grid.def.size_y() {
+        for y in 0..=grid.size_y() {
             let mut from = Vec3::new(0., y as f32, 0.);
             let mut to = Vec3::new(
                 0.,
                 y as f32,
-                (grid.def.size_z() as f32) * view_config.node_size.z,
+                (grid.size_z() as f32) * view_config.node_size.z,
             );
-            for x in 0..=grid.def.size_x() {
+            for x in 0..=grid.size_x() {
                 from.x = view_config.node_size.x * x as f32;
                 to.x = from.x;
                 lines.push((from, to));
             }
             from = Vec3::new(0., y as f32, 0.);
-            to = Vec3::new(
-                grid.def.size_x() as f32 * view_config.node_size.x,
-                y as f32,
-                0.,
-            );
-            for z in 0..=grid.def.size_z() {
+            to = Vec3::new(grid.size_x() as f32 * view_config.node_size.x, y as f32, 0.);
+            for z in 0..=grid.size_z() {
                 from.z = view_config.node_size.z * z as f32;
                 to.z = from.z;
                 lines.push((from, to));
             }
         }
-        for x in 0..=grid.def.size_x() {
+        for x in 0..=grid.size_x() {
             let mut from = Vec3::new(x as f32, 0., 0.);
-            let mut to = Vec3::new(
-                x as f32,
-                grid.def.size_y() as f32 * view_config.node_size.y,
-                0.,
-            );
-            for z in 0..=grid.def.size_z() {
+            let mut to = Vec3::new(x as f32, grid.size_y() as f32 * view_config.node_size.y, 0.);
+            for z in 0..=grid.size_z() {
                 from.z = view_config.node_size.z * z as f32;
                 to.z = from.z;
                 lines.push((from, to));
@@ -203,31 +201,36 @@ pub fn update_debug_grid_mesh_visibility_3d(
 /// To be used with a [`bevy::prelude::Camera2d`]
 pub fn draw_debug_grids_2d<T: CoordinateSystem>(
     mut gizmos: Gizmos,
-    debug_grids: Query<(&Transform, &Grid<T>, &DebugGridView, &DebugGridViewConfig2d)>,
+    debug_grids: Query<(
+        &Transform,
+        &GridDefinition<T>,
+        &DebugGridView,
+        &DebugGridViewConfig2d,
+    )>,
 ) {
     for (transform, grid, view, view_config) in debug_grids.iter() {
         if !view.display_grid {
             continue;
         }
-        for y in 0..=grid.def.size_y() {
+        for y in 0..=grid.size_y() {
             let from = Vec2::new(
                 transform.translation.x,
                 transform.translation.y + y as f32 * view_config.node_size.y,
             );
             let to = Vec2::new(
-                transform.translation.x + (grid.def.size_x() as f32) * view_config.node_size.x,
+                transform.translation.x + (grid.size_x() as f32) * view_config.node_size.x,
                 transform.translation.y + y as f32 * view_config.node_size.y,
             );
             gizmos.line_2d(from, to, view.color);
         }
-        for x in 0..=grid.def.size_x() {
+        for x in 0..=grid.size_x() {
             let from = Vec2::new(
                 transform.translation.x + x as f32 * view_config.node_size.x,
                 transform.translation.y,
             );
             let to = Vec2::new(
                 transform.translation.x + x as f32 * view_config.node_size.x,
-                transform.translation.y + (grid.def.size_y() as f32) * view_config.node_size.y,
+                transform.translation.y + (grid.size_y() as f32) * view_config.node_size.y,
             );
             gizmos.line_2d(from, to, view.color);
         }
