@@ -2,6 +2,9 @@ use std::{fmt, ops::Range};
 
 use self::direction::{Cartesian2D, Cartesian3D, CoordinateSystem, Direction, GridDelta};
 
+#[cfg(feature = "bevy")]
+use bevy::ecs::component::Component;
+
 /// Defines directions and coordinate systems
 pub mod direction;
 
@@ -27,6 +30,7 @@ impl GridPosition {
 
 ///
 #[derive(Clone)]
+#[cfg_attr(feature = "bevy", derive(Component))]
 pub struct GridDefinition<T: CoordinateSystem + Clone> {
     size_x: u32,
     size_y: u32,
@@ -269,6 +273,7 @@ impl<T: CoordinateSystem + Clone> GridDefinition<T> {
 /// let grid_data = grid.default_grid_data::<u64>();
 /// ```
 /// You can also retrieve a pre-created existing `GridData` from a [`crate::generator::Generator`], or from an observer like a [`crate::generator::observer::QueuedStatefulObserver`]
+#[cfg_attr(feature = "bevy", derive(Component))]
 pub struct GridData<T: CoordinateSystem + Clone, D> {
     grid: GridDefinition<T>,
     data: Vec<D>,

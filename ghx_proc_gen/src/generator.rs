@@ -8,6 +8,9 @@ use std::sync::Arc;
 #[cfg(feature = "debug-traces")]
 use tracing::{debug, info, trace};
 
+#[cfg(feature = "bevy")]
+use bevy::ecs::component::Component;
+
 use crate::{
     grid::{
         direction::{Cartesian2D, CoordinateSystem},
@@ -95,6 +98,7 @@ struct PropagationEntry {
 
 /// Model synthesis/WFC generator.
 /// Use a [`GeneratorBuilder`] to get an instance of a [`Generator`].
+#[cfg_attr(feature = "bevy", derive(Component))]
 pub struct Generator<T: CoordinateSystem + Clone> {
     // === Read-only configuration ===
     grid: GridDefinition<T>,
