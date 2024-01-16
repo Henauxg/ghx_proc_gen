@@ -144,9 +144,11 @@ impl<T: CoordinateSystem + Clone> RulesBuilder<T> {
 ///
 /// A same set of [`Rules`] can be shared by multiple generators.
 pub struct Rules<T: CoordinateSystem> {
+    /// Number of original input models used to build these rules.
+    original_models_count: usize,
     /// All the models in this ruleset.
     ///
-    /// Expanded from a given set of base models with added variations of rotations around an axis.
+    /// This is expanded from a given collection of base models, with added variations of rotations around an axis.
     models: Vec<ExpandedModel>,
     /// The vector `allowed_neighbours[model_index][direction]` holds all the allowed adjacent models (indexes) to `model_index` in `direction`.
     ///
@@ -167,7 +169,7 @@ impl<T: CoordinateSystem> Rules<T> {
         if models.len() == 0 || socket_collection.is_empty() {
             return Err(RulesError::NoModelsOrSockets);
         }
-
+        let original_models_count = models.len();
         let expanded_models = expand_models(models, rotation_axis);
 
         // Temporary collection to reverse the relation: sockets_to_models.get(socket)[direction] will hold all the models that have 'socket' from 'direction'
@@ -222,6 +224,7 @@ impl<T: CoordinateSystem> Rules<T> {
         }
 
         Ok(Rules {
+            original_models_count,
             models: expanded_models,
             allowed_neighbours,
             typestate: PhantomData,
@@ -242,10 +245,16 @@ impl<T: CoordinateSystem> Rules<T> {
         self.models[model_index].weight()
     }
 
-    /// Returns the count of models (expanded from the input models) present in the rules
+    /// Returns the number of models (expanded from the input models) present in the rules
     #[inline]
     pub fn models_count(&self) -> usize {
         self.models.len()
+    }
+
+    /// Returns the number of original input models that were used to build these rules
+    #[inline]
+    pub fn original_models_count(&self) -> usize {
+        self.original_models_count
     }
 
     #[inline]
