@@ -260,6 +260,11 @@ impl ModelRotation {
             ModelRotation::Rot270 => 270,
         }
     }
+    /// Returns the value of the rotation in radians.
+    pub fn rad(&self) -> f32 {
+        f32::to_radians(self.value() as f32)
+    }
+
     /// Returns the index of the enum member in the enumeration.
     pub fn index(&self) -> u8 {
         match *self {
