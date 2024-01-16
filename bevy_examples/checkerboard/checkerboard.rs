@@ -2,10 +2,9 @@ use bevy::prelude::*;
 
 use bevy_ghx_proc_gen::{
     gen::{
-        pbr_node_spawner, simple_plugin::ProcGenSimplePlugin, AssetSpawner, Generation, PbrMesh,
+        pbr_node_spawner, simple_plugin::ProcGenSimplePlugin, AssetSpawner, PbrMesh,
         RulesModelsAssets,
     },
-    grid::Grid,
     proc_gen::{
         generator::{
             builder::GeneratorBuilder,
@@ -93,8 +92,8 @@ fn setup_generator(
         spatial: SpatialBundle::from_transform(Transform::from_translation(Vec3::new(
             -4., -4., 0.,
         ))),
-        grid: Grid { def: grid },
-        generation: Generation { gen: generator },
+        grid,
+        generator,
         asset_spawner: AssetSpawner::new(models_assets, NODE_SIZE, Vec3::ONE, pbr_node_spawner),
     });
 }

@@ -2,10 +2,10 @@ use bevy::{app::PluginGroup, log::LogPlugin, prelude::*};
 
 use bevy_examples::{plugin::ProcGenExamplesPlugin, utils::load_assets};
 use bevy_ghx_proc_gen::{
-    gen::{debug_plugin::GenerationViewMode, sprite_node_spawner, AssetSpawner, Generation},
+    gen::{debug_plugin::GenerationViewMode, sprite_node_spawner, AssetSpawner},
     grid::{
         view::{DebugGridView, DebugGridViewConfig2d},
-        DebugGridView2d, Grid,
+        DebugGridView2d,
     },
     proc_gen::{
         generator::{
@@ -63,7 +63,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         .build()
         .unwrap();
     let grid = GridDefinition::new_cartesian_3d(GRID_X, GRID_Y, GRID_Z, false, false, false);
-    let gen = GeneratorBuilder::new()
+    let generator = GeneratorBuilder::new()
         .with_rules(rules)
         .with_grid(grid.clone())
         .with_rng(RngMode::RandomSeed)
@@ -80,8 +80,8 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
                 y: -TILE_SIZE * grid.size_y() as f32 / 2.,
                 z: 0.,
             })),
-            grid: Grid { def: grid },
-            generation: Generation { gen: gen },
+            grid,
+            generator,
             asset_spawner: AssetSpawner::new(
                 models_assets,
                 NODE_SIZE,
