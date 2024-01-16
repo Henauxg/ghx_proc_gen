@@ -26,7 +26,10 @@ mod rules;
 
 // --------------------------------------------
 /// Change this value to change the way the generation is visualized
-const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::Final;
+const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::StepByStepTimed {
+    steps_count: 5,
+    interval_ms: 5,
+};
 
 /// Change this to change the map size.
 const GRID_HEIGHT: u32 = 7;
