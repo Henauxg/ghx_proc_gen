@@ -109,7 +109,7 @@ fn main() {
                 level: bevy::log::Level::DEBUG,
             })
             .set(ImagePlugin::default_nearest()),
-        ProcGenExamplesPlugin::<Cartesian3D, Image, SpriteBundle>::new(
+        ProcGenExamplesPlugin::<Cartesian3D, Handle<Image>, SpriteBundle>::new(
             GENERATION_VIEW_MODE,
             ASSETS_SCALE,
         ),
