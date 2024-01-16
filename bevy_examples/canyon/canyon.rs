@@ -22,6 +22,7 @@ use bevy_ghx_proc_gen::{
     },
     GeneratorBundle,
 };
+use rules::ModelComponents;
 
 use crate::rules::rules_and_assets;
 
@@ -160,7 +161,7 @@ fn main() {
             filter: "info,wgpu_core=warn,wgpu_hal=warn,ghx_proc_gen=debug".into(),
             level: bevy::log::Level::DEBUG,
         }),
-        ProcGenExamplesPlugin::<Cartesian3D, Handle<Scene>, SceneBundle>::new(
+        ProcGenExamplesPlugin::<Cartesian3D, Handle<Scene>, SceneBundle, ModelComponents>::new(
             GENERATION_VIEW_MODE,
             ASSETS_SCALE,
         ),
