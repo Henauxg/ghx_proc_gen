@@ -28,7 +28,10 @@ use ghx_proc_gen::{
     GenerationError,
 };
 
-use crate::{grid::markers::MarkerEvent, ComponentWrapper, Generation};
+use crate::{
+    grid::{markers::MarkerEvent, Grid},
+    ComponentWrapper, Generation,
+};
 
 use super::{spawn_node, AssetHandles, AssetSpawner, NoComponents, SpawnedNode};
 
@@ -350,15 +353,10 @@ pub fn step_by_step_timed_update<C: CoordinateSystem>(
 fn update_generation_view<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentWrapper>(
     mut commands: Commands,
     mut marker_events: EventWriter<MarkerEvent>,
-    mut generators: Query<(
-        Entity,
-        &Generation<C>,
-        &AssetSpawner<A, B, T>,
-        &mut Observed,
-    )>,
+    mut generators: Query<(Entity, &Grid<C>, &AssetSpawner<A, B, T>, &mut Observed)>,
     existing_nodes: Query<Entity, With<SpawnedNode>>,
 ) {
-    for (gen_entity, generation, asset_spawner, mut observer) in generators.iter_mut() {
+    for (gen_entity, grid, asset_spawner, mut observer) in generators.iter_mut() {
         let mut reinitialized = false;
         let mut nodes_to_spawn = Vec::new();
         for update in observer.obs.dequeue_all() {
@@ -391,7 +389,7 @@ fn update_generation_view<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: Co
             spawn_node(
                 &mut commands,
                 gen_entity,
-                &generation,
+                &grid.def,
                 asset_spawner,
                 &grid_node.model_instance,
                 grid_node.node_index,

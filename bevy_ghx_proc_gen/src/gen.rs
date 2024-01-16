@@ -27,7 +27,10 @@ use ghx_proc_gen::{
         model::{ModelIndex, ModelInstance, ModelRotation},
         Generator,
     },
-    grid::direction::{CoordinateSystem, GridDelta},
+    grid::{
+        direction::{CoordinateSystem, GridDelta},
+        GridDefinition,
+    },
 };
 
 /// Debug plugin to run the generation & spawn assets automatically with different visualization options
@@ -340,7 +343,7 @@ pub fn pbr_node_spawner(
 pub fn spawn_node<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentWrapper>(
     commands: &mut Commands,
     gen_entity: Entity,
-    generation: &Generation<C>,
+    grid: &GridDefinition<C>,
     asset_spawner: &AssetSpawner<A, B, T>,
     instance: &ModelInstance,
     node_index: usize,
@@ -351,7 +354,7 @@ pub fn spawn_node<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentW
     }
     let node_assets = node_assets_option.unwrap();
 
-    let pos = generation.gen.grid().get_position(node_index);
+    let pos = grid.get_position(node_index);
     for node_asset in node_assets {
         let offset = &node_asset.offset;
         // +0.5*scale to center the node because its center is at its origin
@@ -362,8 +365,7 @@ pub fn spawn_node<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentW
         );
 
         if asset_spawner.z_offset_from_y {
-            translation.z += asset_spawner.node_size.z
-                * (1. - pos.y as f32 / generation.gen.grid().size_y() as f32);
+            translation.z += asset_spawner.node_size.z * (1. - pos.y as f32 / grid.size_y() as f32);
         }
 
         let node_entity = commands

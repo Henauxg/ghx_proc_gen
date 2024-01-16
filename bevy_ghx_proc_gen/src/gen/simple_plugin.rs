@@ -102,7 +102,7 @@ pub fn generate_and_spawn<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: Co
                         spawn_node(
                             &mut commands,
                             gen_entity,
-                            &generation,
+                            &generation.gen.grid(),
                             asset_spawner,
                             node,
                             node_index,
