@@ -97,7 +97,7 @@ impl GridDelta {
 }
 
 /// Represents a coordinate system
-pub trait CoordinateSystem {
+pub trait CoordinateSystem: Clone + Sync + Send + 'static {
     /// Returns the [`Direction`] in this coordinate system
     fn directions(&self) -> &'static [Direction];
     /// Returns the [`GridDelta`] for each direction in this coordinate system
