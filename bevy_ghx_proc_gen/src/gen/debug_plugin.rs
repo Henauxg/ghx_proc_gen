@@ -1,4 +1,4 @@
-use std::{marker::PhantomData, time::Duration};
+use std::{collections::HashSet, marker::PhantomData, time::Duration};
 
 use bevy::{
     app::{App, Plugin, Update},
@@ -14,33 +14,40 @@ use bevy::{
     hierarchy::DespawnRecursiveExt,
     input::{keyboard::KeyCode, Input},
     log::{info, warn},
+    prelude::Deref,
     render::color::Color,
     time::{Time, Timer, TimerMode},
 };
 use ghx_proc_gen::{
     generator::{
+        model::ModelIndex,
         observer::{GenerationUpdate, QueuedObserver},
         GenerationStatus,
     },
+    grid::direction::CoordinateSystem,
     GenerationError,
 };
 
-use crate::{
-    grid::{markers::MarkerEvent, SharableCoordSystem},
-    Generation,
-};
+use crate::{grid::markers::MarkerEvent, ComponentWrapper, Generation};
 
-use super::{spawn_node, AssetHandles, SpawnedNode};
+use super::{spawn_node, AssetHandles, AssetSpawner, NoComponents, SpawnedNode};
 
 /// A [`Plugin`] useful for debug/analysis/demo.
 ///
 /// It takes in a [`GenerationViewMode`] to control how the generators in the [`Generation`] components will be run.
-pub struct ProcGenDebugPlugin<C: SharableCoordSystem, A: AssetHandles, B: Bundle> {
+pub struct ProcGenDebugPlugin<
+    C: CoordinateSystem,
+    A: AssetHandles,
+    B: Bundle,
+    T: ComponentWrapper = NoComponents,
+> {
     generation_view_mode: GenerationViewMode,
-    typestate: PhantomData<(C, A, B)>,
+    typestate: PhantomData<(C, A, B, T)>,
 }
 
-impl<C: SharableCoordSystem, A: AssetHandles, B: Bundle> ProcGenDebugPlugin<C, A, B> {
+impl<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentWrapper>
+    ProcGenDebugPlugin<C, A, B, T>
+{
     /// Plugin constructor
     pub fn new(generation_view_mode: GenerationViewMode) -> Self {
         Self {
@@ -50,7 +57,9 @@ impl<C: SharableCoordSystem, A: AssetHandles, B: Bundle> ProcGenDebugPlugin<C, A
     }
 }
 
-impl<C: SharableCoordSystem, A: AssetHandles, B: Bundle> Plugin for ProcGenDebugPlugin<C, A, B> {
+impl<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentWrapper> Plugin
+    for ProcGenDebugPlugin<C, A, B, T>
+{
     fn build(&self, app: &mut App) {
         app.insert_resource(self.generation_view_mode);
 
@@ -68,9 +77,10 @@ impl<C: SharableCoordSystem, A: AssetHandles, B: Bundle> Plugin for ProcGenDebug
                 app.add_systems(
                     Update,
                     (
-                        observe_new_generations::<C, A, B>,
-                        step_by_step_timed_update::<C, A, B>,
-                        update_generation_view::<C, A, B>,
+                        register_void_nodes_for_new_generations::<C, A, B, T>,
+                        observe_new_generations::<C>,
+                        step_by_step_timed_update::<C>,
+                        update_generation_view::<C, A, B, T>,
                     )
                         .chain(),
                 );
@@ -83,9 +93,10 @@ impl<C: SharableCoordSystem, A: AssetHandles, B: Bundle> Plugin for ProcGenDebug
                 app.add_systems(
                     Update,
                     (
-                        observe_new_generations::<C, A, B>,
-                        step_by_step_input_update::<C, A, B>,
-                        update_generation_view::<C, A, B>,
+                        register_void_nodes_for_new_generations::<C, A, B, T>,
+                        observe_new_generations::<C>,
+                        step_by_step_input_update::<C>,
+                        update_generation_view::<C, A, B, T>,
                     )
                         .chain(),
                 );
@@ -94,9 +105,9 @@ impl<C: SharableCoordSystem, A: AssetHandles, B: Bundle> Plugin for ProcGenDebug
                 app.add_systems(
                     Update,
                     (
-                        observe_new_generations::<C, A, B>,
-                        generate_all::<C, A, B>,
-                        update_generation_view::<C, A, B>,
+                        observe_new_generations::<C>,
+                        generate_all::<C>,
+                        update_generation_view::<C, A, B, T>,
                     )
                         .chain(),
                 );
@@ -196,6 +207,9 @@ impl Default for ProcGenKeyBindings {
     }
 }
 
+#[derive(Component, Deref)]
+pub struct VoidNodes(HashSet<ModelIndex>);
+
 /// Component added by the [`ProcGenDebugPlugin`] to entities with a [`Generation`] component. Used to analyze the generation process.
 #[derive(Component)]
 pub struct Observed {
@@ -203,9 +217,7 @@ pub struct Observed {
     pub obs: QueuedObserver,
 }
 impl Observed {
-    fn new<C: SharableCoordSystem, A: AssetHandles, B: Bundle>(
-        generation: &mut Generation<C, A, B>,
-    ) -> Self {
+    fn new<C: CoordinateSystem>(generation: &mut Generation<C>) -> Self {
         Self {
             obs: QueuedObserver::new(&mut generation.gen),
         }
@@ -213,14 +225,37 @@ impl Observed {
 }
 
 /// This system adds an [`Observed`] component to every `Entity` with a [`Generation`] component
-pub fn observe_new_generations<C: SharableCoordSystem, A: AssetHandles, B: Bundle>(
+pub fn observe_new_generations<C: CoordinateSystem>(
     mut commands: Commands,
-    mut new_generations: Query<(Entity, &mut Generation<C, A, B>), Without<Observed>>,
+    mut new_generations: Query<(Entity, &mut Generation<C>), Without<Observed>>,
 ) {
     for (gen_entity, mut generation) in new_generations.iter_mut() {
         commands
             .entity(gen_entity)
             .insert(Observed::new(&mut generation));
+    }
+}
+
+pub fn register_void_nodes_for_new_generations<
+    C: CoordinateSystem,
+    A: AssetHandles,
+    B: Bundle,
+    T: ComponentWrapper,
+>(
+    mut commands: Commands,
+    mut new_generations: Query<
+        (Entity, &mut Generation<C>, &AssetSpawner<A, B, T>),
+        Without<VoidNodes>,
+    >,
+) {
+    for (gen_entity, generation, asset_spawner) in new_generations.iter_mut() {
+        let mut void_nodes = HashSet::new();
+        for model_index in 0..generation.gen.rules().original_models_count() {
+            if !asset_spawner.assets.contains_key(&model_index) {
+                void_nodes.insert(model_index);
+            }
+        }
+        commands.entity(gen_entity).insert(VoidNodes(void_nodes));
     }
 }
 
@@ -243,9 +278,9 @@ pub fn update_generation_control(
 }
 
 /// This system request the full generation to all [`Generation`] components, if they already are observed through an [`Observed`] component and if the current control status is [`GenerationControlStatus::Ongoing`]
-pub fn generate_all<C: SharableCoordSystem, A: AssetHandles, B: Bundle>(
+pub fn generate_all<C: CoordinateSystem>(
     mut generation_control: ResMut<GenerationControl>,
-    mut observed_generations: Query<&mut Generation<C, A, B>, With<Observed>>,
+    mut observed_generations: Query<&mut Generation<C>, With<Observed>>,
 ) {
     for mut generation in observed_generations.iter_mut() {
         if generation_control.status == GenerationControlStatus::Ongoing {
@@ -274,36 +309,36 @@ pub fn generate_all<C: SharableCoordSystem, A: AssetHandles, B: Bundle>(
 /// This system steps all [`Generation`] components if they already are observed through an [`Observed`] component, if the current control status is [`GenerationControlStatus::Ongoing`] and if the appropriate keys are pressed.
 ///
 /// The keybinds are read from the [`ProcGenKeyBindings`] `Resource`
-pub fn step_by_step_input_update<C: SharableCoordSystem, A: AssetHandles, B: Bundle>(
+pub fn step_by_step_input_update<C: CoordinateSystem>(
     keys: Res<Input<KeyCode>>,
     proc_gen_key_bindings: Res<ProcGenKeyBindings>,
     mut generation_control: ResMut<GenerationControl>,
-    mut observed_generations: Query<&mut Generation<C, A, B>, With<Observed>>,
+    mut observed_generations: Query<(&mut Generation<C>, &VoidNodes), With<Observed>>,
 ) {
     if generation_control.status == GenerationControlStatus::Ongoing
         && (keys.just_pressed(proc_gen_key_bindings.step)
             || keys.pressed(proc_gen_key_bindings.continuous_step))
     {
-        for mut generation in observed_generations.iter_mut() {
-            step_generation(&mut generation, &mut generation_control);
+        for (mut generation, void_nodes) in observed_generations.iter_mut() {
+            step_generation(&mut generation, void_nodes, &mut generation_control);
         }
     }
 }
 
 /// This system steps all [`Generation`] components if they already are observed through an [`Observed`] component, if the current control status is [`GenerationControlStatus::Ongoing`] and if the timer in the [`StepByStepTimed`] `Resource` has finished.
-pub fn step_by_step_timed_update<C: SharableCoordSystem, A: AssetHandles, B: Bundle>(
+pub fn step_by_step_timed_update<C: CoordinateSystem>(
     mut generation_control: ResMut<GenerationControl>,
     mut steps_and_timer: ResMut<StepByStepTimed>,
     time: Res<Time>,
-    mut observed_generations: Query<&mut Generation<C, A, B>, With<Observed>>,
+    mut observed_generations: Query<(&mut Generation<C>, &VoidNodes), With<Observed>>,
 ) {
     steps_and_timer.timer.tick(time.delta());
     if steps_and_timer.timer.finished()
         && generation_control.status == GenerationControlStatus::Ongoing
     {
-        for mut generation in observed_generations.iter_mut() {
+        for (mut generation, void_nodes) in observed_generations.iter_mut() {
             for _ in 0..steps_and_timer.steps_count {
-                step_generation(&mut generation, &mut generation_control);
+                step_generation(&mut generation, void_nodes, &mut generation_control);
                 if generation_control.status != GenerationControlStatus::Ongoing {
                     break;
                 }
@@ -312,13 +347,18 @@ pub fn step_by_step_timed_update<C: SharableCoordSystem, A: AssetHandles, B: Bun
     }
 }
 
-fn update_generation_view<C: SharableCoordSystem, A: AssetHandles, B: Bundle>(
+fn update_generation_view<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentWrapper>(
     mut commands: Commands,
     mut marker_events: EventWriter<MarkerEvent>,
-    mut generators: Query<(Entity, &Generation<C, A, B>, &mut Observed)>,
+    mut generators: Query<(
+        Entity,
+        &Generation<C>,
+        &AssetSpawner<A, B, T>,
+        &mut Observed,
+    )>,
     existing_nodes: Query<Entity, With<SpawnedNode>>,
 ) {
-    for (gen_entity, generation, mut observer) in generators.iter_mut() {
+    for (gen_entity, generation, asset_spawner, mut observer) in generators.iter_mut() {
         let mut reinitialized = false;
         let mut nodes_to_spawn = Vec::new();
         for update in observer.obs.dequeue_all() {
@@ -352,6 +392,7 @@ fn update_generation_view<C: SharableCoordSystem, A: AssetHandles, B: Bundle>(
                 &mut commands,
                 gen_entity,
                 &generation,
+                asset_spawner,
                 &grid_node.model_instance,
                 grid_node.node_index,
             );
@@ -359,8 +400,9 @@ fn update_generation_view<C: SharableCoordSystem, A: AssetHandles, B: Bundle>(
     }
 }
 
-fn step_generation<C: SharableCoordSystem, A: AssetHandles, B: Bundle>(
-    generation: &mut Generation<C, A, B>,
+fn step_generation<C: CoordinateSystem>(
+    generation: &mut Generation<C>,
+    void_nodes: &VoidNodes,
     generation_control: &mut ResMut<GenerationControl>,
 ) {
     loop {
@@ -369,14 +411,8 @@ fn step_generation<C: SharableCoordSystem, A: AssetHandles, B: Bundle>(
             Ok((status, nodes_to_spawn)) => {
                 for grid_node in nodes_to_spawn {
                     // We still collect the generated nodes here even though we don't really use them to spawn entities. We just check them for void nodes (for visualization purposes)
-                    if let Some(assets) = generation
-                        .assets
-                        .map
-                        .get(&grid_node.model_instance.model_index)
-                    {
-                        if !assets.is_empty() {
-                            non_void_spawned = true;
-                        }
+                    if !void_nodes.contains(&grid_node.model_instance.model_index) {
+                        non_void_spawned = true;
                     }
                 }
                 match status {

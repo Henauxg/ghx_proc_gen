@@ -8,7 +8,7 @@ use bevy::{
     render::view::Visibility,
 };
 use bevy_ghx_proc_gen::{
-    gen::{AssetHandles, ModelAsset, RulesModelsAssets},
+    gen::{ComponentWrapper, ModelAsset, NoComponents, RulesModelsAssets},
     grid::view::DebugGridView,
     proc_gen::grid::direction::GridDelta,
 };
@@ -43,16 +43,18 @@ pub fn toggle_fps_counter(
 
 /// Used to define an asset (not yet loaded) for a model: via an asset path, and an optionnal grid offset when spawned in Bevy
 #[derive(Clone)]
-pub struct AssetDef {
+pub struct AssetDef<T = NoComponents> {
     path: &'static str,
     offset: GridDelta,
+    components: Vec<T>,
 }
 
-impl AssetDef {
+impl<T> AssetDef<T> {
     pub fn new(path: &'static str) -> Self {
         Self {
             path,
             offset: GridDelta::new(0, 0, 0),
+            components: Vec::new(),
         }
     }
 
@@ -61,11 +63,9 @@ impl AssetDef {
         self
     }
 
-    pub fn to_asset<A: AssetHandles>(&self, asset_ref: A) -> ModelAsset<A> {
-        ModelAsset {
-            handles: asset_ref,
-            offset: self.offset.clone(),
-        }
+    pub fn with_component(mut self, component: T) -> Self {
+        self.components.push(component);
+        self
     }
 
     pub fn path(&self) -> &'static str {
@@ -77,12 +77,12 @@ impl AssetDef {
 }
 
 /// Simply load assets with the asset_server and return a map that gives assets from a model_index
-pub fn load_assets<S: Asset>(
+pub fn load_assets<S: Asset, T: ComponentWrapper>(
     asset_server: &Res<AssetServer>,
-    assets_definitions: Vec<Vec<AssetDef>>,
+    assets_definitions: Vec<Vec<AssetDef<T>>>,
     assets_directory: &str,
     extension: &str,
-) -> RulesModelsAssets<Handle<S>> {
+) -> RulesModelsAssets<Handle<S>, T> {
     let mut models_assets = RulesModelsAssets::new();
     for (model_index, assets) in assets_definitions.iter().enumerate() {
         for asset_def in assets {
@@ -94,6 +94,7 @@ pub fn load_assets<S: Asset>(
                         asset_def.path()
                     )),
                     offset: asset_def.offset.clone(),
+                    components: asset_def.components.clone(),
                 },
             )
         }

@@ -1,16 +1,19 @@
 use bevy_examples::utils::AssetDef;
-use bevy_ghx_proc_gen::proc_gen::{
-    generator::{
-        model::{Model, ModelRotation},
-        socket::{Socket, SocketCollection, SocketsCartesian3D},
+use bevy_ghx_proc_gen::{
+    gen::NoComponents,
+    proc_gen::{
+        generator::{
+            model::{Model, ModelRotation},
+            socket::{Socket, SocketCollection, SocketsCartesian3D},
+        },
+        grid::direction::{Cartesian3D, Direction, GridDelta},
     },
-    grid::direction::{Cartesian3D, Direction, GridDelta},
 };
 
 const UP_AXIS: Direction = Direction::ZForward;
 
 pub(crate) fn rules_and_assets() -> (
-    Vec<Vec<AssetDef>>,
+    Vec<Vec<AssetDef<NoComponents>>>,
     Vec<Model<Cartesian3D>>,
     SocketCollection,
 ) {
@@ -33,7 +36,7 @@ pub(crate) fn rules_and_assets() -> (
     let (layer_4_down, layer_4_up, props_down) = (s(), s(), s());
     let (big_tree_1_base, big_tree_2_base) = (s(), s());
 
-    let asset = |str| -> Vec<AssetDef> { vec![AssetDef::new(str)] };
+    let asset = |str| -> Vec<AssetDef<NoComponents>> { vec![AssetDef::new(str)] };
 
     // Create our models. We group them with their related assets in the same collection for ease of use (index of the model matches the index of the assets to spawn).
 

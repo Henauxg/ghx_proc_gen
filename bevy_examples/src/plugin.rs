@@ -14,9 +14,10 @@ use bevy::{
 use bevy_ghx_proc_gen::{
     gen::{
         debug_plugin::{GenerationViewMode, ProcGenDebugPlugin},
-        insert_bundle_from_resource_to_spawned_nodes, AssetHandles,
+        insert_bundle_from_resource_to_spawned_nodes, AssetHandles, ComponentWrapper, NoComponents,
     },
-    grid::{GridDebugPlugin, SharableCoordSystem},
+    grid::GridDebugPlugin,
+    proc_gen::grid::direction::CoordinateSystem,
 };
 
 use crate::{
@@ -25,13 +26,20 @@ use crate::{
     utils::{toggle_debug_grids_visibilities, toggle_fps_counter},
 };
 
-pub struct ProcGenExamplesPlugin<C: SharableCoordSystem, A: AssetHandles, B: Bundle> {
+pub struct ProcGenExamplesPlugin<
+    C: CoordinateSystem,
+    A: AssetHandles,
+    B: Bundle,
+    T: ComponentWrapper = NoComponents,
+> {
     generation_view_mode: GenerationViewMode,
     assets_scale: Vec3,
-    typestate: PhantomData<(C, A, B)>,
+    typestate: PhantomData<(C, A, B, T)>,
 }
 
-impl<C: SharableCoordSystem, A: AssetHandles, B: Bundle> ProcGenExamplesPlugin<C, A, B> {
+impl<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentWrapper>
+    ProcGenExamplesPlugin<C, A, B, T>
+{
     pub fn new(generation_view_mode: GenerationViewMode, assets_scale: Vec3) -> Self {
         Self {
             generation_view_mode,
@@ -41,13 +49,15 @@ impl<C: SharableCoordSystem, A: AssetHandles, B: Bundle> ProcGenExamplesPlugin<C
     }
 }
 
-impl<C: SharableCoordSystem, A: AssetHandles, B: Bundle> Plugin for ProcGenExamplesPlugin<C, A, B> {
+impl<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentWrapper> Plugin
+    for ProcGenExamplesPlugin<C, A, B, T>
+{
     fn build(&self, app: &mut App) {
         app.add_plugins((
             FrameTimeDiagnosticsPlugin::default(),
             FpsDisplayPlugin,
             GridDebugPlugin::<C>::new(),
-            ProcGenDebugPlugin::<C, A, B>::new(self.generation_view_mode),
+            ProcGenDebugPlugin::<C, A, B, T>::new(self.generation_view_mode),
         ));
         app.insert_resource(SpawningScaleAnimation::new(
             0.8,

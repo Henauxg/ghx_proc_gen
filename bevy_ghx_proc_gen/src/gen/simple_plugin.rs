@@ -12,34 +12,43 @@ use bevy::{
     log::{info, warn},
     utils::HashSet,
 };
-use ghx_proc_gen::GenerationError;
+use ghx_proc_gen::{grid::direction::CoordinateSystem, GenerationError};
 
-use crate::{gen::spawn_node, grid::SharableCoordSystem};
+use crate::{gen::spawn_node, ComponentWrapper};
 
-use super::{AssetHandles, Generation};
+use super::{AssetHandles, AssetSpawner, Generation, NoComponents};
 
 /// A simple [`Plugin`] that automatically detects any [`Entity`] with a [`Generation`] `Component` and tries to run the contained generator once per frame until it succeeds.
 ///
 /// Once the generation is successful, the plugin will spawn the generated nodes assets.
-pub struct ProcGenSimplePlugin<C: SharableCoordSystem, A: AssetHandles, B: Bundle> {
-    typestate: PhantomData<(C, A, B)>,
+pub struct ProcGenSimplePlugin<
+    C: CoordinateSystem,
+    A: AssetHandles,
+    B: Bundle,
+    T: ComponentWrapper = NoComponents,
+> {
+    typestate: PhantomData<(C, A, B, T)>,
 }
 
-impl<C: SharableCoordSystem, A: AssetHandles, B: Bundle> Plugin for ProcGenSimplePlugin<C, A, B> {
+impl<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentWrapper> Plugin
+    for ProcGenSimplePlugin<C, A, B, T>
+{
     fn build(&self, app: &mut App) {
         app.insert_resource(PendingGenerations::default());
         app.add_systems(
             Update,
             (
-                register_new_generations::<C, A, B>,
-                generate_and_spawn::<C, A, B>,
+                register_new_generations::<C>,
+                generate_and_spawn::<C, A, B, T>,
             )
                 .chain(),
         );
     }
 }
 
-impl<C: SharableCoordSystem, A: AssetHandles, B: Bundle> ProcGenSimplePlugin<C, A, B> {
+impl<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentWrapper>
+    ProcGenSimplePlugin<C, A, B, T>
+{
     /// Constructor
     pub fn new() -> Self {
         Self {
@@ -63,9 +72,9 @@ impl Default for PendingGenerations {
 }
 
 /// System used by [`ProcGenSimplePlugin`] to track entities with newly added [`Generation`] components
-pub fn register_new_generations<C: SharableCoordSystem, A: AssetHandles, B: Bundle>(
+pub fn register_new_generations<C: CoordinateSystem>(
     mut pending_generations: ResMut<PendingGenerations>,
-    mut new_generations: Query<Entity, Added<Generation<C, A, B>>>,
+    mut new_generations: Query<Entity, Added<Generation<C>>>,
 ) {
     for gen_entity in new_generations.iter_mut() {
         pending_generations.pendings.insert(gen_entity);
@@ -73,14 +82,14 @@ pub fn register_new_generations<C: SharableCoordSystem, A: AssetHandles, B: Bund
 }
 
 /// System used by [`ProcGenSimplePlugin`] to run generators and spawn their node's assets
-pub fn generate_and_spawn<C: SharableCoordSystem, A: AssetHandles, B: Bundle>(
+pub fn generate_and_spawn<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentWrapper>(
     mut commands: Commands,
     mut pending_generations: ResMut<PendingGenerations>,
-    mut generations: Query<&mut Generation<C, A, B>>,
+    mut generations: Query<(&mut Generation<C>, &AssetSpawner<A, B, T>)>,
 ) {
     let mut generations_done = vec![];
     for &gen_entity in pending_generations.pendings.iter() {
-        if let Ok(mut generation) = generations.get_mut(gen_entity) {
+        if let Ok((mut generation, asset_spawner)) = generations.get_mut(gen_entity) {
             match generation.gen.generate_collected() {
                 Ok(grid_data) => {
                     info!(
@@ -90,7 +99,14 @@ pub fn generate_and_spawn<C: SharableCoordSystem, A: AssetHandles, B: Bundle>(
                         generation.gen.grid()
                     );
                     for (node_index, node) in grid_data.nodes().iter().enumerate() {
-                        spawn_node(&mut commands, gen_entity, &generation, node, node_index);
+                        spawn_node(
+                            &mut commands,
+                            gen_entity,
+                            &generation,
+                            asset_spawner,
+                            node,
+                            node_index,
+                        );
                     }
                     generations_done.push(gen_entity);
                 }

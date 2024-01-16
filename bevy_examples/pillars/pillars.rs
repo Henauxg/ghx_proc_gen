@@ -8,7 +8,7 @@ use bevy_examples::{
     utils::load_assets,
 };
 use bevy_ghx_proc_gen::{
-    gen::{debug_plugin::GenerationViewMode, scene_node_spawner, Generation},
+    gen::{debug_plugin::GenerationViewMode, scene_node_spawner, AssetSpawner, Generation},
     grid::{
         view::{DebugGridView, DebugGridViewConfig3d},
         DebugGridView3d, Grid,
@@ -156,8 +156,8 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
                 z: -(grid.size_z() as f32) / 2.,
             })),
             grid: Grid { def: grid },
-            generation: Generation::new(
-                gen,
+            generation: Generation { gen },
+            asset_spawner: AssetSpawner::new(
                 models_assets,
                 NODE_SIZE,
                 // We spawn assets with a scale of 0 since we animate their scale in the examples

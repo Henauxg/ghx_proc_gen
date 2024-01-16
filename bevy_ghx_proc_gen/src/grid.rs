@@ -25,15 +25,15 @@ pub mod markers;
 pub mod view;
 
 /// Additional traits constraints on a [`CoordinateSystem`] to ensure that it can safely be shared between threads.
-pub trait SharableCoordSystem: CoordinateSystem + Clone + Sync + Send + 'static {}
-impl<T: CoordinateSystem + Clone + Sync + Send + 'static> SharableCoordSystem for T {}
+// pub trait CoordinateSystem: CoordinateSystem + Clone + Sync + Send + 'static {}
+// impl<T: CoordinateSystem + Clone + Sync + Send + 'static> CoordinateSystem for T {}
 
 /// Bevy plugin used to visualize [`ghx_proc_gen::grid::GridDefinition`] and additional debug markers created with [`markers::MarkerEvent`].
-pub struct GridDebugPlugin<C: SharableCoordSystem> {
+pub struct GridDebugPlugin<C: CoordinateSystem> {
     typestate: PhantomData<C>,
 }
 
-impl<T: SharableCoordSystem> GridDebugPlugin<T> {
+impl<T: CoordinateSystem> GridDebugPlugin<T> {
     /// Create a new GridDebugPlugin
     pub fn new() -> Self {
         Self {
@@ -42,7 +42,7 @@ impl<T: SharableCoordSystem> GridDebugPlugin<T> {
     }
 }
 
-impl<C: SharableCoordSystem> Plugin for GridDebugPlugin<C> {
+impl<C: CoordinateSystem> Plugin for GridDebugPlugin<C> {
     fn build(&self, app: &mut App) {
         app.add_plugins(MaterialPlugin::<LineMaterial>::default());
         app.add_systems(
@@ -101,7 +101,7 @@ impl Default for DebugGridView2d {
 
 /// Component that encapsulates a [`GridDefinition`]
 #[derive(Component)]
-pub struct Grid<D: SharableCoordSystem> {
+pub struct Grid<D: CoordinateSystem> {
     /// Encapsulated grid definition
     pub def: GridDefinition<D>,
 }

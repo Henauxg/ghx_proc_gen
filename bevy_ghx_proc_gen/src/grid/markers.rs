@@ -14,7 +14,7 @@ use ghx_proc_gen::grid::GridPosition;
 use super::{
     get_translation_from_grid_pos_2d, get_translation_from_grid_pos_3d,
     view::{DebugGridView, DebugGridViewConfig2d, DebugGridViewConfig3d},
-    Grid, SharableCoordSystem,
+    CoordinateSystem, Grid,
 };
 
 /// Event used to update markers on a [`DebugGridView`]
@@ -56,7 +56,7 @@ pub(crate) struct Marker {
 /// Should be called after the systems that generate [`MarkerEvent`]
 ///
 /// Called in the [`bevy::app::PostUpdate`] schedule by default, by the [`crate::grid::GridDebugPlugin`]
-pub fn update_debug_markers<T: SharableCoordSystem>(
+pub fn update_debug_markers<T: CoordinateSystem>(
     mut marker_events: EventReader<MarkerEvent>,
     mut debug_grids: Query<(&Grid<T>, &mut DebugGridView)>,
 ) {

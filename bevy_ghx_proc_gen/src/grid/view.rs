@@ -21,7 +21,7 @@ use bevy::{
 use super::{
     lines::{LineList, LineMaterial},
     markers::Marker,
-    Grid, SharableCoordSystem,
+    CoordinateSystem, Grid,
 };
 
 /// 3d-specific ([`bevy::prelude::Camera3d`]) configuration of a grid debug view
@@ -102,7 +102,7 @@ impl DebugGridView {
 /// This system works on entities that have a [`Grid`] component and a [`DebugGridView3d`] bundle just added to them, it creates a child entity with its grid mesh and its own [`Visibility`]
 ///
 /// To be used with a [`bevy::prelude::Camera3d`]
-pub fn spawn_debug_grids_3d<T: SharableCoordSystem>(
+pub fn spawn_debug_grids_3d<T: CoordinateSystem>(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<LineMaterial>>,
@@ -201,7 +201,7 @@ pub fn update_debug_grid_mesh_visibility_3d(
 /// System that uses [`Gizmos`] to render the debug grid every frame.
 ///
 /// To be used with a [`bevy::prelude::Camera2d`]
-pub fn draw_debug_grids_2d<T: SharableCoordSystem>(
+pub fn draw_debug_grids_2d<T: CoordinateSystem>(
     mut gizmos: Gizmos,
     debug_grids: Query<(&Transform, &Grid<T>, &DebugGridView, &DebugGridViewConfig2d)>,
 ) {

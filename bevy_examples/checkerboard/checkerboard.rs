@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use bevy_ghx_proc_gen::{
     gen::{
-        pbr_node_spawner, simple_plugin::ProcGenSimplePlugin, Generation, PbrMesh,
+        pbr_node_spawner, simple_plugin::ProcGenSimplePlugin, AssetSpawner, Generation, PbrMesh,
         RulesModelsAssets,
     },
     grid::Grid,
@@ -72,7 +72,7 @@ fn setup_generator(
     let cube_mesh = meshes.add(Mesh::from(shape::Cube { size: CUBE_SIZE }));
     let white_mat = materials.add(Color::WHITE.into());
     let black_mat = materials.add(Color::BLACK.into());
-    let mut models_assets = RulesModelsAssets::new();
+    let mut models_assets = RulesModelsAssets::<PbrMesh>::new();
     models_assets.add_asset(
         0,
         PbrMesh {
@@ -89,19 +89,14 @@ fn setup_generator(
     );
 
     // Add the GeneratorBundle, the plugin will generate and spawn the nodes
-    commands.spawn((GeneratorBundle {
+    commands.spawn(GeneratorBundle {
         spatial: SpatialBundle::from_transform(Transform::from_translation(Vec3::new(
             -4., -4., 0.,
         ))),
         grid: Grid { def: grid },
-        generation: Generation::new(
-            generator,
-            models_assets,
-            NODE_SIZE,
-            Vec3::ONE,
-            pbr_node_spawner,
-        ),
-    },));
+        generation: Generation { gen: generator },
+        asset_spawner: AssetSpawner::new(models_assets, NODE_SIZE, Vec3::ONE, pbr_node_spawner),
+    });
 }
 
 fn main() {

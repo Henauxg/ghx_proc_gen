@@ -2,7 +2,7 @@ use bevy::{app::PluginGroup, log::LogPlugin, prelude::*};
 
 use bevy_examples::{plugin::ProcGenExamplesPlugin, utils::load_assets};
 use bevy_ghx_proc_gen::{
-    gen::{debug_plugin::GenerationViewMode, sprite_node_spawner, Generation},
+    gen::{debug_plugin::GenerationViewMode, sprite_node_spawner, AssetSpawner, Generation},
     grid::{
         view::{DebugGridView, DebugGridViewConfig2d},
         DebugGridView2d, Grid,
@@ -73,14 +73,6 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     let models_assets = load_assets(&asset_server, assets_definitions, ASSETS_PATH, "png");
 
-    let mut generation = Generation::new(
-        gen,
-        models_assets,
-        NODE_SIZE,
-        Vec3::ZERO,
-        sprite_node_spawner,
-    );
-    generation.z_offset_from_y = true;
     commands.spawn((
         GeneratorBundle {
             spatial: SpatialBundle::from_transform(Transform::from_translation(Vec3 {
@@ -89,7 +81,14 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
                 z: 0.,
             })),
             grid: Grid { def: grid },
-            generation,
+            generation: Generation { gen: gen },
+            asset_spawner: AssetSpawner::new(
+                models_assets,
+                NODE_SIZE,
+                Vec3::ZERO,
+                sprite_node_spawner,
+            )
+            .with_z_offset_from_y(true),
         },
         DebugGridView2d {
             config: DebugGridViewConfig2d {

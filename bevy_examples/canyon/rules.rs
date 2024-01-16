@@ -1,3 +1,4 @@
+use bevy::ecs::component::Component;
 use bevy_examples::utils::AssetDef;
 use bevy_ghx_proc_gen::proc_gen::{
     generator::{
@@ -10,7 +11,7 @@ use bevy_ghx_proc_gen::proc_gen::{
 use crate::SEE_VOID_NODES;
 
 pub(crate) fn rules_and_assets() -> (
-    Vec<Vec<AssetDef>>,
+    Vec<Vec<AssetDef<ModelComponents>>>,
     Vec<Model<Cartesian3D>>,
     SocketCollection,
 ) {
@@ -37,7 +38,7 @@ pub(crate) fn rules_and_assets() -> (
         windmill_cap_bottom,
     ) = (s(), s(), s(), s(), s());
 
-    let asset = |str| -> Vec<AssetDef> { vec![AssetDef::new(str)] };
+    let asset = |str| -> Vec<AssetDef<ModelComponents>> { vec![AssetDef::new(str)] };
 
     // Create our models. We group them with their related assets in the same collection for ease of use (index of the model matches the index of the assets to spawn).
     let mut assets_and_models = vec![
@@ -228,7 +229,7 @@ pub(crate) fn rules_and_assets() -> (
             vec![
                 AssetDef::new("windmill_top"),
                 AssetDef::new("windmill_vane"),
-                AssetDef::new("windmill_blades"),
+                AssetDef::new("windmill_blades").with_component(ModelComponents::Rot(Rotating)),
             ],
             SocketsCartesian3D::Simple {
                 x_pos: windmill_side,
@@ -313,4 +314,12 @@ pub(crate) fn rules_and_assets() -> (
             .collect(),
         sockets,
     )
+}
+
+#[derive(Component, Clone)]
+pub struct Rotating;
+
+#[derive(Component, Clone)]
+pub enum ModelComponents {
+    Rot(Rotating),
 }
