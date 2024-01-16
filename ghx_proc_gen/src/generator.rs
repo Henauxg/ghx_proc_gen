@@ -182,6 +182,11 @@ impl<T: CoordinateSystem + Clone> Generator<T> {
         &self.grid
     }
 
+    /// Returns the [`Rules`] used by the generator
+    pub fn rules(&self) -> &Rules<T> {
+        &self.rules
+    }
+
     /// Tries to generate the whole grid. If the generation fails due to a contradiction, it will retry `max_retry_count` times before returning the last encountered [`GenerationError`]
     ///
     /// If the generation has ended (successful or not), calling `generate` will reinitialize the generator before starting the generation.
