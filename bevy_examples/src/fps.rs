@@ -16,7 +16,7 @@ use bevy::{
     utils::default,
 };
 
-/// Based on https://bevy-cheatbook.github.io/cookbook/print-framerate.html
+/// Based on <https://bevy-cheatbook.github.io/cookbook/print-framerate.html>
 
 pub struct FpsDisplayPlugin;
 
