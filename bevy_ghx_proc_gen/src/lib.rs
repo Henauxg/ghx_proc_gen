@@ -22,12 +22,12 @@ use proc_gen::{
 /// If using [`gen::simple_plugin::ProcGenSimplePlugin`] or [`gen::debug_plugin::ProcGenDebugPlugin`], this is the main `Bundle` to use.
 #[derive(Bundle)]
 pub struct GeneratorBundle<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentWrapper> {
-    /// For positional rendering the grid
+    /// For positional rendering of the grid
     pub spatial: SpatialBundle,
     /// Grid definition (Should be the same [`proc_gen::grid::GridDefinition`] as in the generator)
     pub grid: GridDefinition<C>,
-    /// Generator and assets information
+    /// Generator
     pub generator: Generator<C>,
-
+    /// Assets information used when spawning nodes
     pub asset_spawner: AssetSpawner<A, B, T>,
 }

@@ -28,13 +28,13 @@ use ghx_proc_gen::{
     GenerationError,
 };
 
-use crate::{grid::markers::MarkerEvent, ComponentWrapper};
+use crate::grid::markers::MarkerEvent;
 
-use super::{spawn_node, AssetHandles, AssetSpawner, NoComponents, SpawnedNode};
+use super::{spawn_node, AssetHandles, AssetSpawner, ComponentWrapper, NoComponents, SpawnedNode};
 
 /// A [`Plugin`] useful for debug/analysis/demo.
 ///
-/// It takes in a [`GenerationViewMode`] to control how the generators in the [`Generation`] components will be run.
+/// It takes in a [`GenerationViewMode`] to control how the generators in the [`Generator`] components will be run.
 pub struct ProcGenDebugPlugin<
     C: CoordinateSystem,
     A: AssetHandles,
@@ -207,10 +207,7 @@ impl Default for ProcGenKeyBindings {
     }
 }
 
-#[derive(Component, Deref)]
-pub struct VoidNodes(HashSet<ModelIndex>);
-
-/// Component added by the [`ProcGenDebugPlugin`] to entities with a [`Generation`] component. Used to analyze the generation process.
+/// Component added by the [`ProcGenDebugPlugin`] to entities with a [`Generator`] component. Used to analyze the generation process.
 #[derive(Component)]
 pub struct Observed {
     /// Generator observer
@@ -224,7 +221,7 @@ impl Observed {
     }
 }
 
-/// This system adds an [`Observed`] component to every `Entity` with a [`Generation`] component
+/// This system adds an [`Observed`] component to every `Entity` with a [`Generator`] component
 pub fn observe_new_generations<C: CoordinateSystem>(
     mut commands: Commands,
     mut new_generations: Query<(Entity, &mut Generator<C>), Without<Observed>>,
@@ -236,6 +233,11 @@ pub fn observe_new_generations<C: CoordinateSystem>(
     }
 }
 
+/// Component used to store model indexes of models with no assets, just to be able to skip their generation when stepping
+#[derive(Component, Deref)]
+pub struct VoidNodes(HashSet<ModelIndex>);
+
+/// Simple system that calculates and add a [`VoidNodes`] component for generator entites which don't have one yet.
 pub fn register_void_nodes_for_new_generations<
     C: CoordinateSystem,
     A: AssetHandles,
@@ -277,7 +279,7 @@ pub fn update_generation_control(
     }
 }
 
-/// This system request the full generation to all [`Generation`] components, if they already are observed through an [`Observed`] component and if the current control status is [`GenerationControlStatus::Ongoing`]
+/// This system request the full generation to all [`Generator`] components, if they already are observed through an [`Observed`] component and if the current control status is [`GenerationControlStatus::Ongoing`]
 pub fn generate_all<C: CoordinateSystem>(
     mut generation_control: ResMut<GenerationControl>,
     mut observed_generations: Query<&mut Generator<C>, With<Observed>>,
@@ -306,7 +308,7 @@ pub fn generate_all<C: CoordinateSystem>(
     }
 }
 
-/// This system steps all [`Generation`] components if they already are observed through an [`Observed`] component, if the current control status is [`GenerationControlStatus::Ongoing`] and if the appropriate keys are pressed.
+/// This system steps all [`Generator`] components if they already are observed through an [`Observed`] component, if the current control status is [`GenerationControlStatus::Ongoing`] and if the appropriate keys are pressed.
 ///
 /// The keybinds are read from the [`ProcGenKeyBindings`] `Resource`
 pub fn step_by_step_input_update<C: CoordinateSystem>(
@@ -325,7 +327,7 @@ pub fn step_by_step_input_update<C: CoordinateSystem>(
     }
 }
 
-/// This system steps all [`Generation`] components if they already are observed through an [`Observed`] component, if the current control status is [`GenerationControlStatus::Ongoing`] and if the timer in the [`StepByStepTimed`] `Resource` has finished.
+/// This system steps all [`Generator`] components if they already are observed through an [`Observed`] component, if the current control status is [`GenerationControlStatus::Ongoing`] and if the timer in the [`StepByStepTimed`] `Resource` has finished.
 pub fn step_by_step_timed_update<C: CoordinateSystem>(
     mut generation_control: ResMut<GenerationControl>,
     mut steps_and_timer: ResMut<StepByStepTimed>,

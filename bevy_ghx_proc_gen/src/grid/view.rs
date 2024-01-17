@@ -53,13 +53,13 @@ impl Default for DebugGridViewConfig2d {
     }
 }
 
-/// When an [`Entity`] with a [`Grid`] component has a [`DebugGridView3d`] bundle added to it. The plugin creates a child `Entity` with a 3d mesh representing the 3d grid.
+/// When an [`Entity`] with a [`GridDefinition`] component has a [`crate::grid::DebugGridView3d`] bundle added to it. The plugin creates a child `Entity` with a 3d mesh representing the 3d grid.
 ///
 /// This component is used to used to mark this child `Entity` to make it easy to change its [`Visibility`]
 #[derive(Component, Default)]
 pub struct DebugGridMesh;
 
-/// When an [`Entity`] with a [`Grid`] component has a [`DebugGridView3d`] bundle added to it. The plugin creates a child `Entity` with a 3d mesh representing the 3d grid.
+/// When an [`Entity`] with a [`GridDefinition`] component has a [`crate::grid::DebugGridView3d`] bundle added to it. The plugin creates a child `Entity` with a 3d mesh representing the 3d grid.
 ///
 /// This component is used to used to mark the parent `Entity`, and holds the child `Entity` id to make it easy to change its [`Visibility`]
 #[derive(Component)]
@@ -100,7 +100,7 @@ impl DebugGridView {
     }
 }
 
-/// This system works on entities that have a [`Grid`] component and a [`DebugGridView3d`] bundle just added to them, it creates a child entity with its grid mesh and its own [`Visibility`]
+/// This system works on entities that have a [`ghx_proc_gen::grid::GridDefinition`] component and a [`crate::grid::DebugGridView3d`] bundle just added to them, it creates a child entity with its grid mesh and its own [`Visibility`]
 ///
 /// To be used with a [`bevy::prelude::Camera3d`]
 pub fn spawn_debug_grids_3d<T: CoordinateSystem>(

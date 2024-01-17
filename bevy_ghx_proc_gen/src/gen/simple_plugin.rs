@@ -14,11 +14,11 @@ use bevy::{
 };
 use ghx_proc_gen::{generator::Generator, grid::direction::CoordinateSystem, GenerationError};
 
-use crate::{gen::spawn_node, ComponentWrapper};
+use crate::gen::spawn_node;
 
-use super::{AssetHandles, AssetSpawner, NoComponents};
+use super::{AssetHandles, AssetSpawner, ComponentWrapper, NoComponents};
 
-/// A simple [`Plugin`] that automatically detects any [`Entity`] with a [`Generation`] `Component` and tries to run the contained generator once per frame until it succeeds.
+/// A simple [`Plugin`] that automatically detects any [`Entity`] with a [`Generator`] `Component` and tries to run the contained generator once per frame until it succeeds.
 ///
 /// Once the generation is successful, the plugin will spawn the generated nodes assets.
 pub struct ProcGenSimplePlugin<
@@ -71,7 +71,7 @@ impl Default for PendingGenerations {
     }
 }
 
-/// System used by [`ProcGenSimplePlugin`] to track entities with newly added [`Generation`] components
+/// System used by [`ProcGenSimplePlugin`] to track entities with newly added [`Generator`] components
 pub fn register_new_generations<C: CoordinateSystem>(
     mut pending_generations: ResMut<PendingGenerations>,
     mut new_generations: Query<Entity, Added<Generator<C>>>,
