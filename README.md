@@ -12,12 +12,14 @@ Altough it can be applied to do texture synthesis (mainly with bitmaps), `ghx_pr
 
 - [Ghx Proc(edural) Gen(eneration)](#ghx-procedural-geneneration)
   - [Quickstart](#quickstart)
-  - [Additional information for Bevy users](#additional-information-for-bevy-users)
+  - [For Bevy users](#for-bevy-users)
+    - [Bevy quickstart](#bevy-quickstart)
     - [Bevy plugins](#bevy-plugins)
     - [Compatible Bevy versions](#compatible-bevy-versions)
   - [Examples](#examples)
   - [Features](#features)
     - [`debug-traces`](#debug-traces)
+    - [`bevy`](#bevy)
   - [Misc](#misc)
   - [Credits](#credits)
   - [License](#license)
@@ -93,19 +95,75 @@ If we simply print the result in the terminal we should obtain:
   <img alt="chess_board_pattern" src="docs/assets/chess_board_pattern.png">
 </p>
 
-For more information, check out the [crate documentation](https://docs.rs/ghx_proc_gen/latest/ghx_proc_gen) or the [examples](#examples).
+For more information, check out the [ghx_proc_gen crate documentation](https://docs.rs/ghx_proc_gen/latest/ghx_proc_gen) or all the [examples](#examples).
 
-## Additional information for Bevy users
+## For Bevy users
 
-Instead of using the `ghx_proc_gen` crate directly, you can use the `bevy_ghx_proc_gen` crate which exports `ghx_proc_gen` as well as additional plugins & utilities dedicated to Bevy.
+Instead of using the `ghx_proc_gen` crate directly, you can use the `bevy_ghx_proc_gen` crate which exports `ghx_proc_gen` (with the `bevy`feature enabled) as well as additional plugins & utilities dedicated to Bevy.
 ```
 cargo add bevy_ghx_proc_gen
 ```
 
+### Bevy quickstart
+
+Steps `1` to `3` are the same as in the above [quickstart](#quickstart).
+1) To automatically spawn our assets for us, we use the [ProcGenSimplePlugin](#bevy-plugins)
+```rust
+  app.add_plugins(ProcGenSimplePlugin::<Cartesian2D, PbrMesh>::new());
+```
+2) To see something in the Bevy viewport, we setup some assets:
+```rust
+fn setup_generator(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+  // ... Steps 1 to 3: Generator setup ...
+
+  // Simple procedural cube mesh and materials.
+  let cube_mesh = meshes.add(Mesh::from(shape::Cube { size: CUBE_SIZE }));
+  let white_mat = materials.add(Color::WHITE.into());
+  let black_mat = materials.add(Color::BLACK.into());*
+  // We create our models asset. Here in a separate collection for the sake of simplicity. We could also declare them with our models.
+  let mut models_assets = RulesModelsAssets::<PbrMesh>::new();
+  models_assets.add_asset(0, PbrMesh {
+          mesh: cube_mesh.clone(),
+          material: white_mat,
+      },
+  );
+  models_assets.add_asset(1, PbrMesh {
+          mesh: cube_mesh.clone(),
+          material: black_mat,
+      },
+  );
+
+  // ...
+}
+```
+3) Spawn an `Entity` with a `GeneratorBundle`
+```rust
+  // The ProcGenSimplePlugin will detect this, generate and spawn the nodes. 
+  commands.spawn(GeneratorBundle {
+      spatial: SpatialBundle::from_transform(Transform::from_translation(Vec3::new(
+          -grid.size_x() as f32 / 2., -grid.size_y() as f32 / 2., 0.,
+      ))),
+      grid,
+      generator,
+      asset_spawner: AssetSpawner::new(models_assets, NODE_SIZE, Vec3::ONE),
+  });
+```
+<p align="center">
+  <img alt="bevy_chess_board_pattern" src="docs/assets/bevy_chess_board_pattern.png">
+</p>
+
+For more information, check out the [bevy_ghx_proc_gen crate documentation](https://docs.rs/bevy_ghx_proc_gen/latest/bevy_ghx_proc_gen) or all the [examples](#examples).
+
+
 ### Bevy plugins
 
 - `GridDebugPlugin`
-- `ProcGenExamplesPlugin`
+- `ProcGenSimplePlugin`
+- `ProcGenDebugPlugin`
 
 ### Compatible Bevy versions
 
@@ -183,6 +241,10 @@ When creating models, you can register a name for them with the `with_name` func
 The log level can be configured by the user crates (`tracing::level`, the `LogPlugin` for Bevy, ...).
 
 ![debug_traces](docs/assets/debug_traces.png)
+
+### `bevy`
+
+Disabled by default, this features simply add some `Component` derive to common struct of `ghx_proc_gen`.
 
 ## Misc
 
