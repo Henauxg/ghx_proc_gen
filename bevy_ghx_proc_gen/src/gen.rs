@@ -11,7 +11,7 @@ use bevy::{
         component::Component,
         entity::Entity,
         query::Added,
-        system::{Commands, Query, Res, Resource},
+        system::{Commands, EntityCommands, Query, Res, Resource},
     },
     hierarchy::BuildChildren,
     math::{Quat, Vec3},
@@ -43,13 +43,14 @@ pub struct SpawnedNode;
 pub trait AssetHandles: Clone + Sync + Send + 'static {}
 impl<T: Clone + Sync + Send + 'static> AssetHandles for T {}
 
-/// Represents an asset for a model
+/// Represents asset(s) for a model, to be spawned when this model is generated.
 #[derive(Clone)]
 pub struct ModelAsset<A: AssetHandles, T: ComponentWrapper = NoComponents> {
     /// Handle(s) to the asset(s)
     pub handles: A,
     /// Offset from the generated grid node. The asset will be instantiated at `generated_node_grid_pos + offset`
     pub offset: GridDelta,
+    /// Optionnal vector of [`ComponentWrapper`],
     pub components: Vec<T>,
 }
 
@@ -115,15 +116,27 @@ impl<A: AssetHandles, T: ComponentWrapper> RulesModelsAssets<A, T> {
 pub type BundleSpawner<A, B> =
     fn(assets: A, translation: Vec3, scale: Vec3, rotation: ModelRotation) -> B;
 
-pub trait ComponentWrapper: Component + Clone + Sync + Send + 'static {}
-impl<T: Component + Clone + Sync + Send + 'static> ComponentWrapper for T {}
+/// Trait used to represent a generic [`Component`]/[`Bundle`] container.
+///
+/// Can be used to customize [`ModelAsset`] with custom components.
+pub trait ComponentWrapper: Clone + Sync + Send + 'static {
+    /// Insert [`Component`] and/or [`Bundle`] into an [`Entity`]
+    fn insert(&self, command: &mut EntityCommands);
+}
 
-#[derive(Clone, Component)]
+/// Default implementation of [`ComponentWrapper`] which does nothing.
+///
+/// `Insert` will not even be called if your [`ModelAsset`] don't have components.
+#[derive(Clone)]
 pub struct NoComponents;
+impl ComponentWrapper for NoComponents {
+    fn insert(&self, _command: &mut EntityCommands) {}
+}
 
+/// Stores information needed to spawn assets from a [`ghx_proc_gen::generator::Generator`]
 #[derive(Component)]
-pub struct AssetSpawner<A: AssetHandles, B: Bundle, T: ComponentWrapper> {
-    /// Link a `Model` via its [`ModelIndex`] to his spawnable assets (can be shared by multiple [`Generation`])
+pub struct AssetSpawner<A: AssetHandles, B: Bundle, T: ComponentWrapper = NoComponents> {
+    /// Link a `Model` via its [`ModelIndex`] to his spawnable assets (can be shared by multiple [`AssetSpawner`])
     pub assets: Arc<RulesModelsAssets<A, T>>,
     /// Size of a node in world units
     pub node_size: Vec3,
@@ -152,6 +165,7 @@ impl<A: AssetHandles, B: Bundle, T: ComponentWrapper> AssetSpawner<A, B, T> {
         }
     }
 
+    /// Sets the `z_offset_from_y` value
     pub fn with_z_offset_from_y(mut self, z_offset_from_y: bool) -> Self {
         self.z_offset_from_y = z_offset_from_y;
         self
@@ -318,7 +332,7 @@ pub fn pbr_node_spawner(
 
 /// Utility system to spawn grid nodes. Can work for multiple asset types.
 ///
-/// Used by [`ProcGenSimplePlugin`] and [`ProcGenDebugPlugin`] to spawn assets automatically.
+/// Used by [`simple_plugin::ProcGenSimplePlugin`] and [`debug_plugin::ProcGenDebugPlugin`] to spawn assets automatically.
 ///
 /// ### Examples
 ///
@@ -370,7 +384,7 @@ pub fn spawn_node<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentW
             ))
             .id();
         for component in node_asset.components.iter() {
-            commands.entity(gen_entity).insert(component.clone());
+            component.insert(&mut commands.entity(gen_entity));
         }
         commands.entity(gen_entity).add_child(node_entity);
     }
