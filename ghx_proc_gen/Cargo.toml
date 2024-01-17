@@ -19,6 +19,7 @@ readme = "../README.md"
 [features]
 # Enables some debug traces (via tracing)
 debug-traces = []
+# Enables some Bevy trait derives
 bevy = ["dep:bevy"]
 
 [dependencies]
