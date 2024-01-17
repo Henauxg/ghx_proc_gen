@@ -17,13 +17,20 @@ categories = ["game-development", "algorithms"]
 readme = "README.md"
 
 [features]
-default = ["default-assets-bundle-spawners", "simple-plugin", "debug-plugin"]
+default = [
+    "default-assets-bundle-spawners",
+    "simple-plugin",
+    "debug-plugin",
+    "grid-debug-plugin",
+]
 # Adds some default assets bundle spawners for basic types: Handle<Image>, Handle<Scene>, MaterialMesh and PbrMesh
 default-assets-bundle-spawners = []
+# Compiles the grid debug plugin and its systems
+grid-debug-plugin = []
 # Compiles the simple plugin and its systems
 simple-plugin = []
 # Compiles the debug plugin and its systems
-debug-plugin = []
+debug-plugin = ["grid-debug-plugin"]
 
 
 [dependencies]

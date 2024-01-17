@@ -6,6 +6,7 @@
 /// Utilities & debug tools/plugins for using the ghx_proc_gen generator
 pub mod gen;
 /// Utilities & debug tools/plugins for manipulating grids
+#[cfg(feature = "grid-debug-plugin")]
 pub mod grid;
 
 pub use ghx_proc_gen as proc_gen;
