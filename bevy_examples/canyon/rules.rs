@@ -1,11 +1,14 @@
 use bevy::ecs::component::Component;
 use bevy_examples::utils::AssetDef;
-use bevy_ghx_proc_gen::proc_gen::{
-    generator::{
-        model::{Model, ModelRotation},
-        socket::{Socket, SocketCollection, SocketsCartesian3D},
+use bevy_ghx_proc_gen::{
+    gen::ComponentWrapper,
+    proc_gen::{
+        generator::{
+            model::{Model, ModelRotation},
+            socket::{Socket, SocketCollection, SocketsCartesian3D},
+        },
+        grid::direction::Cartesian3D,
     },
-    grid::direction::Cartesian3D,
 };
 
 use crate::SEE_VOID_NODES;
@@ -319,7 +322,17 @@ pub(crate) fn rules_and_assets() -> (
 #[derive(Component, Clone)]
 pub struct Rotating;
 
-#[derive(Component, Clone)]
+#[derive(Clone)]
 pub enum ModelComponents {
     Rot(Rotating),
+}
+
+impl ComponentWrapper for ModelComponents {
+    fn insert(&self, command: &mut bevy::ecs::system::EntityCommands) {
+        match self {
+            ModelComponents::Rot(rot) => {
+                command.insert(rot.clone());
+            }
+        }
+    }
 }
