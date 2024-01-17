@@ -35,44 +35,54 @@ pub mod debug_plugin;
 /// Simple plugin to run the generation & spawn assets automatically
 pub mod simple_plugin;
 
-/// Marker for nodes spawned by the generator
+/// Marker for nodes spawned by a [`ghx_proc_gen::generator::Generator`]
 #[derive(Component)]
 pub struct SpawnedNode;
 
-/// Used as a custom trait for types which store things such as handles to assets
-pub trait AssetHandles: Clone + Sync + Send + 'static {}
-impl<T: Clone + Sync + Send + 'static> AssetHandles for T {}
+/// Defines a struct which can spawn an assets [`Bundle`] (for example, a [`SpriteBundle`], a [`PbrBundle`], a [`SceneBundle`], ...).
+pub trait AssetsBundleSpawner: Sync + Send + 'static {
+    /// From the `AssetsBundleSpawner` own data, a position, a scale and a rotation, inserts a [`Bundle`] into the spawned node `Entity`
+    fn insert_bundle(
+        &self,
+        command: &mut EntityCommands,
+        translation: Vec3,
+        scale: Vec3,
+        rotation: ModelRotation,
+    );
+}
 
-/// Represents asset(s) for a model, to be spawned when this model is generated.
+/// Represents spawnable asset(s) & component(s) for a model.
+///
+/// They will be spawned every time this model is generated. One `ModelAsset` will spawn exactly one [`Entity`].
 #[derive(Clone)]
-pub struct ModelAsset<A: AssetHandles, T: ComponentWrapper = NoComponents> {
-    /// Handle(s) to the asset(s)
-    pub handles: A,
+pub struct ModelAsset<A: AssetsBundleSpawner, T: ComponentSpawner = NoComponents> {
+    /// Stores handle(s) to the asset(s) and spawns their bundle
+    pub assets_bundle: A,
+    /// Optionnal vector of [`ComponentSpawner`] that will be spawned for this model
+    pub components: Vec<T>,
     /// Offset from the generated grid node. The asset will be instantiated at `generated_node_grid_pos + offset`
     pub offset: GridDelta,
-    /// Optionnal vector of [`ComponentWrapper`],
-    pub components: Vec<T>,
 }
 
-/// Defines a map which links a `Model` via its [`ModelIndex`] to his spawnable assets
-pub struct RulesModelsAssets<A: AssetHandles, T: ComponentWrapper = NoComponents> {
-    /// Only contains a ModelIndex if there are some assets for it
+/// Defines a map which links a `Model` via its [`ModelIndex`] to his spawnable [`ModelAsset`]
+pub struct RulesModelsAssets<A: AssetsBundleSpawner, T: ComponentSpawner = NoComponents> {
+    /// Only contains a ModelIndex if there are some assets for it. One model may have multiple [`ModelAsset`].
     map: HashMap<ModelIndex, Vec<ModelAsset<A, T>>>,
 }
-impl<A: AssetHandles, T: ComponentWrapper> Deref for RulesModelsAssets<A, T> {
+impl<A: AssetsBundleSpawner, T: ComponentSpawner> Deref for RulesModelsAssets<A, T> {
     type Target = HashMap<ModelIndex, Vec<ModelAsset<A, T>>>;
 
     fn deref(&self) -> &Self::Target {
         &self.map
     }
 }
-impl<A: AssetHandles, T: ComponentWrapper> DerefMut for RulesModelsAssets<A, T> {
+impl<A: AssetsBundleSpawner, T: ComponentSpawner> DerefMut for RulesModelsAssets<A, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.map
     }
 }
 
-impl<A: AssetHandles, T: ComponentWrapper> RulesModelsAssets<A, T> {
+impl<A: AssetsBundleSpawner, T: ComponentSpawner> RulesModelsAssets<A, T> {
     /// Create a new RulesModelsAssets with an empty map
     pub fn new() -> Self {
         Self { map: default() }
@@ -86,7 +96,7 @@ impl<A: AssetHandles, T: ComponentWrapper> RulesModelsAssets<A, T> {
     /// Adds a [`ModelAsset`] with no grid offset, to the model `index`
     pub fn add_asset(&mut self, index: ModelIndex, asset: A) {
         let model_asset = ModelAsset {
-            handles: asset,
+            assets_bundle: asset,
             offset: default(),
             components: Vec::new(),
         };
@@ -106,61 +116,47 @@ impl<A: AssetHandles, T: ComponentWrapper> RulesModelsAssets<A, T> {
     }
 }
 
-/// Type alias. Defines a function which from an [`AssetHandles`], a position, a scale and a rotation, returns a spawnable [`Bundle`]
-///
-/// You can make your own, or use one of the simple ones provided:
-/// - `sprite_node_spawner` for A: `Handle<Image>` and B: `SpriteBundle`
-/// - `scene_node_spawner` for A: `Handle<Scene>` and B: `SceneBundle`
-/// - `material_mesh_node_spawner` for A: `MaterialMesh` and B: `MaterialMeshBundle`
-/// - `pbr_node_spawner` for A: `PbrMesh` and B: `PbrBundle` (specialized version of `material_mesh_node_spawner` with `Material` = `StandardMaterial`)
-pub type BundleSpawner<A, B> =
-    fn(assets: A, translation: Vec3, scale: Vec3, rotation: ModelRotation) -> B;
-
 /// Trait used to represent a generic [`Component`]/[`Bundle`] container.
 ///
-/// Can be used to customize [`ModelAsset`] with custom components.
-pub trait ComponentWrapper: Clone + Sync + Send + 'static {
+/// Can be used to store custom components in [`ModelAsset`].
+pub trait ComponentSpawner: Sync + Send + 'static {
     /// Insert [`Component`] and/or [`Bundle`] into an [`Entity`]
-    fn insert(&self, command: &mut EntityCommands);
+    fn insert(&self, commands: &mut EntityCommands);
 }
 
-/// Default implementation of [`ComponentWrapper`] which does nothing.
+/// Default implementation of [`ComponentSpawner`] which does nothing.
 ///
 /// `Insert` will not even be called if your [`ModelAsset`] don't have components.
 #[derive(Clone)]
 pub struct NoComponents;
-impl ComponentWrapper for NoComponents {
-    fn insert(&self, _command: &mut EntityCommands) {}
+impl ComponentSpawner for NoComponents {
+    fn insert(&self, _commands: &mut EntityCommands) {}
 }
 
 /// Stores information needed to spawn assets from a [`ghx_proc_gen::generator::Generator`]
 #[derive(Component)]
-pub struct AssetSpawner<A: AssetHandles, B: Bundle, T: ComponentWrapper = NoComponents> {
+pub struct AssetSpawner<A: AssetsBundleSpawner, T: ComponentSpawner = NoComponents> {
     /// Link a `Model` via its [`ModelIndex`] to his spawnable assets (can be shared by multiple [`AssetSpawner`])
     pub assets: Arc<RulesModelsAssets<A, T>>,
     /// Size of a node in world units
     pub node_size: Vec3,
     /// Scale of the assets when spawned
     pub spawn_scale: Vec3,
-    /// Called to spawn the appropriate [`Bundle`] for a node
-    pub bundle_spawner: BundleSpawner<A, B>,
     /// Whether to offset the z coordinate of spawned nodes from the y coordinate (used for 2d ordering of sprites)
     pub z_offset_from_y: bool,
 }
 
-impl<A: AssetHandles, B: Bundle, T: ComponentWrapper> AssetSpawner<A, B, T> {
+impl<A: AssetsBundleSpawner, T: ComponentSpawner> AssetSpawner<A, T> {
     /// Constructor for a `AssetSpawner`, `z_offset_from_y` defaults to `false`
     pub fn new(
         models_assets: RulesModelsAssets<A, T>,
         node_size: Vec3,
         spawn_scale: Vec3,
-        bundle_spawner: BundleSpawner<A, B>,
-    ) -> AssetSpawner<A, B, T> {
+    ) -> AssetSpawner<A, T> {
         Self {
             node_size,
             assets: Arc::new(models_assets),
             spawn_scale,
-            bundle_spawner,
             z_offset_from_y: false,
         }
     }
@@ -236,39 +232,39 @@ pub fn insert_bundle_from_resource_to_spawned_nodes<B: Bundle + Resource + Clone
     }
 }
 
-/// Utility [`BundleSpawner`]
-///
-/// Uses the z+ axis as the rotation axis
-pub fn sprite_node_spawner(
-    texture: Handle<Image>,
-    translation: Vec3,
-    scale: Vec3,
-    rotation: ModelRotation,
-) -> SpriteBundle {
-    SpriteBundle {
-        texture,
-        transform: Transform::from_translation(translation)
-            .with_scale(scale)
-            .with_rotation(Quat::from_rotation_z(rotation.rad())),
-        ..default()
+impl AssetsBundleSpawner for Handle<Image> {
+    fn insert_bundle(
+        &self,
+        commands: &mut EntityCommands,
+        translation: Vec3,
+        scale: Vec3,
+        rotation: ModelRotation,
+    ) {
+        commands.insert(SpriteBundle {
+            texture: self.clone(),
+            transform: Transform::from_translation(translation)
+                .with_scale(scale)
+                .with_rotation(Quat::from_rotation_z(rotation.rad())),
+            ..default()
+        });
     }
 }
 
-/// Utility [`BundleSpawner`]
-///
-/// Uses the y+ axis as the rotation axis
-pub fn scene_node_spawner(
-    scene: Handle<Scene>,
-    translation: Vec3,
-    scale: Vec3,
-    rotation: ModelRotation,
-) -> SceneBundle {
-    SceneBundle {
-        scene,
-        transform: Transform::from_translation(translation)
-            .with_scale(scale)
-            .with_rotation(Quat::from_rotation_y(rotation.rad())),
-        ..default()
+impl AssetsBundleSpawner for Handle<Scene> {
+    fn insert_bundle(
+        &self,
+        commands: &mut EntityCommands,
+        translation: Vec3,
+        scale: Vec3,
+        rotation: ModelRotation,
+    ) {
+        commands.insert(SceneBundle {
+            scene: self.clone(),
+            transform: Transform::from_translation(translation)
+                .with_scale(scale)
+                .with_rotation(Quat::from_rotation_y(rotation.rad())),
+            ..default()
+        });
     }
 }
 
@@ -278,7 +274,7 @@ pub struct MaterialMesh<M: Material> {
     /// Mesh handle
     pub mesh: Handle<Mesh>,
     /// Material handle
-    pub mat: Handle<M>,
+    pub material: Handle<M>,
 }
 
 /// Custom type to store [`Handle`] to a [`Mesh`] asset and its [`StandardMaterial`]
@@ -289,44 +285,44 @@ pub struct PbrMesh {
     /// Mesh handle
     pub mesh: Handle<Mesh>,
     /// Standard material handle
-    pub mat: Handle<StandardMaterial>,
+    pub material: Handle<StandardMaterial>,
 }
 
-/// Utility [`BundleSpawner`]
-///
-/// Uses the y+ axis as the rotation axis
-pub fn material_mesh_node_spawner<M: Material>(
-    asset: MaterialMesh<M>,
-    translation: Vec3,
-    scale: Vec3,
-    rotation: ModelRotation,
-) -> MaterialMeshBundle<M> {
-    MaterialMeshBundle {
-        mesh: asset.mesh,
-        material: asset.mat,
-        transform: Transform::from_translation(translation)
-            .with_scale(scale)
-            .with_rotation(Quat::from_rotation_y(rotation.rad())),
-        ..default()
+impl<M: Material> AssetsBundleSpawner for MaterialMesh<M> {
+    fn insert_bundle(
+        &self,
+        commands: &mut EntityCommands,
+        translation: Vec3,
+        scale: Vec3,
+        rotation: ModelRotation,
+    ) {
+        commands.insert(MaterialMeshBundle {
+            mesh: self.mesh.clone(),
+            material: self.material.clone(),
+            transform: Transform::from_translation(translation)
+                .with_scale(scale)
+                .with_rotation(Quat::from_rotation_y(rotation.rad())),
+            ..default()
+        });
     }
 }
 
-/// Utility [`BundleSpawner`], specialization of `material_mesh_node_spawner` with `Material` = `StandardMaterial`
-///
-/// Uses the y+ axis as the rotation axis
-pub fn pbr_node_spawner(
-    asset: PbrMesh,
-    translation: Vec3,
-    scale: Vec3,
-    rotation: ModelRotation,
-) -> PbrBundle {
-    PbrBundle {
-        mesh: asset.mesh,
-        material: asset.mat,
-        transform: Transform::from_translation(translation)
-            .with_scale(scale)
-            .with_rotation(Quat::from_rotation_y(rotation.rad())),
-        ..default()
+impl AssetsBundleSpawner for PbrMesh {
+    fn insert_bundle(
+        &self,
+        commands: &mut EntityCommands,
+        translation: Vec3,
+        scale: Vec3,
+        rotation: ModelRotation,
+    ) {
+        commands.insert(PbrBundle {
+            mesh: self.mesh.clone(),
+            material: self.material.clone(),
+            transform: Transform::from_translation(translation)
+                .with_scale(scale)
+                .with_rotation(Quat::from_rotation_y(rotation.rad())),
+            ..default()
+        });
     }
 }
 
@@ -338,17 +334,17 @@ pub fn pbr_node_spawner(
 ///
 /// Spawn 3d models (gltf) assets with a `Cartesian3D` grid
 /// ```ignore
-/// spawn_node::<Cartesian3D, Scene, SceneBundle>(...);
+/// spawn_node::<Cartesian3D, Handle<Scene>>(...);
 /// ```
 /// Spawn 2d sprites (png, ...) assets with a `Cartesian3D` grid
 /// ```ignore
-/// spawn_node::<Cartesian3D, Image, SpriteBundle>(...);
+/// spawn_node::<Cartesian3D, Handle<Image>>(...);
 /// ```
-pub fn spawn_node<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentWrapper>(
+pub fn spawn_node<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner>(
     commands: &mut Commands,
     gen_entity: Entity,
     grid: &GridDefinition<C>,
-    asset_spawner: &AssetSpawner<A, B, T>,
+    asset_spawner: &AssetSpawner<A, T>,
     instance: &ModelInstance,
     node_index: usize,
 ) {
@@ -372,19 +368,17 @@ pub fn spawn_node<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentW
             translation.z += asset_spawner.node_size.z * (1. - pos.y as f32 / grid.size_y() as f32);
         }
 
-        let node_entity = commands
-            .spawn((
-                (asset_spawner.bundle_spawner)(
-                    node_asset.handles.clone(),
-                    translation,
-                    asset_spawner.spawn_scale,
-                    instance.rotation,
-                ),
-                SpawnedNode,
-            ))
-            .id();
+        let node_entity = commands.spawn(SpawnedNode).id();
+
+        let node_entity_commands = &mut commands.entity(node_entity);
+        node_asset.assets_bundle.insert_bundle(
+            node_entity_commands,
+            translation,
+            asset_spawner.spawn_scale,
+            instance.rotation,
+        );
         for component in node_asset.components.iter() {
-            component.insert(&mut commands.entity(gen_entity));
+            component.insert(&mut commands.entity(node_entity));
         }
         commands.entity(gen_entity).add_child(node_entity);
     }

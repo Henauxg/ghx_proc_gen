@@ -1,10 +1,7 @@
 use bevy::prelude::*;
 
 use bevy_ghx_proc_gen::{
-    gen::{
-        pbr_node_spawner, simple_plugin::ProcGenSimplePlugin, AssetSpawner, PbrMesh,
-        RulesModelsAssets,
-    },
+    gen::{simple_plugin::ProcGenSimplePlugin, AssetSpawner, PbrMesh, RulesModelsAssets},
     proc_gen::{
         generator::{
             builder::GeneratorBuilder,
@@ -76,14 +73,14 @@ fn setup_generator(
         0,
         PbrMesh {
             mesh: cube_mesh.clone(),
-            mat: white_mat,
+            material: white_mat,
         },
     );
     models_assets.add_asset(
         1,
         PbrMesh {
             mesh: cube_mesh.clone(),
-            mat: black_mat,
+            material: black_mat,
         },
     );
 
@@ -94,7 +91,7 @@ fn setup_generator(
         ))),
         grid,
         generator,
-        asset_spawner: AssetSpawner::new(models_assets, NODE_SIZE, Vec3::ONE, pbr_node_spawner),
+        asset_spawner: AssetSpawner::new(models_assets, NODE_SIZE, Vec3::ONE),
     });
 }
 
@@ -102,7 +99,7 @@ fn main() {
     let mut app = App::new();
     app.add_plugins((
         DefaultPlugins,
-        ProcGenSimplePlugin::<Cartesian2D, PbrMesh, PbrBundle>::new(),
+        ProcGenSimplePlugin::<Cartesian2D, PbrMesh>::new(),
     ));
     app.add_systems(Startup, (setup_generator, setup_scene));
     app.run();

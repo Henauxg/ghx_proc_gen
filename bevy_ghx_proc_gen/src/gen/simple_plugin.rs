@@ -3,7 +3,6 @@ use std::marker::PhantomData;
 use bevy::{
     app::{App, Plugin, Update},
     ecs::{
-        bundle::Bundle,
         entity::Entity,
         query::Added,
         schedule::IntoSystemConfigs,
@@ -16,38 +15,33 @@ use ghx_proc_gen::{generator::Generator, grid::direction::CoordinateSystem, Gene
 
 use crate::gen::spawn_node;
 
-use super::{AssetHandles, AssetSpawner, ComponentWrapper, NoComponents};
+use super::{AssetSpawner, AssetsBundleSpawner, ComponentSpawner, NoComponents};
 
 /// A simple [`Plugin`] that automatically detects any [`Entity`] with a [`Generator`] `Component` and tries to run the contained generator once per frame until it succeeds.
 ///
 /// Once the generation is successful, the plugin will spawn the generated nodes assets.
 pub struct ProcGenSimplePlugin<
     C: CoordinateSystem,
-    A: AssetHandles,
-    B: Bundle,
-    T: ComponentWrapper = NoComponents,
+    A: AssetsBundleSpawner,
+    T: ComponentSpawner = NoComponents,
 > {
-    typestate: PhantomData<(C, A, B, T)>,
+    typestate: PhantomData<(C, A, T)>,
 }
 
-impl<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentWrapper> Plugin
-    for ProcGenSimplePlugin<C, A, B, T>
+impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
+    for ProcGenSimplePlugin<C, A, T>
 {
     fn build(&self, app: &mut App) {
         app.insert_resource(PendingGenerations::default());
         app.add_systems(
             Update,
-            (
-                register_new_generations::<C>,
-                generate_and_spawn::<C, A, B, T>,
-            )
-                .chain(),
+            (register_new_generations::<C>, generate_and_spawn::<C, A, T>).chain(),
         );
     }
 }
 
-impl<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentWrapper>
-    ProcGenSimplePlugin<C, A, B, T>
+impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner>
+    ProcGenSimplePlugin<C, A, T>
 {
     /// Constructor
     pub fn new() -> Self {
@@ -82,10 +76,10 @@ pub fn register_new_generations<C: CoordinateSystem>(
 }
 
 /// System used by [`ProcGenSimplePlugin`] to run generators and spawn their node's assets
-pub fn generate_and_spawn<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentWrapper>(
+pub fn generate_and_spawn<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner>(
     mut commands: Commands,
     mut pending_generations: ResMut<PendingGenerations>,
-    mut generations: Query<(&mut Generator<C>, &AssetSpawner<A, B, T>)>,
+    mut generations: Query<(&mut Generator<C>, &AssetSpawner<A, T>)>,
 ) {
     let mut generations_done = vec![];
     for &gen_entity in pending_generations.pendings.iter() {

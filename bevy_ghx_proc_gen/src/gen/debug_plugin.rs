@@ -3,7 +3,6 @@ use std::{collections::HashSet, marker::PhantomData, time::Duration};
 use bevy::{
     app::{App, Plugin, Update},
     ecs::{
-        bundle::Bundle,
         component::Component,
         entity::Entity,
         event::EventWriter,
@@ -30,24 +29,23 @@ use ghx_proc_gen::{
 
 use crate::grid::markers::MarkerEvent;
 
-use super::{spawn_node, AssetHandles, AssetSpawner, ComponentWrapper, NoComponents, SpawnedNode};
+use super::{
+    spawn_node, AssetSpawner, AssetsBundleSpawner, ComponentSpawner, NoComponents, SpawnedNode,
+};
 
 /// A [`Plugin`] useful for debug/analysis/demo.
 ///
 /// It takes in a [`GenerationViewMode`] to control how the generators in the [`Generator`] components will be run.
 pub struct ProcGenDebugPlugin<
     C: CoordinateSystem,
-    A: AssetHandles,
-    B: Bundle,
-    T: ComponentWrapper = NoComponents,
+    A: AssetsBundleSpawner,
+    T: ComponentSpawner = NoComponents,
 > {
     generation_view_mode: GenerationViewMode,
-    typestate: PhantomData<(C, A, B, T)>,
+    typestate: PhantomData<(C, A, T)>,
 }
 
-impl<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentWrapper>
-    ProcGenDebugPlugin<C, A, B, T>
-{
+impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> ProcGenDebugPlugin<C, A, T> {
     /// Plugin constructor
     pub fn new(generation_view_mode: GenerationViewMode) -> Self {
         Self {
@@ -57,8 +55,8 @@ impl<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentWrapper>
     }
 }
 
-impl<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentWrapper> Plugin
-    for ProcGenDebugPlugin<C, A, B, T>
+impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
+    for ProcGenDebugPlugin<C, A, T>
 {
     fn build(&self, app: &mut App) {
         app.insert_resource(self.generation_view_mode);
@@ -77,10 +75,10 @@ impl<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentWrapper> Plugi
                 app.add_systems(
                     Update,
                     (
-                        register_void_nodes_for_new_generations::<C, A, B, T>,
+                        register_void_nodes_for_new_generations::<C, A, T>,
                         observe_new_generations::<C>,
                         step_by_step_timed_update::<C>,
-                        update_generation_view::<C, A, B, T>,
+                        update_generation_view::<C, A, T>,
                     )
                         .chain(),
                 );
@@ -93,10 +91,10 @@ impl<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentWrapper> Plugi
                 app.add_systems(
                     Update,
                     (
-                        register_void_nodes_for_new_generations::<C, A, B, T>,
+                        register_void_nodes_for_new_generations::<C, A, T>,
                         observe_new_generations::<C>,
                         step_by_step_input_update::<C>,
-                        update_generation_view::<C, A, B, T>,
+                        update_generation_view::<C, A, T>,
                     )
                         .chain(),
                 );
@@ -107,7 +105,7 @@ impl<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentWrapper> Plugi
                     (
                         observe_new_generations::<C>,
                         generate_all::<C>,
-                        update_generation_view::<C, A, B, T>,
+                        update_generation_view::<C, A, T>,
                     )
                         .chain(),
                 );
@@ -240,13 +238,12 @@ pub struct VoidNodes(HashSet<ModelIndex>);
 /// Simple system that calculates and add a [`VoidNodes`] component for generator entites which don't have one yet.
 pub fn register_void_nodes_for_new_generations<
     C: CoordinateSystem,
-    A: AssetHandles,
-    B: Bundle,
-    T: ComponentWrapper,
+    A: AssetsBundleSpawner,
+    T: ComponentSpawner,
 >(
     mut commands: Commands,
     mut new_generations: Query<
-        (Entity, &mut Generator<C>, &AssetSpawner<A, B, T>),
+        (Entity, &mut Generator<C>, &AssetSpawner<A, T>),
         Without<VoidNodes>,
     >,
 ) {
@@ -349,13 +346,13 @@ pub fn step_by_step_timed_update<C: CoordinateSystem>(
     }
 }
 
-fn update_generation_view<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentWrapper>(
+fn update_generation_view<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner>(
     mut commands: Commands,
     mut marker_events: EventWriter<MarkerEvent>,
     mut generators: Query<(
         Entity,
         &GridDefinition<C>,
-        &AssetSpawner<A, B, T>,
+        &AssetSpawner<A, T>,
         &mut Observed,
     )>,
     existing_nodes: Query<Entity, With<SpawnedNode>>,

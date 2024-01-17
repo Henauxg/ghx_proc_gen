@@ -11,7 +11,7 @@ pub mod grid;
 pub use ghx_proc_gen as proc_gen;
 
 use bevy::{ecs::bundle::Bundle, prelude::SpatialBundle};
-use gen::{AssetHandles, AssetSpawner, ComponentWrapper};
+use gen::{AssetSpawner, AssetsBundleSpawner, ComponentSpawner};
 use proc_gen::{
     generator::Generator,
     grid::{direction::CoordinateSystem, GridDefinition},
@@ -21,7 +21,7 @@ use proc_gen::{
 ///
 /// If using [`gen::simple_plugin::ProcGenSimplePlugin`] or [`gen::debug_plugin::ProcGenDebugPlugin`], this is the main `Bundle` to use.
 #[derive(Bundle)]
-pub struct GeneratorBundle<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentWrapper> {
+pub struct GeneratorBundle<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> {
     /// For positional rendering of the grid
     pub spatial: SpatialBundle,
     /// Grid definition (Should be the same [`proc_gen::grid::GridDefinition`] as in the generator)
@@ -29,5 +29,5 @@ pub struct GeneratorBundle<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: C
     /// Generator
     pub generator: Generator<C>,
     /// Assets information used when spawning nodes
-    pub asset_spawner: AssetSpawner<A, B, T>,
+    pub asset_spawner: AssetSpawner<A, T>,
 }

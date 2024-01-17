@@ -8,7 +8,7 @@ use bevy_examples::{
     utils::load_assets,
 };
 use bevy_ghx_proc_gen::{
-    gen::{debug_plugin::GenerationViewMode, scene_node_spawner, AssetSpawner},
+    gen::{debug_plugin::GenerationViewMode, AssetSpawner},
     grid::{
         view::{DebugGridView, DebugGridViewConfig3d},
         DebugGridView3d,
@@ -125,7 +125,12 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         .build();
 
     // Load assets
-    let models_assets = load_assets(&asset_server, assets_definitions, ASSETS_PATH, "glb#Scene0");
+    let models_assets = load_assets::<Scene, ModelComponents>(
+        &asset_server,
+        assets_definitions,
+        ASSETS_PATH,
+        "glb#Scene0",
+    );
 
     commands.spawn((
         GeneratorBundle {
@@ -141,7 +146,6 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
                 NODE_SIZE,
                 // We spawn assets with a scale of 0 since we animate their scale in the examples
                 Vec3::ZERO,
-                scene_node_spawner,
             ),
         },
         DebugGridView3d {
@@ -161,7 +165,7 @@ fn main() {
             filter: "info,wgpu_core=warn,wgpu_hal=warn,ghx_proc_gen=debug".into(),
             level: bevy::log::Level::DEBUG,
         }),
-        ProcGenExamplesPlugin::<Cartesian3D, Handle<Scene>, SceneBundle, ModelComponents>::new(
+        ProcGenExamplesPlugin::<Cartesian3D, Handle<Scene>, ModelComponents>::new(
             GENERATION_VIEW_MODE,
             ASSETS_SCALE,
         ),

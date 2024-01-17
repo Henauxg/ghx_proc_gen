@@ -2,7 +2,7 @@ use bevy::{app::PluginGroup, log::LogPlugin, prelude::*};
 
 use bevy_examples::{plugin::ProcGenExamplesPlugin, utils::load_assets};
 use bevy_ghx_proc_gen::{
-    gen::{debug_plugin::GenerationViewMode, sprite_node_spawner, AssetSpawner},
+    gen::{debug_plugin::GenerationViewMode, AssetSpawner, RulesModelsAssets},
     grid::{
         view::{DebugGridView, DebugGridViewConfig2d},
         DebugGridView2d,
@@ -71,7 +71,8 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         .with_model_heuristic(ModelSelectionHeuristic::WeightedProbability)
         .build();
 
-    let models_assets = load_assets(&asset_server, assets_definitions, ASSETS_PATH, "png");
+    let models_assets: RulesModelsAssets<Handle<Image>> =
+        load_assets(&asset_server, assets_definitions, ASSETS_PATH, "png");
 
     commands.spawn((
         GeneratorBundle {
@@ -82,13 +83,8 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
             })),
             grid,
             generator,
-            asset_spawner: AssetSpawner::new(
-                models_assets,
-                NODE_SIZE,
-                Vec3::ZERO,
-                sprite_node_spawner,
-            )
-            .with_z_offset_from_y(true),
+            asset_spawner: AssetSpawner::new(models_assets, NODE_SIZE, Vec3::ZERO)
+                .with_z_offset_from_y(true),
         },
         DebugGridView2d {
             config: DebugGridViewConfig2d {
@@ -109,7 +105,7 @@ fn main() {
                 level: bevy::log::Level::DEBUG,
             })
             .set(ImagePlugin::default_nearest()),
-        ProcGenExamplesPlugin::<Cartesian3D, Handle<Image>, SpriteBundle>::new(
+        ProcGenExamplesPlugin::<Cartesian3D, Handle<Image>>::new(
             GENERATION_VIEW_MODE,
             ASSETS_SCALE,
         ),

@@ -1,7 +1,7 @@
 use bevy::ecs::component::Component;
 use bevy_examples::utils::AssetDef;
 use bevy_ghx_proc_gen::{
-    gen::ComponentWrapper,
+    gen::ComponentSpawner,
     proc_gen::{
         generator::{
             model::{Model, ModelRotation},
@@ -327,7 +327,7 @@ pub enum ModelComponents {
     Rot(Rotating),
 }
 
-impl ComponentWrapper for ModelComponents {
+impl ComponentSpawner for ModelComponents {
     fn insert(&self, command: &mut bevy::ecs::system::EntityCommands) {
         match self {
             ModelComponents::Rot(rot) => {

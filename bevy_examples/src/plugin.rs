@@ -3,10 +3,7 @@ use std::marker::PhantomData;
 use bevy::{
     app::{App, Plugin, Startup, Update},
     diagnostic::FrameTimeDiagnosticsPlugin,
-    ecs::{
-        bundle::Bundle,
-        system::{Commands, Res},
-    },
+    ecs::system::{Commands, Res},
     math::Vec3,
     text::TextStyle,
     ui::node_bundles::TextBundle,
@@ -14,7 +11,8 @@ use bevy::{
 use bevy_ghx_proc_gen::{
     gen::{
         debug_plugin::{GenerationViewMode, ProcGenDebugPlugin},
-        insert_bundle_from_resource_to_spawned_nodes, AssetHandles, ComponentWrapper, NoComponents,
+        insert_bundle_from_resource_to_spawned_nodes, AssetsBundleSpawner, ComponentSpawner,
+        NoComponents,
     },
     grid::GridDebugPlugin,
     proc_gen::grid::direction::CoordinateSystem,
@@ -28,17 +26,16 @@ use crate::{
 
 pub struct ProcGenExamplesPlugin<
     C: CoordinateSystem,
-    A: AssetHandles,
-    B: Bundle,
-    T: ComponentWrapper = NoComponents,
+    A: AssetsBundleSpawner,
+    T: ComponentSpawner = NoComponents,
 > {
     generation_view_mode: GenerationViewMode,
     assets_scale: Vec3,
-    typestate: PhantomData<(C, A, B, T)>,
+    typestate: PhantomData<(C, A, T)>,
 }
 
-impl<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentWrapper>
-    ProcGenExamplesPlugin<C, A, B, T>
+impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner>
+    ProcGenExamplesPlugin<C, A, T>
 {
     pub fn new(generation_view_mode: GenerationViewMode, assets_scale: Vec3) -> Self {
         Self {
@@ -49,15 +46,15 @@ impl<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentWrapper>
     }
 }
 
-impl<C: CoordinateSystem, A: AssetHandles, B: Bundle, T: ComponentWrapper> Plugin
-    for ProcGenExamplesPlugin<C, A, B, T>
+impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
+    for ProcGenExamplesPlugin<C, A, T>
 {
     fn build(&self, app: &mut App) {
         app.add_plugins((
             FrameTimeDiagnosticsPlugin::default(),
             FpsDisplayPlugin,
             GridDebugPlugin::<C>::new(),
-            ProcGenDebugPlugin::<C, A, B, T>::new(self.generation_view_mode),
+            ProcGenDebugPlugin::<C, A, T>::new(self.generation_view_mode),
         ));
         app.insert_resource(SpawningScaleAnimation::new(
             0.8,

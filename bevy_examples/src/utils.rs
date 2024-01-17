@@ -8,7 +8,7 @@ use bevy::{
     render::view::Visibility,
 };
 use bevy_ghx_proc_gen::{
-    gen::{ComponentWrapper, ModelAsset, NoComponents, RulesModelsAssets},
+    gen::{AssetsBundleSpawner, ComponentSpawner, ModelAsset, NoComponents, RulesModelsAssets},
     grid::view::DebugGridView,
     proc_gen::grid::direction::GridDelta,
 };
@@ -77,19 +77,48 @@ impl<T> AssetDef<T> {
 }
 
 /// Simply load assets with the asset_server and return a map that gives assets from a model_index
-pub fn load_assets<S: Asset, T: ComponentWrapper>(
+// pub fn load_assets<S: Asset, T: ComponentWrapper>(
+//     asset_server: &Res<AssetServer>,
+//     assets_definitions: Vec<Vec<AssetDef<T>>>,
+//     assets_directory: &str,
+//     extension: &str,
+// ) -> RulesModelsAssets<Handle<S>, T> {
+//     let mut models_assets = RulesModelsAssets::new();
+//     for (model_index, assets) in assets_definitions.iter().enumerate() {
+//         for asset_def in assets {
+//             models_assets.add(
+//                 model_index,
+//                 ModelAsset {
+//                     handles: asset_server.load(format!(
+//                         "{assets_directory}/{}.{extension}",
+//                         asset_def.path()
+//                     )),
+//                     offset: asset_def.offset.clone(),
+//                     components: asset_def.components.clone(),
+//                 },
+//             )
+//         }
+//     }
+//     models_assets
+// }
+
+pub fn load_assets<A: Asset, T: ComponentSpawner>(
     asset_server: &Res<AssetServer>,
     assets_definitions: Vec<Vec<AssetDef<T>>>,
     assets_directory: &str,
     extension: &str,
-) -> RulesModelsAssets<Handle<S>, T> {
+) -> RulesModelsAssets<Handle<A>, T>
+where
+    Handle<A>: AssetsBundleSpawner,
+    T: Clone,
+{
     let mut models_assets = RulesModelsAssets::new();
     for (model_index, assets) in assets_definitions.iter().enumerate() {
         for asset_def in assets {
             models_assets.add(
                 model_index,
                 ModelAsset {
-                    handles: asset_server.load(format!(
+                    assets_bundle: asset_server.load(format!(
                         "{assets_directory}/{}.{extension}",
                         asset_def.path()
                     )),
