@@ -29,7 +29,7 @@ pub trait AssetsBundleSpawner: Sync + Send + 'static {
 ///
 /// Can be used to store custom components in [`ModelAsset`].
 pub trait ComponentSpawner: Sync + Send + 'static {
-    /// Insert [`Component`] and/or [`Bundle`] into an [`Entity`]
+    /// Insert [`Component`] and/or [`bevy::prelude::Bundle`] into an [`bevy::prelude::Entity`]
     fn insert(&self, commands: &mut EntityCommands);
 }
 
