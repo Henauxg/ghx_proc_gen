@@ -20,8 +20,10 @@ use self::assets::{AssetSpawner, AssetsBundleSpawner, ComponentSpawner};
 pub mod assets;
 
 /// Debug plugin to run the generation & spawn assets automatically with different visualization options
+#[cfg(feature = "debug-plugin")]
 pub mod debug_plugin;
 /// Simple plugin to run the generation & spawn assets automatically
+#[cfg(feature = "simple-plugin")]
 pub mod simple_plugin;
 
 /// Adds default [`AssetsBundleSpawner`] implementations for common types.
