@@ -399,14 +399,14 @@ pub(crate) fn rules_and_assets() -> (
         (
             vec![
                 AssetDef::new("small_tree_bottom"),
-                AssetDef::new("small_tree_top").with_offset(GridDelta::new(0, 1, 0)),
+                AssetDef::new("small_tree_top").with_grid_offset(GridDelta::new(0, 1, 0)),
             ],
             plant_prop.clone(),
         ),
         (
             vec![
                 AssetDef::new("big_tree_1_bl"),
-                AssetDef::new("big_tree_1_tl").with_offset(GridDelta::new(0, 1, 0)),
+                AssetDef::new("big_tree_1_tl").with_grid_offset(GridDelta::new(0, 1, 0)),
             ],
             SocketsCartesian3D::Simple {
                 x_pos: big_tree_1_base,
@@ -422,7 +422,7 @@ pub(crate) fn rules_and_assets() -> (
         (
             vec![
                 AssetDef::new("big_tree_1_br"),
-                AssetDef::new("big_tree_1_tr").with_offset(GridDelta::new(0, 1, 0)),
+                AssetDef::new("big_tree_1_tr").with_grid_offset(GridDelta::new(0, 1, 0)),
             ],
             SocketsCartesian3D::Simple {
                 x_pos: void,
@@ -438,7 +438,7 @@ pub(crate) fn rules_and_assets() -> (
         (
             vec![
                 AssetDef::new("big_tree_2_bl"),
-                AssetDef::new("big_tree_2_tl").with_offset(GridDelta::new(0, 1, 0)),
+                AssetDef::new("big_tree_2_tl").with_grid_offset(GridDelta::new(0, 1, 0)),
             ],
             SocketsCartesian3D::Simple {
                 x_pos: big_tree_2_base,
@@ -454,7 +454,7 @@ pub(crate) fn rules_and_assets() -> (
         (
             vec![
                 AssetDef::new("big_tree_2_br"),
-                AssetDef::new("big_tree_2_tr").with_offset(GridDelta::new(0, 1, 0)),
+                AssetDef::new("big_tree_2_tr").with_grid_offset(GridDelta::new(0, 1, 0)),
             ],
             SocketsCartesian3D::Simple {
                 x_pos: void,

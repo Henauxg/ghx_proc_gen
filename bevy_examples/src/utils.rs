@@ -5,6 +5,7 @@ use bevy::{
         system::{Query, Res},
     },
     input::{keyboard::KeyCode, Input},
+    math::Vec3,
     render::view::Visibility,
 };
 use bevy_ghx_proc_gen::{
@@ -47,7 +48,8 @@ pub fn toggle_fps_counter(
 #[derive(Clone)]
 pub struct AssetDef<T = NoComponents> {
     path: &'static str,
-    offset: GridDelta,
+    grid_offset: GridDelta,
+    offset: Vec3,
     components: Vec<T>,
 }
 
@@ -55,12 +57,18 @@ impl<T> AssetDef<T> {
     pub fn new(path: &'static str) -> Self {
         Self {
             path,
-            offset: GridDelta::new(0, 0, 0),
+            grid_offset: GridDelta::new(0, 0, 0),
+            offset: Vec3::ZERO,
             components: Vec::new(),
         }
     }
 
-    pub fn with_offset(mut self, offset: GridDelta) -> Self {
+    pub fn with_grid_offset(mut self, offset: GridDelta) -> Self {
+        self.grid_offset = offset;
+        self
+    }
+
+    pub fn with_offset(mut self, offset: Vec3) -> Self {
         self.offset = offset;
         self
     }
@@ -74,7 +82,7 @@ impl<T> AssetDef<T> {
         self.path
     }
     pub fn offset(&self) -> &GridDelta {
-        &self.offset
+        &self.grid_offset
     }
 }
 
@@ -98,7 +106,8 @@ where
                         "{assets_directory}/{}.{extension}",
                         asset_def.path()
                     )),
-                    offset: asset_def.offset.clone(),
+                    grid_offset: asset_def.grid_offset.clone(),
+                    offset: asset_def.offset,
                     components: asset_def.components.clone(),
                 },
             )

@@ -51,8 +51,10 @@ pub struct ModelAsset<A: AssetsBundleSpawner, T: ComponentSpawner = NoComponents
     pub assets_bundle: A,
     /// Optionnal vector of [`ComponentSpawner`] that will be spawned for this model
     pub components: Vec<T>,
-    /// Offset from the generated grid node. The asset will be instantiated at `generated_node_grid_pos + offset`
-    pub offset: GridDelta,
+    /// Grid offset from the generated grid node position. Added to `offset`.
+    pub grid_offset: GridDelta,
+    /// World offset from the generated grid node position. Added to `grid_offset`.
+    pub offset: Vec3,
 }
 
 /// Defines a map which links a `Model` via its [`ModelIndex`] to his spawnable [`ModelAsset`]
@@ -90,7 +92,8 @@ impl<A: AssetsBundleSpawner, T: ComponentSpawner> RulesModelsAssets<A, T> {
     pub fn add_asset(&mut self, index: ModelIndex, asset: A) {
         let model_asset = ModelAsset {
             assets_bundle: asset,
-            offset: Default::default(),
+            grid_offset: Default::default(),
+            offset: Vec3::ZERO,
             components: Vec::new(),
         };
         self.add(index, model_asset);

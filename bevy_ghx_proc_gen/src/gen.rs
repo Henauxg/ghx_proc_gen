@@ -122,20 +122,20 @@ pub fn spawn_node<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawn
     instance: &ModelInstance,
     node_index: usize,
 ) {
-    let node_assets_option = asset_spawner.assets.get(&instance.model_index);
-    if node_assets_option.is_none() {
-        return;
-    }
-    let node_assets = node_assets_option.unwrap();
+    let node_assets = match asset_spawner.assets.get(&instance.model_index) {
+        Some(node_assets) => node_assets,
+        None => return,
+    };
 
     let pos = grid.get_position(node_index);
     for node_asset in node_assets {
         let offset = &node_asset.offset;
-        // +0.5*scale to center the node because its center is at its origin
+        let grid_offset = &node_asset.grid_offset;
+        // + (0.5 * size) to center `translation` in the node
         let mut translation = Vec3::new(
-            asset_spawner.node_size.x * (pos.x as f32 + offset.dx as f32 + 0.5),
-            asset_spawner.node_size.y * (pos.y as f32 + offset.dy as f32 + 0.5),
-            asset_spawner.node_size.z * (pos.z as f32 + offset.dz as f32 + 0.5),
+            offset.x + asset_spawner.node_size.x * (pos.x as f32 + grid_offset.dx as f32 + 0.5),
+            offset.y + asset_spawner.node_size.y * (pos.y as f32 + grid_offset.dy as f32 + 0.5),
+            offset.z + asset_spawner.node_size.z * (pos.z as f32 + grid_offset.dz as f32 + 0.5),
         );
 
         if asset_spawner.z_offset_from_y {
