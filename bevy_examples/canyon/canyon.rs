@@ -22,7 +22,7 @@ use bevy_ghx_proc_gen::{
     },
     GeneratorBundle,
 };
-use rules::ModelComponents;
+use rules::{CustomComponents, WindRotation};
 
 use crate::rules::rules_and_assets;
 
@@ -125,7 +125,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         .build();
 
     // Load assets
-    let models_assets = load_assets::<Scene, ModelComponents>(
+    let models_assets = load_assets::<Scene, CustomComponents>(
         &asset_server,
         assets_definitions,
         ASSETS_PATH,
@@ -165,13 +165,19 @@ fn main() {
             filter: "info,wgpu_core=warn,wgpu_hal=warn,ghx_proc_gen=debug".into(),
             level: bevy::log::Level::DEBUG,
         }),
-        ProcGenExamplesPlugin::<Cartesian3D, Handle<Scene>, ModelComponents>::new(
+        ProcGenExamplesPlugin::<Cartesian3D, Handle<Scene>, CustomComponents>::new(
             GENERATION_VIEW_MODE,
             ASSETS_SCALE,
         ),
     ));
     app.add_systems(Startup, (setup_generator, setup_scene))
-        .add_systems(Update, pan_orbit_camera);
+        .add_systems(Update, (pan_orbit_camera, apply_wind));
 
     app.run();
+}
+
+pub fn apply_wind(time: Res<Time>, mut new_generations: Query<&mut Transform, With<WindRotation>>) {
+    for mut transform in new_generations.iter_mut() {
+        transform.rotation = Quat::from_rotation_z(2. * time.elapsed_seconds_wrapped());
+    }
 }

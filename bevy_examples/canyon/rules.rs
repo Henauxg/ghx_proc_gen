@@ -1,4 +1,4 @@
-use bevy::ecs::component::Component;
+use bevy::{ecs::component::Component, math::Vec3};
 use bevy_examples::utils::AssetDef;
 use bevy_ghx_proc_gen::{
     gen::assets::ComponentSpawner,
@@ -11,10 +11,10 @@ use bevy_ghx_proc_gen::{
     },
 };
 
-use crate::SEE_VOID_NODES;
+use crate::{BLOCK_SIZE, SEE_VOID_NODES};
 
 pub(crate) fn rules_and_assets() -> (
-    Vec<Vec<AssetDef<ModelComponents>>>,
+    Vec<Vec<AssetDef<CustomComponents>>>,
     Vec<Model<Cartesian3D>>,
     SocketCollection,
 ) {
@@ -41,7 +41,7 @@ pub(crate) fn rules_and_assets() -> (
         windmill_cap_bottom,
     ) = (s(), s(), s(), s(), s());
 
-    let asset = |str| -> Vec<AssetDef<ModelComponents>> { vec![AssetDef::new(str)] };
+    let asset = |str| -> Vec<AssetDef<CustomComponents>> { vec![AssetDef::new(str)] };
 
     // Create our models. We group them with their related assets in the same collection for ease of use (index of the model matches the index of the assets to spawn).
     let mut assets_and_models = vec![
@@ -232,7 +232,9 @@ pub(crate) fn rules_and_assets() -> (
             vec![
                 AssetDef::new("windmill_top"),
                 AssetDef::new("windmill_vane"),
-                AssetDef::new("windmill_blades").with_component(ModelComponents::Rot(Rotating)),
+                AssetDef::new("windmill_blades")
+                    .with_offset(Vec3::new(0., 0.7 * BLOCK_SIZE, 0.))
+                    .with_component(CustomComponents::Rot(WindRotation)),
             ],
             SocketsCartesian3D::Simple {
                 x_pos: windmill_side,
@@ -243,7 +245,6 @@ pub(crate) fn rules_and_assets() -> (
                 y_neg: windmill_cap_bottom,
             }
             .new_model()
-            .with_all_rotations()
             .with_weight(WINDMILLS_WEIGHT),
         ),
     ]);
@@ -320,17 +321,17 @@ pub(crate) fn rules_and_assets() -> (
 }
 
 #[derive(Component, Clone)]
-pub struct Rotating;
+pub struct WindRotation;
 
 #[derive(Clone)]
-pub enum ModelComponents {
-    Rot(Rotating),
+pub enum CustomComponents {
+    Rot(WindRotation),
 }
 
-impl ComponentSpawner for ModelComponents {
+impl ComponentSpawner for CustomComponents {
     fn insert(&self, command: &mut bevy::ecs::system::EntityCommands) {
         match self {
-            ModelComponents::Rot(rot) => {
+            CustomComponents::Rot(rot) => {
                 command.insert(rot.clone());
             }
         }
