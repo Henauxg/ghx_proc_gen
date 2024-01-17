@@ -15,7 +15,7 @@ use ghx_proc_gen::{generator::Generator, grid::direction::CoordinateSystem, Gene
 
 use crate::gen::spawn_node;
 
-use super::{AssetSpawner, AssetsBundleSpawner, ComponentSpawner, NoComponents};
+use super::{assets::NoComponents, AssetSpawner, AssetsBundleSpawner, ComponentSpawner};
 
 /// A simple [`Plugin`] that automatically detects any [`Entity`] with a [`Generator`] `Component` and tries to run the contained generator once per frame until it succeeds.
 ///

@@ -16,6 +16,12 @@ keywords = [
 categories = ["game-development", "algorithms"]
 readme = "README.md"
 
+[features]
+default = ["default-assets-bundle-spawners"]
+# Adds some default assets bundle spawners for basic types: Handle<Image>, Handle<Scene>, MaterialMesh and PbrMesh
+default-assets-bundle-spawners = []
+
+
 [dependencies]
 ghx_proc_gen = { path = "../ghx_proc_gen", features = ["bevy"] }
 bevy = { version = "0.12.0", default-features = false, features = [

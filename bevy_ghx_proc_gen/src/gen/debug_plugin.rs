@@ -30,7 +30,8 @@ use ghx_proc_gen::{
 use crate::grid::markers::MarkerEvent;
 
 use super::{
-    spawn_node, AssetSpawner, AssetsBundleSpawner, ComponentSpawner, NoComponents, SpawnedNode,
+    assets::NoComponents, spawn_node, AssetSpawner, AssetsBundleSpawner, ComponentSpawner,
+    SpawnedNode,
 };
 
 /// A [`Plugin`] useful for debug/analysis/demo.

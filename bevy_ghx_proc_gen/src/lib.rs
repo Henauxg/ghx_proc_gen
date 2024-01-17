@@ -11,7 +11,7 @@ pub mod grid;
 pub use ghx_proc_gen as proc_gen;
 
 use bevy::{ecs::bundle::Bundle, prelude::SpatialBundle};
-use gen::{AssetSpawner, AssetsBundleSpawner, ComponentSpawner};
+use gen::assets::{AssetSpawner, AssetsBundleSpawner, ComponentSpawner};
 use proc_gen::{
     generator::Generator,
     grid::{direction::CoordinateSystem, GridDefinition},

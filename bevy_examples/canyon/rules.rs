@@ -1,7 +1,7 @@
 use bevy::ecs::component::Component;
 use bevy_examples::utils::AssetDef;
 use bevy_ghx_proc_gen::{
-    gen::ComponentSpawner,
+    gen::assets::ComponentSpawner,
     proc_gen::{
         generator::{
             model::{Model, ModelRotation},

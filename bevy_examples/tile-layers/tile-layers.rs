@@ -2,7 +2,10 @@ use bevy::{app::PluginGroup, log::LogPlugin, prelude::*};
 
 use bevy_examples::{plugin::ProcGenExamplesPlugin, utils::load_assets};
 use bevy_ghx_proc_gen::{
-    gen::{debug_plugin::GenerationViewMode, AssetSpawner, RulesModelsAssets},
+    gen::{
+        assets::{AssetSpawner, RulesModelsAssets},
+        debug_plugin::GenerationViewMode,
+    },
     grid::{
         view::{DebugGridView, DebugGridViewConfig2d},
         DebugGridView2d,

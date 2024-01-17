@@ -8,7 +8,7 @@ use bevy_examples::{
     utils::load_assets,
 };
 use bevy_ghx_proc_gen::{
-    gen::{debug_plugin::GenerationViewMode, AssetSpawner},
+    gen::{assets::AssetSpawner, debug_plugin::GenerationViewMode},
     grid::{
         view::{DebugGridView, DebugGridViewConfig3d},
         DebugGridView3d,

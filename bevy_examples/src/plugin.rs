@@ -10,9 +10,9 @@ use bevy::{
 };
 use bevy_ghx_proc_gen::{
     gen::{
+        assets::{AssetsBundleSpawner, ComponentSpawner, NoComponents},
         debug_plugin::{GenerationViewMode, ProcGenDebugPlugin},
-        insert_bundle_from_resource_to_spawned_nodes, AssetsBundleSpawner, ComponentSpawner,
-        NoComponents,
+        insert_bundle_from_resource_to_spawned_nodes,
     },
     grid::GridDebugPlugin,
     proc_gen::grid::direction::CoordinateSystem,

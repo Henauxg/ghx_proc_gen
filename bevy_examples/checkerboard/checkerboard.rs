@@ -1,7 +1,11 @@
 use bevy::prelude::*;
 
 use bevy_ghx_proc_gen::{
-    gen::{simple_plugin::ProcGenSimplePlugin, AssetSpawner, PbrMesh, RulesModelsAssets},
+    gen::{
+        assets::{AssetSpawner, RulesModelsAssets},
+        default_bundles::PbrMesh,
+        simple_plugin::ProcGenSimplePlugin,
+    },
     proc_gen::{
         generator::{
             builder::GeneratorBuilder,
