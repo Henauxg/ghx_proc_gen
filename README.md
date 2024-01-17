@@ -4,11 +4,11 @@
 
 # Ghx Proc(edural) Gen(eneration)
 
-A Rust library for 2D & 3D procedural generation with *Model synthesis/Wave function Collapse*, also available for the Bevy engine.
+A Rust library for 2D & 3D procedural generation with **Model synthesis/Wave function Collapse**, also available for the Bevy engine.
 
-With *Model synthesis/Wave function Collapse*, you provide adjacency **constraints** as an input to the algorithm, and internally, a solver (AC-4 in this case), will try to generate a solution with satisfies those constraints, very much like a sudoku solver.
+With Model synthesis/Wave function Collapse, you provide **adjacency constraints** as an input to the algorithm, and internally, a solver (AC-4 in this case), will try to generate a solution with satisfies those constraints, very much like a sudoku solver.
 
-Altough it can be applied to do texture synthesis (mainly with bitmaps), `ghx_proc_gen` focuses more on grid-based use-cases such as terrain/structures/...
+Altough it can be applied to do texture synthesis (mainly with bitmaps), `ghx_proc_gen` focuses more on grid-based use-cases such as terrain or structures generation.
 
 - [Ghx Proc(edural) Gen(eneration)](#ghx-procedural-geneneration)
   - [Quickstart](#quickstart)
@@ -124,7 +124,8 @@ fn setup_generator(
   let cube_mesh = meshes.add(Mesh::from(shape::Cube { size: CUBE_SIZE }));
   let white_mat = materials.add(Color::WHITE.into());
   let black_mat = materials.add(Color::BLACK.into());*
-  // We create our models asset. Here in a separate collection for the sake of simplicity. We could also declare them with our models.
+  // We create our models asset here, in a separate collection for the sake of simplicity.
+  // (We could also declare them with our models)
   let mut models_assets = RulesModelsAssets::<PbrMesh>::new();
   models_assets.add_asset(0, PbrMesh {
           mesh: cube_mesh.clone(),
@@ -252,6 +253,9 @@ Rules-writing tips:
  - Start simple, then add complexity iteratively
  - Changing the Node selection heuristic may drastically change the generated results
  - On rectangle grids, diagonals constraints are harder and need intermediary models
+  
+Limitations:
+- Generation size can quickly become an issue. For now, when the generator encounters an error (a contradiction in the rules), the generation restarts from the beginning. There are some ways to lessen this problem, such as backtracking during the generation and/or modifying in parts (see [Model Synthesis and Modifying in Blocks](https://www.boristhebrave.com/2021/10/26/model-synthesis-and-modifying-in-blocks/) by BorisTheBrave or [Ph.D. Dissertation, University of North Carolina at Chapel Hill, 2009](https://paulmerrell.org/wp-content/uploads/2021/06/thesis.pdf) by P.Merell).
 
 Why "ghx" ?
 - It serves as a namespace to avoid picking cargo names such as `proc_gen` or `bevy_proc_gen`
