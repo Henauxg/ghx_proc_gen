@@ -14,17 +14,12 @@ Altough it can be applied to do texture synthesis (mainly with bitmaps), `ghx_pr
 
 - [Ghx Proc(edural) Gen(eneration)](#ghx-procedural-geneneration)
   - [Quickstart](#quickstart)
-  - [For Bevy users](#for-bevy-users)
-    - [Bevy quickstart](#bevy-quickstart)
-    - [Bevy plugins](#bevy-plugins)
-    - [Compatible Bevy versions](#compatible-bevy-versions)
-  - [Examples](#examples)
   - [Cargo features](#cargo-features)
+  - [For Bevy users](#for-bevy-users)
+  - [Examples](#examples)
   - [Misc](#misc)
   - [Credits](#credits)
   - [License](#license)
-    - [Code](#code)
-    - [Assets](#assets)
 
 ## Quickstart
 
@@ -97,6 +92,24 @@ If we simply print the result in the terminal we should obtain:
 
 For more information, check out the [ghx_proc_gen crate documentation](https://docs.rs/ghx_proc_gen/latest/ghx_proc_gen) or all the [examples](#examples).
 
+## Cargo features
+
+Find the list and description in [ghx_proc_gen/cargo.toml](ghx_proc_gen/cargo.toml)
+
+### `debug-traces`
+
+Disabled by default, the `debug-traces` feature will add many debug traces (using the `tracing` crate) to the core algorithm of the crate. Since some of those logs are on the hot path, the feature should only be enabled in debug.
+
+When creating models, you can register a name for them with the `with_name` function. With the feature disabled, the function does nothing. But when enabled, the name of your models will be visible in the debug traces of the core algorithm, providing useful information about the current generation state.
+
+The log level can be configured by the user crates (`tracing::level`, the `LogPlugin` for Bevy, ...).
+
+![debug_traces](docs/assets/debug_traces.png)
+
+### `bevy`
+
+Disabled by default, the `bevy` feature simply add some `Component` derive to common struct of `ghx_proc_gen`.
+
 ## For Bevy users
 
 Instead of using the `ghx_proc_gen` crate directly, you can use the `bevy_ghx_proc_gen` crate which exports `ghx_proc_gen` (with the `bevy`feature enabled) as well as additional plugins & utilities dedicated to Bevy.
@@ -162,9 +175,32 @@ For more information, check out the [bevy_ghx_proc_gen crate documentation](http
 
 ### Bevy plugins
 
-- `GridDebugPlugin`
-- `ProcGenSimplePlugin`
-- `ProcGenDebugPlugin`
+- `GridDebugPlugin`: A plugin providing debug utilities for the grid-types bundlded within `ghx_proc_gen`:
+  - Can draw a debug view of any 2d/3d grid
+  - Can draw debug markers on any cells of a grid (controlled via bevy events)
+
+Use it by inserting a `DebugGridView3d` bundle on your `Grid` entity (or `DebugGridView2d`, depending on your Bevy Camera).
+
+<p align="center">
+  <img alt="bevy_chess_board_pattern" src="docs/assets/debug_grid_and_markers.png" width="60%">
+</p>
+
+`ghx_proc_gen` **does not need** a plugin to work, but if you want a really quick way to get started, or are in need of some debug utilities for your generations, there are some ready-made plugins for this:
+
+- `ProcGenSimplePlugin`: Really simple, just here to generate and spawn the nodes assets. See [its sources](bevy_ghx_proc_gen/src/gen/simple_plugin.rs).
+
+- `ProcGenDebugPlugin`: Just a bit more complex, and not focused on performance but rather on demos & debugging use-cases. You can view the generation one step at a time, see where the contradiction occurs, ... See [its sources](bevy_ghx_proc_gen/src/gen/debug_plugin.rs).
+
+Both of those `plugins` start their work when you insert the components inside a `GeneratorBundle` on an `Entity`.
+
+### Cargo features of `bevy_ghx_proc_gen`
+
+Find the list and description in [bevy_ghx_proc_gen/cargo.toml](bevy_ghx_proc_gen/cargo.toml)
+
+- `default-assets-bundle-spawners`: This feature enables some simple `AssetBundleSpawner` `impl` for basic types: (`Handle<Image>`, `Handle<Scene>`, `MaterialMesh` and `PbrMesh`). Disable the feature if you don't need them, or want to customize their implementation.
+- `grid-debug-plugin` compiles the grid debug plugin and its systems.
+- `simple-plugin` compiles the simple plugin and its systems.
+- `debug-plugin` compiles the debug plugin and its systems.
 
 ### Compatible Bevy versions
 
@@ -184,6 +220,8 @@ Compatibility with Bevy versions:
 | Engine                 | None         | None            | Bevy              | Bevy        | Bevy        | Bevy        |
 | Camera                 | N/A          | N/A             | 3D                | 3D          | 2D          | 3D          |
 
+*Examples videos for `pillars`, `tile-layers` & `canyon` are slowed down with the `ProcGenDebugPlugin` for visualization purposes*
+
 <details>
   <summary>[Command-line] Checkerboard example</summary>
 
@@ -191,10 +229,6 @@ Compatibility with Bevy versions:
 cargo run --example checkerboard
 ```
 Simple standalone example, the same as in the [quickstart](#quickstart) section.
-
-<p align="center">
-  <img alt="chess_board_pattern" src="docs/assets/chess_board_pattern.png">
-</p>
 
 </details>
 
@@ -229,7 +263,7 @@ Simplest Bevy example, the same as in the [bevy quickstart](#bevy-quickstart) se
 cargo run --example pillars
 ```
 
-This example uses Bevy with a 3d Camera. It generates multiple pillars of varying sizes in an empty room.
+This example generates multiple pillars of varying sizes in an empty room. Its `rules` are really simple with only 4 models: a void block, a pillar base, a pillar core and a pillar top.
 
 https://github.com/Henauxg/ghx_proc_gen/assets/19689618/7beaa23c-df88-47ca-b1e6-8dcfc579ede2
 
@@ -244,7 +278,7 @@ https://github.com/Henauxg/ghx_proc_gen/assets/19689618/7beaa23c-df88-47ca-b1e6-
 cargo run --example tile-layers
 ```
 
-This example uses Bevy with a 2d Camera. It generates a top-down tilemap by combining multiple z-layers, so the grid and rules used are still 3d.
+This example uses Bevy with a 2d Camera but generates a top-down tilemap by combining multiple z-layers, so the grid and rules used are still 3d.
 
 https://github.com/Henauxg/ghx_proc_gen/assets/19689618/3efe7b78-3c13-4100-999d-af07c94f5a4d
 
@@ -259,7 +293,7 @@ https://github.com/Henauxg/ghx_proc_gen/assets/19689618/3efe7b78-3c13-4100-999d-
 cargo run --example canyon
 ```
 
-This example uses Bevy with a 3d Camera. It generates a canyon-like terrain with some animated windmills.
+This example generates a canyon-like terrain with some animated windmills.
 
 https://github.com/Henauxg/ghx_proc_gen/assets/19689618/25cbc758-3f1f-4e61-b6ed-bcf571e229af
 
@@ -276,28 +310,13 @@ Keybindings for the `Pillars`, `Tile-layers` and `Canyon` examples:
 - `Right` used only with `GenerationViewMode::StepByStepPaused` to step once per press
 - `Up` used only with `GenerationViewMode::StepByStepPaused` to step continuously as long as pressed
 
-## Cargo features
-
-#### `debug-traces`
-
-Disabled by default, the `debug-traces` feature will add many debug traces (using the `tracing` crate) to the core algorithm of the crate. Since some of those logs are on the hot path, the feature should only be enabled in debug.
-
-When creating models, you can register a name for them with the `with_name` function. With the feature disabled, the function does nothing. But when enabled, the name of your models will be visible in the debug traces of the core algorithm, providing useful information about the current generation state.
-
-The log level can be configured by the user crates (`tracing::level`, the `LogPlugin` for Bevy, ...).
-
-![debug_traces](docs/assets/debug_traces.png)
-
-#### `bevy`
-
-Disabled by default, the `bevy` feature simply add some `Component` derive to common struct of `ghx_proc_gen`.
-
 ## Misc
 
 Rules-writing tips:
  - Start simple, then add complexity (new models, sockets and connections) iteratively. Adding one model can have a huge influence on the generation results, and may require weights tweaks.
- - Changing the Node selection heuristic may drastically change the generated results
- - On rectangle grids, diagonals constraints are harder and need intermediary models
+ - Changing the Node selection heuristic may drastically change the generated results.
+ - On rectangle grids, diagonals constraints are harder and need intermediary models.
+ - There are often more than one way to achieve a particular result, and WFC/Model Synthesis shines when combined with other tools & effects. In particular you might find it useful to do some post-processing on the generated results (adding supports, combining models, ...).
   
 Limitations:
 - Generation size can quickly become an issue. For now, when the generator encounters an error (a contradiction in the rules), the generation restarts from the beginning. There are some ways to lessen this problem, such as backtracking during the generation and/or modifying in parts (see [Model Synthesis and Modifying in Blocks](https://www.boristhebrave.com/2021/10/26/model-synthesis-and-modifying-in-blocks/) by BorisTheBrave or [Ph.D. Dissertation, University of North Carolina at Chapel Hill, 2009](https://paulmerrell.org/wp-content/uploads/2021/06/thesis.pdf) by P.Merell).
