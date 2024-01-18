@@ -9,6 +9,7 @@ exclude = ["assets/"]
 bevy_ghx_proc_gen = { path = "../bevy_ghx_proc_gen", default-features = true }
 
 tracing-subscriber = "0.3.18"
+rand = "0.8.5"
 bevy = { version = "0.12.0", default-features = false, features = [
 	# Default features:
 
