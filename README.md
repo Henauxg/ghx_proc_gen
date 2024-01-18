@@ -1,6 +1,8 @@
 [![Bevy tracking](https://img.shields.io/badge/Bevy%20tracking-released%20version-lightblue)](https://github.com/bevyengine/bevy/blob/main/docs/plugins_guidelines.md#main-branch-tracking)
-[![ghx_proc_gen](https://img.shields.io/crates/v/ghx_proc_gen)](https://crates.io/crates/ghx_proc_gen)
-[![bevy_ghx_proc_gen](https://img.shields.io/crates/v/ghx_proc_gen)](https://crates.io/crates/bevy_ghx_proc_gen)
+[![ghx_proc_gen on crates.io](https://img.shields.io/crates/v/ghx_proc_gen)](https://crates.io/crates/ghx_proc_gen)
+[![ghx_proc_gen on doc.rs](https://docs.rs/ghx_proc_gen/badge.svg)](https://docs.rs/ghx_proc_gen)
+[![bevy_ghx_proc_gen on crates.io](https://img.shields.io/crates/v/ghx_proc_gen)](https://crates.io/crates/bevy_ghx_proc_gen)
+[![bevy_ghx_proc_gen on docs.io](https://docs.rs/bevy_ghx_proc_gen/badge.svg)](https://docs.rs/bevy_ghx_proc_gen)
 
 # Ghx Proc(edural) Gen(eneration)
 
@@ -17,9 +19,7 @@ Altough it can be applied to do texture synthesis (mainly with bitmaps), `ghx_pr
     - [Bevy plugins](#bevy-plugins)
     - [Compatible Bevy versions](#compatible-bevy-versions)
   - [Examples](#examples)
-  - [Features](#features)
-    - [`debug-traces`](#debug-traces)
-    - [`bevy`](#bevy)
+  - [Cargo features](#cargo-features)
   - [Misc](#misc)
   - [Credits](#credits)
   - [License](#license)
@@ -176,12 +176,25 @@ Compatibility with Bevy versions:
 
 ## Examples
 
+
+|                        | Checkerboard | Unicode terrain | Bevy-checkerboard | Pillars     | Tile-layers | Canyon      |
+| ---------------------- | ------------ | --------------- | ----------------- | ----------- | ----------- | ----------- |
+| Grid coordinate system | Cartesian2D  | Cartesian2D     | Cartesian2D       | Cartesian3D | Cartesian3D | Cartesian3D |
+| Assets                 | Unicode      | Unicode         | Procedural meshes | .glb        | .png        | .glb        |
+| Engine                 | None         | None            | Bevy              | Bevy        | Bevy        | Bevy        |
+| Camera                 | N/A          | N/A             | 3D                | 3D          | 2D          | 3D          |
+
 <details>
   <summary>[Command-line] Checkerboard example</summary>
 
 ```
 cargo run --example checkerboard
 ```
+Simple standalone example, the same as in the [quickstart](#quickstart) section.
+
+<p align="center">
+  <img alt="chess_board_pattern" src="docs/assets/chess_board_pattern.png">
+</p>
 
 </details>
 
@@ -192,6 +205,8 @@ cargo run --example checkerboard
 cargo run --example unicode-terrain
 ```
 
+Simple standalone example which generates a top-down 2d terrain and displays it in the terminal with unicode characters.
+
 </details>
 
 <details>
@@ -200,6 +215,8 @@ cargo run --example unicode-terrain
 ```
 cargo run --example bevy-checkerboard
 ```
+
+Simplest Bevy example, the same as in the [bevy quickstart](#bevy-quickstart) section.
 
 </details>
 
@@ -210,8 +227,11 @@ cargo run --example bevy-checkerboard
 cargo run --example pillars
 ```
 
-</details>
+This example uses Bevy with a 3d Camera. It generates multiple pillars of varying sizes in an empty room.
 
+*See the [keybindings](#keybindings)*
+
+</details>
 
 <details>
   <summary>[Bevy + ProcGenDebugPlugin] Tile-layers example</summary>
@@ -219,6 +239,10 @@ cargo run --example pillars
 ```
 cargo run --example tile-layers
 ```
+
+This example uses Bevy with a 2d Camera. It generates a top-down tilemap by combining multiple z-layers, so the grid and rules used are still 3d.
+
+*See the [keybindings](#keybindings)*
 
 </details>
 
@@ -229,13 +253,26 @@ cargo run --example tile-layers
 cargo run --example canyon
 ```
 
+This example uses Bevy with a 3d Camera. It generates a canyon-like terrain with some animated windmills.
+
+*See the [keybindings](#keybindings)*
+
 </details>
 
-## Features
+#### Keybindings 
 
-### `debug-traces`
+Keybindings for the `Pillars`, `Tile-layers` and `Canyon` examples: 
+- `F1`: toggles the debug grid view
+- `F2`: toggles the FPS display
+- `Space` unpauses the current generation
+- `Right` used only with `GenerationViewMode::StepByStepPaused` to step once per press
+- `Up` used only with `GenerationViewMode::StepByStepPaused` to step continuously as long as pressed
 
-Disabled by default, this feature will add many debug traces (using the `tracing` crate) to the core algorithm of the crate. Since some of those logs are on the hot path, the feature should only be enabled in debug.
+## Cargo features
+
+#### `debug-traces`
+
+Disabled by default, the `debug-traces` feature will add many debug traces (using the `tracing` crate) to the core algorithm of the crate. Since some of those logs are on the hot path, the feature should only be enabled in debug.
 
 When creating models, you can register a name for them with the `with_name` function. With the feature disabled, the function does nothing. But when enabled, the name of your models will be visible in the debug traces of the core algorithm, providing useful information about the current generation state.
 
@@ -243,14 +280,14 @@ The log level can be configured by the user crates (`tracing::level`, the `LogPl
 
 ![debug_traces](docs/assets/debug_traces.png)
 
-### `bevy`
+#### `bevy`
 
-Disabled by default, this features simply add some `Component` derive to common struct of `ghx_proc_gen`.
+Disabled by default, the `bevy` feature simply add some `Component` derive to common struct of `ghx_proc_gen`.
 
 ## Misc
 
 Rules-writing tips:
- - Start simple, then add complexity iteratively
+ - Start simple, then add complexity (new models, sockets and connections) iteratively. Adding one model can have a huge influence on the generation results, and may require weights tweaks.
  - Changing the Node selection heuristic may drastically change the generated results
  - On rectangle grids, diagonals constraints are harder and need intermediary models
   
