@@ -66,7 +66,7 @@ pub fn insert_default_bundle_to_spawned_nodes<B: Bundle + Default>(
     spawned_nodes: Query<Entity, Added<SpawnedNode>>,
 ) {
     for node in spawned_nodes.iter() {
-        commands.entity(node).insert(B::default());
+        commands.entity(node).try_insert(B::default());
     }
 }
 
@@ -96,7 +96,7 @@ pub fn insert_bundle_from_resource_to_spawned_nodes<B: Bundle + Resource + Clone
     spawned_nodes: Query<Entity, Added<SpawnedNode>>,
 ) {
     for node in spawned_nodes.iter() {
-        commands.entity(node).insert(bundle_to_clone.clone());
+        commands.entity(node).try_insert(bundle_to_clone.clone());
     }
 }
 
