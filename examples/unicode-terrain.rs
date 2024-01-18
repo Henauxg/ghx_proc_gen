@@ -21,11 +21,13 @@ use {
 };
 
 pub enum GenerationViewMode {
-    StepByStep(u64),
+    /// The parameter is the number of milliseconds to wait between each step.
+    StepByStepTimed(u64),
     StepByStepPaused,
     Final,
 }
 
+// Change this to change how the generation advancess
 const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::Final;
 
 fn main() {
@@ -114,7 +116,7 @@ fn main() {
                 println!("Grid at iteration n°{}:", step);
                 display_grid(observer.grid_data(), &icons);
                 match GENERATION_VIEW_MODE {
-                    GenerationViewMode::StepByStep(delay) => {
+                    GenerationViewMode::StepByStepTimed(delay) => {
                         thread::sleep(time::Duration::from_millis(delay));
                     }
                     GenerationViewMode::StepByStepPaused => pause(),
