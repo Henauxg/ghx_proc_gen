@@ -12,10 +12,10 @@ use bevy::{
 /// Used for the examples
 #[derive(Component, Clone, Resource)]
 pub struct SpawningScaleAnimation {
-    duration_sec: f32,
-    progress: f32,
-    easing: fn(f32) -> f32,
-    final_scale: Vec3,
+    pub duration_sec: f32,
+    pub progress: f32,
+    pub easing: fn(f32) -> f32,
+    pub final_scale: Vec3,
 }
 
 impl SpawningScaleAnimation {
