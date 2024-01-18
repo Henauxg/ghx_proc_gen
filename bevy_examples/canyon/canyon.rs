@@ -3,12 +3,16 @@ use std::f32::consts::PI;
 use bevy::{log::LogPlugin, pbr::DirectionalLightShadowMap, prelude::*};
 
 use bevy_examples::{
+    anim::SpawningScaleAnimation,
     camera::{pan_orbit_camera, PanOrbitCamera},
     plugin::ProcGenExamplesPlugin,
     utils::load_assets,
 };
 use bevy_ghx_proc_gen::{
-    gen::{assets::AssetSpawner, debug_plugin::GenerationViewMode},
+    gen::{
+        assets::AssetSpawner,
+        debug_plugin::{GenerationControl, GenerationViewMode},
+    },
     grid::{
         view::{DebugGridView, DebugGridViewConfig3d},
         DebugGridView3d,
@@ -22,7 +26,8 @@ use bevy_ghx_proc_gen::{
     },
     GeneratorBundle,
 };
-use rules::{CustomComponents, WindRotation};
+use rand::Rng;
+use rules::{CustomComponents, RotationRandomizer, ScaleRandomizer, WindRotation};
 
 use crate::rules::rules_and_assets;
 
@@ -30,7 +35,10 @@ mod rules;
 
 // --------------------------------------------
 /// Change this value to change the way the generation is visualized
-const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::Final;
+const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::StepByStepTimed {
+    steps_count: 10,
+    interval_ms: 5,
+};
 
 /// Change to visualize void nodes with a transparent asset
 const SEE_VOID_NODES: bool = false;
@@ -58,11 +66,13 @@ const ASSETS_SCALE: Vec3 = Vec3::new(
 
 fn setup_scene(mut commands: Commands) {
     // Camera
-    let camera_position = Vec3::new(0., 3. * GRID_HEIGHT as f32, 1.7 * GRID_Z as f32 / 2.);
-    let radius = camera_position.length();
+    let camera_position = Vec3::new(0., 1.5 * GRID_HEIGHT as f32, 1.5 * GRID_Z as f32 / 2.);
+    let look_target = Vec3::new(0., -10., 0.);
+    let radius = (look_target - camera_position).length();
     commands.spawn((
         Camera3dBundle {
-            transform: Transform::from_translation(camera_position).looking_at(Vec3::ZERO, Vec3::Y),
+            transform: Transform::from_translation(camera_position)
+                .looking_at(look_target, Vec3::Y),
             ..default()
         },
         PanOrbitCamera {
@@ -118,7 +128,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
     let generator = GeneratorBuilder::new()
         .with_rules(rules)
         .with_grid(grid.clone())
-        .with_max_retry_count(250)
+        .with_max_retry_count(50)
         .with_rng(RngMode::RandomSeed)
         .with_node_heuristic(NodeSelectionHeuristic::MinimumEntropy)
         .with_model_heuristic(ModelSelectionHeuristic::WeightedProbability)
@@ -155,6 +165,8 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
             view: DebugGridView::new(false, true, Color::GRAY),
         },
     ));
+
+    commands.insert_resource(GenerationControl::new(true, true, false));
 }
 
 fn main() {
@@ -171,13 +183,47 @@ fn main() {
         ),
     ));
     app.add_systems(Startup, (setup_generator, setup_scene))
-        .add_systems(Update, (pan_orbit_camera, apply_wind));
+        .add_systems(
+            Update,
+            (
+                pan_orbit_camera,
+                apply_wind,
+                randomize_spawn_scale,
+                randomize_spawn_rotation,
+            ),
+        );
 
     app.run();
 }
 
-pub fn apply_wind(time: Res<Time>, mut new_generations: Query<&mut Transform, With<WindRotation>>) {
-    for mut transform in new_generations.iter_mut() {
+pub fn apply_wind(
+    time: Res<Time>,
+    mut altered_transforms: Query<&mut Transform, With<WindRotation>>,
+) {
+    for mut transform in altered_transforms.iter_mut() {
         transform.rotation = Quat::from_rotation_z(2. * time.elapsed_seconds_wrapped());
+    }
+}
+
+pub fn randomize_spawn_scale(
+    mut commands: Commands,
+    mut altered_transforms: Query<(Entity, &mut SpawningScaleAnimation), With<ScaleRandomizer>>,
+) {
+    let mut rng = rand::thread_rng();
+    for (entity, mut spawning_scale_animation) in altered_transforms.iter_mut() {
+        spawning_scale_animation.final_scale =
+            spawning_scale_animation.final_scale * rng.gen_range(0.7..1.3);
+        commands.entity(entity).remove::<ScaleRandomizer>();
+    }
+}
+
+pub fn randomize_spawn_rotation(
+    mut commands: Commands,
+    mut altered_transforms: Query<(Entity, &mut Transform), With<RotationRandomizer>>,
+) {
+    let mut rng = rand::thread_rng();
+    for (entity, mut transform) in altered_transforms.iter_mut() {
+        transform.rotate_y(rng.gen_range(-45.0..45.0));
+        commands.entity(entity).remove::<RotationRandomizer>();
     }
 }

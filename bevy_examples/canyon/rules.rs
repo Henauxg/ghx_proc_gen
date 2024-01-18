@@ -7,7 +7,7 @@ use bevy_ghx_proc_gen::{
             model::{Model, ModelRotation},
             socket::{Socket, SocketCollection, SocketsCartesian3D},
         },
-        grid::direction::Cartesian3D,
+        grid::direction::{Cartesian3D, GridDelta},
     },
 };
 
@@ -32,7 +32,7 @@ pub(crate) fn rules_and_assets() -> (
     let (rock_to_other, other_to_rock) = (s(), s());
     let (bridge, bridge_side, bridge_top, bridge_bottom) = (s(), s(), s(), s());
     let (bridge_start_in, bridge_start_out, bridge_start_bottom) = (s(), s(), s());
-    let (cactus_border, cactus_top, cactus_bottom) = (s(), s(), s());
+    let (sand_prop_border, sand_prop_top, sand_prop_bottom) = (s(), s(), s());
     let (
         windmill_side,
         windmill_base_top,
@@ -86,22 +86,7 @@ pub(crate) fn rules_and_assets() -> (
                 y_neg: vec![sand_bottom],
             }
             .new_model()
-            .with_all_rotations()
             .with_weight(5.0),
-        ),
-        (
-            asset("cactus"),
-            SocketsCartesian3D::Simple {
-                x_pos: cactus_border,
-                x_neg: cactus_border,
-                z_pos: cactus_border,
-                z_neg: cactus_border,
-                y_pos: cactus_top,
-                y_neg: cactus_bottom,
-            }
-            .new_model()
-            .with_all_rotations()
-            .with_weight(0.25),
         ),
     ];
 
@@ -212,7 +197,36 @@ pub(crate) fn rules_and_assets() -> (
         ),
     ]);
 
-    const WINDMILLS_WEIGHT: f32 = 0.004;
+    // Small rocks and cactuses
+    let sand_prop = SocketsCartesian3D::Simple {
+        x_pos: sand_prop_border,
+        x_neg: sand_prop_border,
+        z_pos: sand_prop_border,
+        z_neg: sand_prop_border,
+        y_pos: sand_prop_top,
+        y_neg: sand_prop_bottom,
+    }
+    .new_model()
+    .with_all_rotations()
+    .with_weight(0.25);
+    assets_and_models.extend(vec![
+        (
+            vec![AssetDef::new("cactus")
+                .with_grid_offset(GridDelta::new(0, -1, 0))
+                .with_component(CustomComponents::ScaleRdm(ScaleRandomizer))
+                .with_component(CustomComponents::RotRdm(RotationRandomizer))],
+            sand_prop.clone(),
+        ),
+        (
+            vec![AssetDef::new("small_rock")
+                .with_grid_offset(GridDelta::new(0, -1, 0))
+                .with_component(CustomComponents::ScaleRdm(ScaleRandomizer))
+                .with_component(CustomComponents::RotRdm(RotationRandomizer))],
+            sand_prop.clone().with_weight(0.4),
+        ),
+    ]);
+
+    const WINDMILLS_WEIGHT: f32 = 0.005;
     assets_and_models.extend(vec![
         (
             asset("windmill_base"),
@@ -291,11 +305,11 @@ pub(crate) fn rules_and_assets() -> (
             vec![ModelRotation::Rot180, ModelRotation::Rot270],
             vec![rock_border_top, ground_rock_border_top],
         )
-        // Cactuses
-        .add_connection(cactus_border, vec![void, rock_border, bridge_side])
+        // Small rocks & Cactuses
+        .add_connection(sand_prop_border, vec![void, rock_border, bridge_side])
         .add_rotated_connections(vec![
-            (cactus_bottom, vec![sand_top]),
-            (cactus_top, vec![void_bottom, bridge_bottom]),
+            (sand_prop_bottom, vec![sand_top]),
+            (sand_prop_top, vec![void_bottom, bridge_bottom]),
         ])
         // Windmills
         .add_connection(windmill_side, vec![void, rock_border, bridge_side])
@@ -323,17 +337,25 @@ pub(crate) fn rules_and_assets() -> (
 #[derive(Component, Clone)]
 pub struct WindRotation;
 
+#[derive(Component, Clone)]
+pub struct ScaleRandomizer;
+
+#[derive(Component, Clone)]
+pub struct RotationRandomizer;
+
 #[derive(Clone)]
 pub enum CustomComponents {
     Rot(WindRotation),
+    ScaleRdm(ScaleRandomizer),
+    RotRdm(RotationRandomizer),
 }
 
 impl ComponentSpawner for CustomComponents {
     fn insert(&self, command: &mut bevy::ecs::system::EntityCommands) {
         match self {
-            CustomComponents::Rot(rot) => {
-                command.insert(rot.clone());
-            }
-        }
+            CustomComponents::Rot(rot) => command.insert(rot.clone()),
+            CustomComponents::ScaleRdm(sc) => command.insert(sc.clone()),
+            CustomComponents::RotRdm(rot) => command.insert(rot.clone()),
+        };
     }
 }
