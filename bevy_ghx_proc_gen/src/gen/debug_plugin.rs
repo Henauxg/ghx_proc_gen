@@ -34,9 +34,11 @@ use super::{
     SpawnedNode,
 };
 
-/// A [`Plugin`] useful for debug/analysis/demo.
+/// A [`Plugin`] useful for debug/analysis/demo. It mainly run [`Generator`] components and spawn the generated model's [`crate::gen::assets::ModelAsset`]
 ///
-/// It takes in a [`GenerationViewMode`] to control how the generators in the [`Generator`] components will be run.
+/// It takes in a [`GenerationViewMode`] to control how the generators components will be run.
+///
+/// It also uses the following `Resources`: [`ProcGenKeyBindings`] and [`GenerationControl`] (and will init them to their defaults if not inserted by the user).
 pub struct ProcGenDebugPlugin<
     C: CoordinateSystem,
     A: AssetsBundleSpawner,

@@ -44,7 +44,7 @@ impl ComponentSpawner for NoComponents {
 
 /// Represents spawnable asset(s) & component(s) for a model.
 ///
-/// They will be spawned every time this model is generated. One `ModelAsset` will spawn exactly one [`bevy::prelude::Entity`].
+/// They will be spawned every time this model is generated. One `ModelAsset` will spawn exactly one [`bevy::prelude::Entity`] (but note that one Model may have more than one `ModelAsset`).
 #[derive(Clone)]
 pub struct ModelAsset<A: AssetsBundleSpawner, T: ComponentSpawner = NoComponents> {
     /// Stores handle(s) to the asset(s) and spawns their bundle
