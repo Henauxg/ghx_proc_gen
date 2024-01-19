@@ -124,13 +124,13 @@ You can also manually create rotated variations of a model: `bridge_model.rotate
 
 ### Coordinate systems & axis
 
-`ghx_proc_gen` uses a **right-handed** coordinate system. However, the rotation axis used to create model variations is up to you. When using `Cartesian3D`, it defaults to `Y+` and can be customized on the `Rules`. with `Cartesian2D`, it is fixed to `Z+`.
+`ghx_proc_gen` uses a **right-handed** coordinate system. However, the rotation axis used to create model variations is up to you. When using `Cartesian3D`, it defaults to `Y+` and can be customized on a `RulesBuilder` [*[documentation](https://docs.rs/ghx_proc_gen/latest/ghx_proc_gen/generator/rules/struct.RulesBuilder.html)*]. When using `Cartesian2D`, the rotation axis is fixed to `Z+`.
 
 *For Bevy, see the [Unofficial bevy Cheatbook](https://bevy-cheatbook.github.io/fundamentals/coords.html).*
 
 ### Connections
 
-As seen in the quickstart, socket connections are declared through a `SocketCollection`.
+As seen in the quickstart, socket connections are declared through a `SocketCollection` [*[documentation](https://docs.rs/ghx_proc_gen/latest/ghx_proc_gen/generator/socket/struct.SocketCollection.html)*].
 
 Do note that sockets connections situated on your rotation axis should be handled differently if they are to be used on a model that can have rotations variations.
 
@@ -155,7 +155,9 @@ See for axample the `bridge_start_bottom` socket in the canyon [example](#exampl
 
 ### Observers
 
-Instead of collecting the results of a generator call direclty, you can retrieve them via an `Observer` connected to a `Generator`. This is what the `ProcGenDebugPlugin` does.
+Instead of collecting the results of a generator call direclty, you can retrieve them via an `Observer` connected to a `Generator` [*[documentation](https://docs.rs/ghx_proc_gen/latest/ghx_proc_gen/generator/observer/index.html)*].
+
+This is what the `ProcGenDebugPlugin` does.
 
 ### Grid loop
 
