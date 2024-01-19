@@ -1,6 +1,6 @@
 [package]
 name = "bevy_ghx_proc_gen"
-version = "0.1.0"
+version = "0.2.0-dev"
 description = "Bevy plugins for 2D & 3D procedural generation with WFC/Model synthesis"
 repository = "https://github.com/Henauxg/ghx_proc_gen"
 documentation = "https://docs.rs/bevy_ghx_proc_gen"
@@ -32,7 +32,7 @@ debug-plugin = ["grid-debug-plugin"]
 
 
 [dependencies]
-ghx_proc_gen = { path = "../ghx_proc_gen", version = "0.1.0", features = [
+ghx_proc_gen = { path = "../ghx_proc_gen", version = "0.2.0-dev", features = [
     "bevy",
 ] }
 bevy = { version = "0.12.0", default-features = false, features = [
