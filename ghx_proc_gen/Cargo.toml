@@ -6,7 +6,7 @@ repository = "https://github.com/Henauxg/ghx_proc_gen"
 documentation = "https://docs.rs/ghx_proc_gen"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-keywords = ["gamedev", "procedural-gen", "wfc", "model synthesis", "algorithm"]
+keywords = ["gamedev", "procedural-gen", "wfc", "model-synthesis", "algorithm"]
 categories = ["game-development", "algorithms"]
 readme = "../README.md"
 
