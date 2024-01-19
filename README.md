@@ -165,7 +165,7 @@ https://github.com/Henauxg/ghx_proc_gen/assets/19689618/3cdab2d6-ef1a-4728-9685-
 
 ## Cargo features
 
-Find the list and description in [ghx_proc_gen/cargo.toml](ghx_proc_gen/cargo.toml)
+Find the list and description in [ghx_proc_gen/cargo.toml](./ghx_proc_gen/cargo.toml)
 
 ### `debug-traces`
 
