@@ -103,7 +103,7 @@ We will take this rope-bridge model as an example:
 <p align="center"><img alt="bridge" src="docs/assets/bridge.png"></p>
 
 ```rust
-  SocketsCartesian3D::Simple {
+  let bridge_model = SocketsCartesian3D::Simple {
     x_pos: bridge_side,
     x_neg: bridge_side,
     z_pos: bridge,
@@ -114,15 +114,15 @@ We will take this rope-bridge model as an example:
   .new_model()
   .with_additional_rotation(ModelRotation::Rot90)
 ```
-With the above declaration, we declared our base model (with `Rot0` by default), and allowed an extra rotation of 90 degrees. Internally, when building the `Rules`, two models variations will be created.
+With the above declaration, we declared our base model (with `Rot0` allowed by default), and allowed an extra rotation of `Rot90` degrees. Internally, when building the `Rules`, two models variations will be created.
 
 When retrieving generated results, you get `ModelInstances` which reference the original model `index` as well as the `ModelRotation` applied to it.
 
-You can also manually create rotated variations of a model: `bridge_model.rotated(ModelRotation::Rot180)`.
+You can also manually create rotated variations of a model: `bridge_model.rotated(ModelRotation::Rot180)` and use a different asset for it, change its weight, etc.
 
 ### Coordinate systems & axis
 
-`ghx_proc_gen` uses a **right-handed** coordinate system. However, the rotation axis used to create model variations is up to you. It can be customized on the `Rules` when using `Cartesian3D` and defaults to `Y+` (with `Cartesian2D`, it is fixed to `Z+`).
+`ghx_proc_gen` uses a **right-handed** coordinate system. However, the rotation axis used to create model variations is up to you. When using `Cartesian3D`, it defaults to `Y+` and can be customized on the `Rules`. with `Cartesian2D`, it is fixed to `Z+`.
 
 *For Bevy, see the [Unofficial bevy Cheatbook](https://bevy-cheatbook.github.io/fundamentals/coords.html).*
 
@@ -141,8 +141,13 @@ Rotating Model 2 in the above figures causes its top socket(s) (here `B`) to be 
 ```
 Let's imagine that Model 1 and 2 had different sockets declarations on their top and bottom respectively, and that these sockets are only compatible when their relative rotation is 0° or 180°:
 ```rust
-  // a socket `model_2_top` can only be connected to another `model_1_bottom` if their **relative** rotation is 0° or 180°
-  sockets.add_constrained_rotated_connection(model_2_top, vec![ModelRotation::Rot0, ModelRotation::Rot180], vec![model_1_bottom]);
+  // a socket `model_2_top` can only be connected to another `model_1_bottom`
+  // if their **relative** rotation is 0° or 180°
+  sockets.add_constrained_rotated_connection(
+    model_2_top,
+    vec![ModelRotation::Rot0, ModelRotation::Rot180],
+    vec![model_1_bottom]
+  );
 ```
 See for axample the `bridge_start_bottom` socket in the canyon [example](#examples), which can only face outwards from a rock.
 
