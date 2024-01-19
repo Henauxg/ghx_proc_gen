@@ -24,6 +24,8 @@ Altough it can be applied to do texture synthesis (mainly with bitmaps), `ghx_pr
 
 https://github.com/Henauxg/ghx_proc_gen/assets/19689618/3f68c62e-ff0c-4d26-adf4-dbc25839dcf3
 
+*Examples in the video are slowed down in order to see the generation happen*
+
 ## Quickstart
 
 ```
