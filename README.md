@@ -165,7 +165,7 @@ https://github.com/Henauxg/ghx_proc_gen/assets/19689618/3cdab2d6-ef1a-4728-9685-
 
 ## Cargo features
 
-Find the list and description in [ghx_proc_gen/cargo.toml](./ghx_proc_gen/cargo.toml)
+Find the list and description in [ghx_proc_gen/cargo.toml](ghx_proc_gen/Cargo.toml)
 
 ### `debug-traces`
 
@@ -270,7 +270,7 @@ Both of those `plugins` start their work when you insert the components from a `
 
 ### Cargo features of `bevy_ghx_proc_gen`
 
-Find the list and description in [bevy_ghx_proc_gen/cargo.toml](bevy_ghx_proc_gen/cargo.toml)
+Find the list and description in [bevy_ghx_proc_gen/Cargo.toml](bevy_ghx_proc_gen/Cargo.toml)
 
 - `default-assets-bundle-spawners`: This feature enables some simple `AssetBundleSpawner` `impl` for basic types: (`Handle<Image>`, `Handle<Scene>`, `MaterialMesh` and `PbrMesh`). Disable the feature if you don't need them, or want to customize their implementation.
 - `grid-debug-plugin` compiles the grid debug plugin and its systems.
