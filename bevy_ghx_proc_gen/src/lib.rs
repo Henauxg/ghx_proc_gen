@@ -1,6 +1,6 @@
 #![warn(missing_docs)]
 
-//! This library encapsulates (and re-exportes) the "ghx_proc_gen" library for 2D & 3D procedural generation with Model synthesis/Wave function Collapse, for a Bevy usage.
+//! This library encapsulates (and re-exports) the "ghx_proc_gen" library for 2D & 3D procedural generation with Model synthesis/Wave function Collapse, for a Bevy usage.
 //! Also provide grid utilities to manipulate & debug 2d & 3d grid data with Bevy.
 
 /// Utilities & debug tools/plugins for using the ghx_proc_gen generator
