@@ -9,7 +9,7 @@ use ndarray::{Array, Ix1, Ix2};
 use tracing::trace;
 
 use super::{
-    model::{expand_models, ExpandedModel, Model, ModelIndex},
+    model::{create_model_variations, Model, ModelIndex, ModelVariation},
     socket::SocketCollection,
 };
 use crate::{
@@ -149,7 +149,7 @@ pub struct Rules<T: CoordinateSystem> {
     /// All the models in this ruleset.
     ///
     /// This is expanded from a given collection of base models, with added variations of rotations around an axis.
-    models: Vec<ExpandedModel>,
+    models: Vec<ModelVariation>,
     /// The vector `allowed_neighbours[model_index][direction]` holds all the allowed adjacent models (indexes) to `model_index` in `direction`.
     ///
     /// Calculated from expanded models.
@@ -167,9 +167,9 @@ impl<T: CoordinateSystem> Rules<T> {
         coord_system: T,
     ) -> Result<Rules<T>, RulesError> {
         let original_models_count = models.len();
-        let expanded_models = expand_models(models, rotation_axis);
+        let model_variations = create_model_variations(models, rotation_axis);
         // We test the expanded models because a model may have no rotations allowed.
-        if expanded_models.len() == 0 || socket_collection.is_empty() {
+        if model_variations.len() == 0 || socket_collection.is_empty() {
             return Err(RulesError::NoModelsOrSockets);
         }
 
@@ -178,7 +178,7 @@ impl<T: CoordinateSystem> Rules<T> {
         // Using a BTreeSet because HashSet order is not deterministic. Performance impact is non-existant since `sockets_to_models` is discarded after building the Rules.
         let empty_in_all_directions: Array<BTreeSet<ModelIndex>, Ix1> =
             Array::from_elem(coord_system.directions().len(), BTreeSet::new());
-        for (model_index, model) in expanded_models.iter().enumerate() {
+        for (model_index, model) in model_variations.iter().enumerate() {
             for &direction in coord_system.directions() {
                 let opposite_dir = direction.opposite() as usize;
                 for socket in &model.sockets()[direction as usize] {
@@ -191,10 +191,10 @@ impl<T: CoordinateSystem> Rules<T> {
         }
 
         let mut allowed_neighbours = Array::from_elem(
-            (expanded_models.len(), coord_system.directions().len()),
+            (model_variations.len(), coord_system.directions().len()),
             Vec::new(),
         );
-        for (model_index, model) in expanded_models.iter().enumerate() {
+        for (model_index, model) in model_variations.iter().enumerate() {
             for &direction in coord_system.directions() {
                 // We filter unique models with a Set, but waht we want in the Rules is a Vec for access speed, caching, and iteration determinism.
                 let mut unique_models = HashSet::new();
@@ -229,7 +229,7 @@ impl<T: CoordinateSystem> Rules<T> {
 
         Ok(Rules {
             original_models_count,
-            models: expanded_models,
+            models: model_variations,
             allowed_neighbours,
             typestate: PhantomData,
         })
@@ -262,7 +262,7 @@ impl<T: CoordinateSystem> Rules<T> {
     }
 
     #[inline]
-    pub(crate) fn model(&self, index: usize) -> &ExpandedModel {
+    pub(crate) fn model(&self, index: usize) -> &ModelVariation {
         &self.models[index]
     }
 }
