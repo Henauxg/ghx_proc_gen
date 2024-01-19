@@ -1,7 +1,7 @@
 [package]
 name = "bevy_ghx_proc_gen"
 version = "0.1.0"
-description = "Bevy plugin for 2D & 3D procedural generation with WFC/Model synthesis"
+description = "Bevy plugins for 2D & 3D procedural generation with WFC/Model synthesis"
 repository = "https://github.com/Henauxg/ghx_proc_gen"
 documentation = "https://docs.rs/bevy_ghx_proc_gen"
 edition = "2021"
@@ -14,7 +14,6 @@ keywords = [
     "bevy",
 ]
 categories = ["game-development", "algorithms"]
-readme = "README.md"
 
 [features]
 default = [
