@@ -14,6 +14,7 @@ Altough it can be applied to do texture synthesis (mainly with bitmaps), `ghx_pr
 
 - [Ghx Proc(edural) Gen(eneration)](#ghx-procedural-geneneration)
   - [Quickstart](#quickstart)
+  - [More information](#more-information)
   - [Cargo features](#cargo-features)
   - [For Bevy users](#for-bevy-users)
   - [Examples](#examples)
@@ -27,7 +28,7 @@ Altough it can be applied to do texture synthesis (mainly with bitmaps), `ghx_pr
 cargo add ghx_proc_gen
 ```
 
-In `ghx_proc_gen`, the building pieces of a generation are called `Models`, and adjacency constraints are defined with `Socket`. Every `Model` has one or more `Socket` on each of his sides.
+In `ghx_proc_gen`, the building pieces of a generation are called `Models`, and adjacency constraints are defined with `Socket`. Every `Model` has **one or more** `Socket` on each of his sides.
 
 Connections are then given between some of those `Sockets`, which allows `Models` with matching `Sockets` on opposite sides to be neighbours.
 
@@ -92,6 +93,67 @@ If we simply print the result in the terminal we should obtain:
 
 For more information, check out the [ghx_proc_gen crate documentation](https://docs.rs/ghx_proc_gen/latest/ghx_proc_gen) or all the [examples](#examples).
 
+## More information
+
+### Model variations
+
+In order to facilitate the rules-definition step, `ghx_proc_gen` can create some models variations for you automatically. This will take care of rotating all the model `sockets` properly.
+
+We will take this rope-bridge model as an example: 
+<p align="center"><img alt="bridge" src="docs/assets/bridge.png"></p>
+
+```rust
+  SocketsCartesian3D::Simple {
+    x_pos: bridge_side,
+    x_neg: bridge_side,
+    z_pos: bridge,
+    z_neg: bridge,
+    y_pos: bridge_top,
+    y_neg: bridge_bottom,
+  }
+  .new_model()
+  .with_additional_rotation(ModelRotation::Rot90)
+```
+With the above declaration, we declared our base model (with `Rot0` by default), and allowed an extra rotation of 90 degrees. Internally, when building the `Rules`, two models variations will be created.
+
+When retrieving generated results, you get `ModelInstances` which reference the original model `index` as well as the `ModelRotation` applied to it.
+
+You can also manually create rotated variations of a model: `bridge_model.rotated(ModelRotation::Rot180)`.
+
+### Coordinate systems & axis
+
+`ghx_proc_gen` uses a **right-handed** coordinate system. However, the rotation axis used to create model variations is up to you. It can be customized on the `Rules` when using `Cartesian3D` and defaults to `Y+` (with `Cartesian2D`, it is fixed to `Z+`).
+
+*For Bevy, see the [Unofficial bevy Cheatbook](https://bevy-cheatbook.github.io/fundamentals/coords.html).*
+
+### Connections
+
+As seen in the quickstart, socket connections are declared through a `SocketCollection`.
+
+Do note that sockets connections situated on your rotation axis should be handled differently if they are to be used on a model that can have rotations variations.
+
+<p align="center"><img alt="socket_compatibility" src="docs/assets/socket_compatibility.png"></p>
+
+Rotating Model 2 in the above figures causes its top socket(s) (here `B`) to be different(s). Here we could use:
+```rust
+  // a socket `B` can only be connected to another `B` if their **relative** rotation is 0°
+  sockets.add_constrained_rotated_connection(B, vec![ModelRotation::Rot0], vec![B]);
+```
+Let's imagine that Model 1 and 2 had different sockets declarations on their top and bottom respectively, and that these sockets are only compatible when their relative rotation is 0° or 180°:
+```rust
+  // a socket `model_2_top` can only be connected to another `model_1_bottom` if their **relative** rotation is 0° or 180°
+  sockets.add_constrained_rotated_connection(model_2_top, vec![ModelRotation::Rot0, ModelRotation::Rot180], vec![model_1_bottom]);
+```
+See for axample the `bridge_start_bottom` socket in the canyon [example](#examples), which can only face outwards from a rock.
+
+### Observers
+
+Instead of collecting the results of a generator call direclty, you can retrieve them via an `Observer` connected to a `Generator`. This is what the `ProcGenDebugPlugin` does.
+
+### Grid loop
+
+Grids can be configured to loop on any axis, this is set from their `GridDefinition`.
+
 ## Cargo features
 
 Find the list and description in [ghx_proc_gen/cargo.toml](ghx_proc_gen/cargo.toml)
@@ -112,7 +174,7 @@ Disabled by default, the `bevy` feature simply add some `Component` derive to co
 
 ## For Bevy users
 
-Instead of using the `ghx_proc_gen` crate directly, you can use the `bevy_ghx_proc_gen` crate which exports `ghx_proc_gen` (with the `bevy`feature enabled) as well as additional plugins & utilities dedicated to Bevy.
+Instead of using the `ghx_proc_gen` crate directly, you can use the `bevy_ghx_proc_gen` crate which depends on and exports `ghx_proc_gen` (with the `bevy`feature enabled) as well as additional plugins & utilities dedicated to Bevy.
 ```
 cargo add bevy_ghx_proc_gen
 ```
@@ -189,9 +251,9 @@ Use it by inserting a `DebugGridView3d` bundle on your `Grid` entity (or `DebugG
 
 - `ProcGenSimplePlugin`: Really simple, just here to generate and spawn the nodes assets. See [its sources](bevy_ghx_proc_gen/src/gen/simple_plugin.rs).
 
-- `ProcGenDebugPlugin`: Just a bit more complex, and not focused on performance but rather on demos & debugging use-cases. You can view the generation one step at a time, see where the contradiction occurs, ... See [its sources](bevy_ghx_proc_gen/src/gen/debug_plugin.rs).
+- `ProcGenDebugPlugin`: Just a bit more complex, and not focused on performance but rather on demos & debugging use-cases. You can view the generation one step at a time, see where the contradiction occurs and more. See [its sources](bevy_ghx_proc_gen/src/gen/debug_plugin.rs).
 
-Both of those `plugins` start their work when you insert the components inside a `GeneratorBundle` on an `Entity`.
+Both of those `plugins` start their work when you insert the components from a `GeneratorBundle` on an `Entity`.
 
 ### Cargo features of `bevy_ghx_proc_gen`
 
@@ -220,7 +282,7 @@ Compatibility with Bevy versions:
 | Engine                 | None         | None            | Bevy              | Bevy        | Bevy        | Bevy        |
 | Camera                 | N/A          | N/A             | 3D                | 3D          | 2D          | 3D          |
 
-*Examples videos for `pillars`, `tile-layers` & `canyon` are slowed down with the `ProcGenDebugPlugin` for visualization purposes*
+*Examples videos for `unicode-terrain`, `pillars`, `tile-layers` & `canyon` are slowed down (with the `ProcGenDebugPlugin` for Bevy) in order to see the generation happen*
 
 <details>
   <summary>[Command-line] Checkerboard example</summary>
@@ -319,7 +381,7 @@ Rules-writing tips:
  - There are often more than one way to achieve a particular result, and WFC/Model Synthesis shines when combined with other tools & effects. In particular you might find it useful to do some post-processing on the generated results (adding supports, combining models, ...).
   
 Limitations:
-- Generation size can quickly become an issue. For now, when the generator encounters an error (a contradiction in the rules), the generation restarts from the beginning. There are some ways to lessen this problem, such as backtracking during the generation and/or modifying in parts (see [Model Synthesis and Modifying in Blocks](https://www.boristhebrave.com/2021/10/26/model-synthesis-and-modifying-in-blocks/) by BorisTheBrave or [Ph.D. Dissertation, University of North Carolina at Chapel Hill, 2009](https://paulmerrell.org/wp-content/uploads/2021/06/thesis.pdf) by P.Merell).
+- Generation size can quickly become an issue. For now, when the generator encounters an error (a contradiction between the rules and the state of a node), the generation restarts from the beginning. There are some ways to lessen this problem, such as backtracking during the generation and/or modifying in parts (see [Model Synthesis and Modifying in Blocks](https://www.boristhebrave.com/2021/10/26/model-synthesis-and-modifying-in-blocks/) by BorisTheBrave or [Ph.D. Dissertation, University of North Carolina at Chapel Hill, 2009](https://paulmerrell.org/wp-content/uploads/2021/06/thesis.pdf) by P.Merell).
 
 Why "ghx" ?
 - It serves as a namespace to avoid picking cargo names such as `proc_gen` or `bevy_proc_gen`
