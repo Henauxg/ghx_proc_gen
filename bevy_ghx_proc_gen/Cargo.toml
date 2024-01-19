@@ -6,13 +6,7 @@ repository = "https://github.com/Henauxg/ghx_proc_gen"
 documentation = "https://docs.rs/bevy_ghx_proc_gen"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-keywords = [
-    "gamedev",
-    "procedural-generation",
-    "wfc",
-    "model synthesis",
-    "bevy",
-]
+keywords = ["gamedev", "procedural-gen", "wfc", "model synthesis", "bevy"]
 categories = ["game-development", "algorithms"]
 
 [features]
