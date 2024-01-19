@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeSet, HashMap, HashSet},
     marker::PhantomData,
 };
 
@@ -174,16 +174,17 @@ impl<T: CoordinateSystem> Rules<T> {
 
         // Temporary collection to reverse the relation: sockets_to_models.get(socket)[direction] will hold all the models that have 'socket' from 'direction'
         let mut sockets_to_models = HashMap::new();
-        let empty_in_all_directions: Array<HashSet<ModelIndex>, Ix1> =
-            Array::from_elem(coord_system.directions().len(), HashSet::new());
+        // Using a BTreeSet because HashSet order is not deterministic. Performance impact is non-existant since `sockets_to_models` is discarded after building the Rules.
+        let empty_in_all_directions: Array<BTreeSet<ModelIndex>, Ix1> =
+            Array::from_elem(coord_system.directions().len(), BTreeSet::new());
         for (model_index, model) in expanded_models.iter().enumerate() {
             for &direction in coord_system.directions() {
-                let inverse_dir = direction.opposite() as usize;
+                let opposite_dir = direction.opposite() as usize;
                 for socket in &model.sockets()[direction as usize] {
                     let compatible_models = sockets_to_models
                         .entry(socket)
                         .or_insert(empty_in_all_directions.clone());
-                    compatible_models[inverse_dir].insert(model_index);
+                    compatible_models[opposite_dir].insert(model_index);
                 }
             }
         }
@@ -194,6 +195,7 @@ impl<T: CoordinateSystem> Rules<T> {
         );
         for (model_index, model) in expanded_models.iter().enumerate() {
             for &direction in coord_system.directions() {
+                // We filter unique models with a Set, but waht we want in the Rules is a Vec for access speed, caching, and iteration determinism.
                 let mut unique_models = HashSet::new();
                 // For each socket of the model in this direction: get all the sockets that are compatible for connection
                 for socket in &model.sockets()[direction as usize] {
@@ -201,8 +203,9 @@ impl<T: CoordinateSystem> Rules<T> {
                         for compatible_socket in compatible_sockets {
                             // For each of those: get all the models that have this socket from direction
                             // `sockets_to_models` may not have an entry for `compatible_socket` depending on user input data (socket present in sockets_connections but not in a model)
-                            if let Some(entry) = sockets_to_models.get(&compatible_socket) {
-                                for allowed_model in &entry[direction as usize] {
+                            if let Some(allowed_models) = sockets_to_models.get(&compatible_socket)
+                            {
+                                for allowed_model in &allowed_models[direction as usize] {
                                     if unique_models.insert(*allowed_model) {
                                         allowed_neighbours[(model_index, direction as usize)]
                                             .push(*allowed_model);
