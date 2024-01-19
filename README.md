@@ -22,7 +22,7 @@ Altough it can be applied to do texture synthesis (mainly with bitmaps), `ghx_pr
   - [Credits](#credits)
   - [License](#license)
 
-https://github.com/Henauxg/ghx_proc_gen/assets/19689618/69b702ae-f84b-46e0-b46b-1ebc2a392b09
+https://github.com/Henauxg/ghx_proc_gen/assets/19689618/3f68c62e-ff0c-4d26-adf4-dbc25839dcf3
 
 ## Quickstart
 
