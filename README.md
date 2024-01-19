@@ -159,6 +159,8 @@ Instead of collecting the results of a generator call direclty, you can retrieve
 
 Grids can be configured to loop on any axis, this is set from their `GridDefinition`.
 
+https://github.com/Henauxg/ghx_proc_gen/assets/19689618/3cdab2d6-ef1a-4728-9685-7c2ef1688bff
+
 ## Cargo features
 
 Find the list and description in [ghx_proc_gen/cargo.toml](ghx_proc_gen/cargo.toml)
