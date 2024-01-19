@@ -166,11 +166,12 @@ impl<T: CoordinateSystem> Rules<T> {
         rotation_axis: Direction,
         coord_system: T,
     ) -> Result<Rules<T>, RulesError> {
-        if models.len() == 0 || socket_collection.is_empty() {
-            return Err(RulesError::NoModelsOrSockets);
-        }
         let original_models_count = models.len();
         let expanded_models = expand_models(models, rotation_axis);
+        // We test the expanded models because a model may have no rotations allowed.
+        if expanded_models.len() == 0 || socket_collection.is_empty() {
+            return Err(RulesError::NoModelsOrSockets);
+        }
 
         // Temporary collection to reverse the relation: sockets_to_models.get(socket)[direction] will hold all the models that have 'socket' from 'direction'
         let mut sockets_to_models = HashMap::new();

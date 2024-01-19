@@ -27,7 +27,7 @@ pub struct Model<T: CoordinateSystem> {
     /// Defaults to only [`ModelRotation::Rot0`].
     ///
     /// Notes:
-    /// - In 3d, sockets of a model that are on the rotation axis are rotated into new sockets when the model itself is rotated. See [`SocketCollection`] for how to define and/or constrain sockets connections on the rotation axis.
+    /// - In 3d, sockets of a model that are on the rotation axis are rotated into new sockets when the model itself is rotated. See [`crate::generator::socket::SocketCollection`] for how to define and/or constrain sockets connections on the rotation axis.
     /// - In 2d, the rotation axis cannot be modified and is set to [`Direction::ZForward`].
     allowed_rotations: HashSet<ModelRotation>,
 
@@ -86,33 +86,45 @@ impl Model<Cartesian3D> {
 }
 
 impl<T: CoordinateSystem> Model<T> {
-    /// Specify that this [`Model`] can be rotated in exactly one way: `rotation` (in addition to the default [`ModelRotation::Rot0`] rotation)
+    /// Specify that this [`Model`] can be rotated in exactly one way: `rotation`
     ///
     /// Rotations are specified as counter-clockwise
     pub fn with_rotation(mut self, rotation: ModelRotation) -> Self {
-        self.allowed_rotations = HashSet::from([ModelRotation::Rot0, rotation]);
+        self.allowed_rotations = HashSet::from([rotation]);
         self
     }
-    /// Specify that this [`Model`] can be rotated in every way specified in `rotations`, (in addition to the default [`ModelRotation::Rot0`] rotation)
+    /// Specify that this [`Model`] can be rotated by `rotation`, in addition to its currently allowed rotations.
+    ///
+    /// Rotations are specified as counter-clockwise
+    pub fn with_additional_rotation(mut self, rotation: ModelRotation) -> Self {
+        self.allowed_rotations.insert(rotation);
+        self
+    }
+    /// Specify that this [`Model`] can be rotated in every way specified in `rotations`.
     ///
     /// Rotations are specified as counter-clockwise
     pub fn with_rotations<R: Into<HashSet<ModelRotation>>>(mut self, rotations: R) -> Self {
         self.allowed_rotations = rotations.into();
-        self.allowed_rotations.insert(ModelRotation::Rot0);
         self
     }
-    /// Specify that this [`Model`] can be rotated in every way (in addition to the default [`ModelRotation::Rot0`] rotation)
+    /// Specify that this [`Model`] can be rotated in every way specified in `rotations` in addition to its currently allowed rotations.
+    ///
+    /// Rotations are specified as counter-clockwise
+    pub fn with_additional_rotations<R: IntoIterator<Item = ModelRotation>>(
+        mut self,
+        rotations: R,
+    ) -> Self {
+        self.allowed_rotations.extend(rotations.into_iter());
+        self
+    }
+    /// Specify that this [`Model`] can be rotated in every way.
     ///
     /// Rotations are specified as counter-clockwise
     pub fn with_all_rotations(mut self) -> Self {
-        self.allowed_rotations = ALL_NODE_ROTATIONS.iter().cloned().collect();
+        self.allowed_rotations = ALL_MODEL_ROTATIONS.iter().cloned().collect();
         self
     }
-    /// Specify that this [`Model`] can not be rotated in any way except the default [`ModelRotation::Rot0`] rotation
-    pub fn with_no_rotations(mut self) -> Self {
-        self.allowed_rotations = HashSet::from([ModelRotation::Rot0]);
-        self
-    }
+
     /// Specify this [`Model`] weight. The `weight` value should be strictly superior to `0`. If it is not the case, the value will be overriden by `f32::MIN_POSITIVE`.
     ///
     /// Used by a [`super::Generator`] when using [`super::ModelSelectionHeuristic::WeightedProbability`].
@@ -286,8 +298,8 @@ impl ModelRotation {
     /// assert_eq!(rot_90.rotated(ModelRotation::Rot180), ModelRotation::Rot270);
     /// ```
     pub fn rotated(&self, rotation: ModelRotation) -> ModelRotation {
-        ALL_NODE_ROTATIONS
-            [(self.index() as usize + rotation.index() as usize) % ALL_NODE_ROTATIONS.len()]
+        ALL_MODEL_ROTATIONS
+            [(self.index() as usize + rotation.index() as usize) % ALL_MODEL_ROTATIONS.len()]
     }
 
     #[inline]
@@ -322,7 +334,7 @@ impl ModelRotation {
 }
 
 /// All the possible rotations for a [`Model`]
-pub const ALL_NODE_ROTATIONS: &'static [ModelRotation] = &[
+pub const ALL_MODEL_ROTATIONS: &'static [ModelRotation] = &[
     ModelRotation::Rot0,
     ModelRotation::Rot90,
     ModelRotation::Rot180,
@@ -336,7 +348,7 @@ pub(crate) fn expand_models<T: CoordinateSystem>(
     let mut expanded_models = Vec::new();
     for (index, model) in models.iter().enumerate() {
         // Iterate on a vec of all possible node rotations and filter with the set to have a deterministic insertion order of expanded nodes.
-        for rotation in ALL_NODE_ROTATIONS {
+        for rotation in ALL_MODEL_ROTATIONS {
             if model.allowed_rotations.contains(&rotation) {
                 let rotated_sockets = model.rotated_sockets(*rotation, rotation_axis);
                 expanded_models.push(ExpandedModel {

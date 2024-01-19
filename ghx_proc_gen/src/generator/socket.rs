@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::grid::direction::{Cartesian2D, Cartesian3D};
 
-use super::model::{Model, ModelRotation, ALL_NODE_ROTATIONS};
+use super::model::{Model, ModelRotation, ALL_MODEL_ROTATIONS};
 
 /// Id of a possible connection type
 pub(crate) type SocketId = u64;
@@ -121,10 +121,10 @@ impl SocketCollection {
     /// // Note: here two `model_a` cannot be stacked on top of each other since `vertical_a` was not said to be connected to itself.
     /// ```
     pub fn add_rotated_connection(&mut self, from: Socket, to: Vec<Socket>) -> &mut Self {
-        for to_rotation in ALL_NODE_ROTATIONS {
+        for to_rotation in ALL_MODEL_ROTATIONS {
             let to_rotated_sockets: Vec<Socket> =
                 to.iter().map(|s| s.rotated(*to_rotation)).collect();
-            for from_rot in ALL_NODE_ROTATIONS {
+            for from_rot in ALL_MODEL_ROTATIONS {
                 let rotated_socket = from.rotated(*from_rot);
                 for to_socket in to_rotated_sockets.iter() {
                     self.register_connection(&rotated_socket, &to_socket);
@@ -159,7 +159,7 @@ impl SocketCollection {
         mut relative_rotations: Vec<ModelRotation>,
         to: Vec<Socket>,
     ) -> &mut Self {
-        for to_rotation in ALL_NODE_ROTATIONS {
+        for to_rotation in ALL_MODEL_ROTATIONS {
             let to_rotated_sockets: Vec<Socket> =
                 to.iter().map(|s| s.rotated(*to_rotation)).collect();
             for from_rotation in relative_rotations.iter_mut() {
