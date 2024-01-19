@@ -134,12 +134,12 @@ Do note that sockets connections situated on your rotation axis should be handle
 
 <p align="center"><img alt="socket_compatibility" src="docs/assets/socket_compatibility.png"></p>
 
-Rotating Model 2 in the above figures causes its top socket(s) (here `B`) to be different(s). Here we could use:
+Rotating Model 2 in the above figures causes its top socket(s) (here `B`) to be different(s). For this example, we could use:
 ```rust
   // a socket `B` can only be connected to another `B` if their **relative** rotation is 0°
   sockets.add_constrained_rotated_connection(B, vec![ModelRotation::Rot0], vec![B]);
 ```
-Let's imagine that Model 1 and 2 had different sockets declarations on their top and bottom respectively, and that these sockets are only compatible when their relative rotation is 0° or 180°:
+Let's imagine that Model 1 and 2 had different sockets declarations on their top and bottom respectively, and that these sockets were only compatible when their relative rotation is 0° or 180°:
 ```rust
   // a socket `model_2_top` can only be connected to another `model_1_bottom`
   // if their **relative** rotation is 0° or 180°
@@ -244,7 +244,9 @@ For more information, check out the [bevy_ghx_proc_gen crate documentation](http
 
 ### Bevy plugins
 
-- `GridDebugPlugin`: A plugin providing debug utilities for the grid-types bundlded within `ghx_proc_gen`:
+#### Grid plugin
+
+`GridDebugPlugin` provides debug utilities for the grid-types bundlded within `ghx_proc_gen`:
   - Can draw a debug view of any 2d/3d grid
   - Can draw debug markers on any cells of a grid (controlled via bevy events)
 
@@ -254,11 +256,13 @@ Use it by inserting a `DebugGridView3d` bundle on your `Grid` entity (or `DebugG
   <img alt="bevy_chess_board_pattern" src="docs/assets/debug_grid_and_markers.png" width="60%">
 </p>
 
+#### ProcGen plugins
+
 `ghx_proc_gen` **does not need** a plugin to work, but if you want a really quick way to get started, or are in need of some debug utilities for your generations, there are some ready-made plugins for this:
 
 - `ProcGenSimplePlugin`: Really simple, just here to generate and spawn the nodes assets. See [its sources](bevy_ghx_proc_gen/src/gen/simple_plugin.rs).
 
-- `ProcGenDebugPlugin`: Just a bit more complex, and not focused on performance but rather on demos & debugging use-cases. You can view the generation one step at a time, see where the contradiction occurs and more. See [its sources](bevy_ghx_proc_gen/src/gen/debug_plugin.rs).
+- `ProcGenDebugPlugin` [*Depends on `GridDebugPlugin`*]: Just a bit more complex, and not focused on performance but rather on demos & debugging use-cases. You can view the generation one step at a time, see where the contradiction occurs and more. See [its sources](bevy_ghx_proc_gen/src/gen/debug_plugin.rs).
 
 Both of those `plugins` start their work when you insert the components from a `GeneratorBundle` on an `Entity`.
 
