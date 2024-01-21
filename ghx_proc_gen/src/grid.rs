@@ -147,9 +147,7 @@ impl<T: CoordinateSystem + Clone> GridDefinition<T> {
 
     /// Returns the total size of the grid
     pub fn total_size(&self) -> usize {
-        (self.size_x * self.size_y * self.size_z)
-            .try_into()
-            .unwrap()
+        (self.size_xy * self.size_z).try_into().unwrap()
     }
 
     /// Returns a [`Range`] over all node indexes in this grid
