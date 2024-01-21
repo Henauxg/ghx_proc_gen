@@ -15,7 +15,7 @@ pub enum GenerationUpdate {
 
 /// Observer with a queue of the [`GenerationUpdate`] sent by the [`crate::generator::Generator`] which also maintains a coherent state of the current generation in a [`GridData`]
 ///
-/// Can be used in a diffrent thread than the generator's thread.
+/// Can be used in a different thread than the generator's thread.
 pub struct QueuedStatefulObserver<T: CoordinateSystem + Clone> {
     grid_data: GridData<T, Option<ModelInstance>>,
     receiver: crossbeam_channel::Receiver<GenerationUpdate>,
