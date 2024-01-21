@@ -308,6 +308,7 @@ Keybindings for the `Pillars`, `Tile-layers` and `Canyon` examples:
 
 Rules-writing tips:
  - Start simple, then add complexity (new models, sockets and connections) iteratively. Adding one model can have a huge influence on the generation results, and may require weights tweaks.
+ - Don't hesitate to define as many sockets as needed. Sockets onyl exist before the `Rules` are fully created, and are optimized away after.
  - Changing the Node selection heuristic may drastically change the generated results.
  - On rectangle grids, diagonals constraints are harder and need intermediary models.
  - There are often more than one way to achieve a particular result, and WFC/Model Synthesis shines when combined with other tools & effects. In particular you might find it useful to do some post-processing on the generated results (adding supports, combining models, ...).
