@@ -1,40 +1,45 @@
-[![Bevy tracking](https://img.shields.io/badge/Bevy%20tracking-released%20version-lightblue)](https://github.com/bevyengine/bevy/blob/main/docs/plugins_guidelines.md#main-branch-tracking)
-[![ghx_proc_gen on crates.io](https://img.shields.io/crates/v/ghx_proc_gen)](https://crates.io/crates/ghx_proc_gen)
-[![ghx_proc_gen on doc.rs](https://docs.rs/ghx_proc_gen/badge.svg)](https://docs.rs/ghx_proc_gen)
-[![bevy_ghx_proc_gen on crates.io](https://img.shields.io/crates/v/ghx_proc_gen)](https://crates.io/crates/bevy_ghx_proc_gen)
-[![bevy_ghx_proc_gen on docs.io](https://docs.rs/bevy_ghx_proc_gen/badge.svg)](https://docs.rs/bevy_ghx_proc_gen)
+<div align="center">
 
 # Ghx Proc(edural) Gen(eneration)
 
-A Rust library for 2D & 3D procedural generation with **Model synthesis/Wave function Collapse**, also available for the Bevy engine.
+[![ghx_proc_gen on crates.io](https://img.shields.io/crates/v/ghx_proc_gen)](https://crates.io/crates/ghx_proc_gen)
+[![ghx_proc_gen on doc.rs](https://docs.rs/ghx_proc_gen/badge.svg)](https://docs.rs/ghx_proc_gen)
+
+</div>
+
+A Rust library for 2D & 3D procedural generation with **Model synthesis/Wave function Collapse**, also available for the [`Bevy`](https://github.com/bevyengine/bevy) engine.
 
 With Model synthesis/Wave function Collapse, you provide **adjacency constraints** as an input to the algorithm, and internally, a solver (AC-4 in this case), will try to generate a solution with satisfies those constraints, very much like a sudoku solver.
 
 Altough it can be applied to do texture synthesis (mainly with bitmaps), `ghx_proc_gen` focuses more on grid-based use-cases such as terrain or structures generation.
 
 - [Ghx Proc(edural) Gen(eneration)](#ghx-procedural-geneneration)
-  - [Quickstart](#quickstart)
-  - [More information](#more-information)
-  - [Cargo features](#cargo-features)
-  - [For Bevy users](#for-bevy-users)
-  - [Examples](#examples)
-  - [Misc](#misc)
-  - [Credits](#credits)
-  - [License](#license)
+- [Quickstart](#quickstart)
+- [More information](#more-information)
+- [Cargo features](#cargo-features)
+- [For Bevy users](#for-bevy-users)
+- [Examples](#examples)
+- [Misc](#misc)
+- [Credits](#credits)
+- [License](#license)
+
+<div align="center">
 
 https://github.com/Henauxg/ghx_proc_gen/assets/19689618/3f68c62e-ff0c-4d26-adf4-dbc25839dcf3
 
 *Examples in the video are slowed down in order to see the generation happen*
 
-## Quickstart
+</div>
+
+# Quickstart
 
 ```
 cargo add ghx_proc_gen
 ```
 
-In `ghx_proc_gen`, the building pieces of a generation are called `Models`, and adjacency constraints are defined with `Socket`. Every `Model` has **one or more** `Socket` on each of his sides.
+The building pieces of a generation are called `Models`, and adjacency constraints are defined with `Socket`. Every model has **one or more** socket on each of his sides.
 
-Connections are then given between some of those `Sockets`, which allows `Models` with matching `Sockets` on opposite sides to be neighbours.
+Connections are then defined between the sockets, which allows models with connected sockets on opposite sides to be neighbours.
 
 Let's build a checker board pattern:
 
@@ -59,13 +64,13 @@ Let's build a checker board pattern:
   let rules = RulesBuilder::new_cartesian_2d(models, sockets).build().unwrap();
 ```
 
-2) Create a `GridDefinition`
+2) Create a `GridDefinition`:
 ```rust
   // Like a chess board, let's do an 8x8 2d grid
   let grid = GridDefinition::new_cartesian_2d(8, 8, false, false);
 ```
 
-3) Create a `Generator` 
+3) Create a `Generator` :
 ```rust
   // There many more parameters you can tweak on a Generator before building it, explore the API.
   let mut generator = GeneratorBuilder::new()
@@ -74,7 +79,7 @@ Let's build a checker board pattern:
       .build();
 ```
 
-4) Get a result
+4) Get a result:
 ```rust
   // Here we directly generate the whole grid, and ask for the result to be returned.
   // The generation could also be done iteratively via `generator.select_and_propagate()`, or the results could be obtained through an `Observer`
@@ -95,11 +100,11 @@ If we simply print the result in the terminal we should obtain:
   <img alt="chess_board_pattern" src="docs/assets/chess_board_pattern.png">
 </p>
 
-For more information, check out the [ghx_proc_gen crate documentation](https://docs.rs/ghx_proc_gen/latest/ghx_proc_gen) or all the [examples](#examples).
+For more information, check out the [`ghx_proc_gen` crate documentation](https://docs.rs/ghx_proc_gen/latest/ghx_proc_gen) or all the [examples](#examples).
 
-## More information
+# More information
 
-### Model variations
+## Model variations
 
 In order to facilitate the rules-definition step, `ghx_proc_gen` can create some models variations for you automatically. This will take care of rotating all the model `sockets` properly.
 
@@ -122,15 +127,15 @@ With the above declaration, we declared our base model (with `Rot0` allowed by d
 
 When retrieving generated results, you get `ModelInstances` which reference the original model `index` as well as the `ModelRotation` applied to it.
 
-You can also manually create rotated variations of a model: `bridge_model.rotated(ModelRotation::Rot180)` and use a different asset for it, change its weight, etc.
+You can also manually create rotated variations of a model: `bridge_model.rotated(ModelRotation::Rot180)` and use a different asset for it, change its weight, etc. [*[documentation](https://docs.rs/ghx_proc_gen/latest/ghx_proc_gen/generator/model/struct.Model.html)*].
 
-### Coordinate systems & axis
+## Coordinate systems & axis
 
-`ghx_proc_gen` uses a **right-handed** coordinate system. However, the rotation axis used to create model variations is up to you. When using `Cartesian3D`, it defaults to `Y+` and can be customized on a `RulesBuilder` [*[documentation](https://docs.rs/ghx_proc_gen/latest/ghx_proc_gen/generator/rules/struct.RulesBuilder.html)*]. When using `Cartesian2D`, the rotation axis is fixed to `Z+`.
+`ghx_proc_gen` uses a **right-handed** coordinate system. However, the rotation axis used to create model variations is up to you. When using `Cartesian3D`, it defaults to `Y+` and can be customized on a `RulesBuilder`. When using `Cartesian2D`, the rotation axis is fixed to `Z+` [*[documentation](https://docs.rs/ghx_proc_gen/latest/ghx_proc_gen/generator/rules/struct.RulesBuilder.html)*].
 
 *For Bevy, see the [Unofficial bevy Cheatbook](https://bevy-cheatbook.github.io/fundamentals/coords.html).*
 
-### Connections
+## Connections
 
 As seen in the quickstart, socket connections are declared through a `SocketCollection` [*[documentation](https://docs.rs/ghx_proc_gen/latest/ghx_proc_gen/generator/socket/struct.SocketCollection.html)*].
 
@@ -155,154 +160,62 @@ Let's imagine that Model 1 and 2 had different sockets declarations on their top
 ```
 See for axample the `bridge_start_bottom` socket in the canyon [example](#examples), which can only face outwards from a rock.
 
-### Observers
+## Observers
 
 Instead of collecting the results of a generator call direclty, you can retrieve them via an `Observer` connected to a `Generator` [*[documentation](https://docs.rs/ghx_proc_gen/latest/ghx_proc_gen/generator/observer/index.html)*].
 
 This is what the `ProcGenDebugPlugin` does.
 
-### Grid loop
+## Grid loop
 
-Grids can be configured to loop on any axis, this is set from their `GridDefinition`.
+Grids can be configured to loop on any axis, this is set from their `GridDefinition` [*[documentation](https://docs.rs/ghx_proc_gen/latest/ghx_proc_gen/grid/struct.GridDefinition.html)*].
 
 https://github.com/Henauxg/ghx_proc_gen/assets/19689618/3cdab2d6-ef1a-4728-9685-7c2ef1688bff
 
-## Cargo features
+# Cargo features
 
-Find the list and description in [ghx_proc_gen/cargo.toml](ghx_proc_gen/Cargo.toml)
+*Find the list and description in [ghx_proc_gen/cargo.toml](ghx_proc_gen/Cargo.toml)*
 
-### `debug-traces`
+- `debug-traces`: Disabled by default, this feature will add many debug traces (using the `tracing` crate) to the core algorithm of the crate. Since some of those logs are on the hot path, the feature should only be enabled in debug. 
+  
+  When creating models, you can register a name for them with the `with_name` function. With the feature disabled, the function does nothing. But when enabled, the name of your models will be visible in the debug traces of the core algorithm, providing useful information about the current generation state.
+  
+  The log level can be configured by the user crates (`tracing::level`, the `LogPlugin` for Bevy, ...).
 
-Disabled by default, the `debug-traces` feature will add many debug traces (using the `tracing` crate) to the core algorithm of the crate. Since some of those logs are on the hot path, the feature should only be enabled in debug.
+  ![debug_traces](docs/assets/debug_traces.png)
 
-When creating models, you can register a name for them with the `with_name` function. With the feature disabled, the function does nothing. But when enabled, the name of your models will be visible in the debug traces of the core algorithm, providing useful information about the current generation state.
+- `bevy`: Disabled by default, enabling it simply derives `Component` on common structs of `ghx_proc_gen`.
 
-The log level can be configured by the user crates (`tracing::level`, the `LogPlugin` for Bevy, ...).
+# For Bevy users
 
-![debug_traces](docs/assets/debug_traces.png)
-
-### `bevy`
-
-Disabled by default, the `bevy` feature simply add some `Component` derive to common struct of `ghx_proc_gen`.
-
-## For Bevy users
-
-Instead of using the `ghx_proc_gen` crate directly, you can use the `bevy_ghx_proc_gen` crate which depends on and exports `ghx_proc_gen` (with the `bevy`feature enabled) as well as additional plugins & utilities dedicated to Bevy.
+The [`bevy_ghx_proc_gen`](bevy_ghx_proc_gen/README.md) crate uses and exposes `ghx_proc_gen`, as well as additional plugins and utilities dedicated to Bevy.
 ```
 cargo add bevy_ghx_proc_gen
 ```
 
-### Bevy quickstart
+# Examples
+<div align="center">
 
-Steps `1` to `3` are the same as in the above [quickstart](#quickstart).
-1) To automatically spawn our assets for us, we use the [ProcGenSimplePlugin](#bevy-plugins)
-```rust
-  app.add_plugins(ProcGenSimplePlugin::<Cartesian2D, PbrMesh>::new());
-```
-2) To see something in the Bevy viewport, we setup some assets:
-```rust
-fn setup_generator(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
-  // ... Steps 1 to 3: Generator setup ...
-
-  // Simple procedural cube mesh and materials.
-  let cube_mesh = meshes.add(Mesh::from(shape::Cube { size: CUBE_SIZE }));
-  let white_mat = materials.add(Color::WHITE.into());
-  let black_mat = materials.add(Color::BLACK.into());*
-  // We create our models asset here, in a separate collection for the sake of simplicity.
-  // (We could also declare them with our models)
-  let mut models_assets = RulesModelsAssets::<PbrMesh>::new();
-  models_assets.add_asset(0, PbrMesh {
-          mesh: cube_mesh.clone(),
-          material: white_mat,
-      },
-  );
-  models_assets.add_asset(1, PbrMesh {
-          mesh: cube_mesh.clone(),
-          material: black_mat,
-      },
-  );
-
-  // ...
-}
-```
-3) Spawn an `Entity` with a `GeneratorBundle`
-```rust
-  // The ProcGenSimplePlugin will detect this, generate and spawn the nodes. 
-  commands.spawn(GeneratorBundle {
-      spatial: SpatialBundle::from_transform(Transform::from_translation(Vec3::new(
-          -grid.size_x() as f32 / 2., -grid.size_y() as f32 / 2., 0.,
-      ))),
-      grid,
-      generator,
-      asset_spawner: AssetSpawner::new(models_assets, NODE_SIZE, Vec3::ONE),
-  });
-```
-<p align="center">
-  <img alt="bevy_chess_board_pattern" src="docs/assets/bevy_chess_board_pattern.png">
-</p>
-
-For more information, check out the [bevy_ghx_proc_gen crate documentation](https://docs.rs/bevy_ghx_proc_gen/latest/bevy_ghx_proc_gen) or all the [examples](#examples).
-
-
-### Bevy plugins
-
-#### Grid plugin
-
-`GridDebugPlugin` provides debug utilities for the grid-types bundlded within `ghx_proc_gen`:
-  - Can draw a debug view of any 2d/3d grid
-  - Can draw debug markers on any cells of a grid (controlled via bevy events)
-
-Use it by inserting a `DebugGridView3d` bundle on your `Grid` entity (or `DebugGridView2d`, depending on your Bevy Camera).
-
-<p align="center">
-  <img alt="bevy_chess_board_pattern" src="docs/assets/debug_grid_and_markers.png" width="60%">
-</p>
-
-#### ProcGen plugins
-
-`ghx_proc_gen` **does not need** a plugin to work, but if you want a really quick way to get started, or are in need of some debug utilities for your generations, there are some ready-made plugins for this:
-
-- `ProcGenSimplePlugin`: Really simple, just here to generate and spawn the nodes assets. See [its sources](bevy_ghx_proc_gen/src/gen/simple_plugin.rs).
-
-- `ProcGenDebugPlugin` [*Depends on `GridDebugPlugin`*]: Just a bit more complex, and not focused on performance but rather on demos & debugging use-cases. You can view the generation one step at a time, see where the contradiction occurs and more. See [its sources](bevy_ghx_proc_gen/src/gen/debug_plugin.rs).
-
-Both of those `plugins` start their work when you insert the components from a `GeneratorBundle` on an `Entity`.
-
-### Cargo features of `bevy_ghx_proc_gen`
-
-Find the list and description in [bevy_ghx_proc_gen/Cargo.toml](bevy_ghx_proc_gen/Cargo.toml)
-
-- `default-assets-bundle-spawners`: This feature enables some simple `AssetBundleSpawner` `impl` for basic types: (`Handle<Image>`, `Handle<Scene>`, `MaterialMesh` and `PbrMesh`). Disable the feature if you don't need them, or want to customize their implementation.
-- `grid-debug-plugin` compiles the grid debug plugin and its systems.
-- `simple-plugin` compiles the simple plugin and its systems.
-- `debug-plugin` compiles the debug plugin and its systems.
-
-### Compatible Bevy versions
-
-Compatibility with Bevy versions:
-
-| `bevy_ghx_proc_gen` | `bevy` |
-| :------------------ | :----- |
-| `0.1`               | `0.12` |
-
-## Examples
-
-
-|                        | Checkerboard | Unicode terrain | Bevy-checkerboard | Pillars     | Tile-layers | Canyon      |
-| ---------------------- | ------------ | --------------- | ----------------- | ----------- | ----------- | ----------- |
-| Grid coordinate system | Cartesian2D  | Cartesian2D     | Cartesian2D       | Cartesian3D | Cartesian3D | Cartesian3D |
-| Assets                 | Unicode      | Unicode         | Procedural meshes | .glb        | .png        | .glb        |
-| Engine                 | None         | None            | Bevy              | Bevy        | Bevy        | Bevy        |
-| Camera                 | N/A          | N/A             | 3D                | 3D          | 2D          | 3D          |
+|                     | Grid coordinate system | Assets            | Engine | Camera |
+| ------------------- | ---------------------- | ----------------- | ------ | ------ |
+| `Checkerboard`      | Cartesian2D            | Unicode           | None   | N/A    |
+| `Unicode terrain`   | Cartesian2D            | Unicode           | None   | N/A    |
+| `Bevy-checkerboard` | Cartesian2D            | Procedural meshes | Bevy   | 3D     |
+| `Pillars`           | Cartesian3D            | .glb              | Bevy   | 3D     |
+| `Tile-layers`       | Cartesian3D            | .png              | Bevy   | 2D     |
+| `Canyon`            | Cartesian3D            | .glb              | Bevy   | 3D     |
 
 *Examples videos for `unicode-terrain`, `pillars`, `tile-layers` & `canyon` are slowed down (with the `ProcGenDebugPlugin` for Bevy) in order to see the generation happen*
 
+</div>
+
+
+
+
 <details>
   <summary>[Command-line] Checkerboard example</summary>
+  
+## Checkerboard example
 
 ```
 cargo run --example checkerboard
@@ -313,6 +226,8 @@ Simple standalone example, the same as in the [quickstart](#quickstart) section.
 
 <details>
   <summary>[Command-line] Unicode terrain example</summary>
+
+## Unicode terrain example
 
 ```
 cargo run --example unicode-terrain
@@ -380,7 +295,7 @@ https://github.com/Henauxg/ghx_proc_gen/assets/19689618/25cbc758-3f1f-4e61-b6ed-
 
 </details>
 
-#### Keybindings 
+## Examples keybindings 
 
 Keybindings for the `Pillars`, `Tile-layers` and `Canyon` examples: 
 - `F1`: toggles the debug grid view
@@ -389,7 +304,7 @@ Keybindings for the `Pillars`, `Tile-layers` and `Canyon` examples:
 - `Right` used only with `GenerationViewMode::StepByStepPaused` to step once per press
 - `Up` used only with `GenerationViewMode::StepByStepPaused` to step continuously as long as pressed
 
-## Misc
+# Misc
 
 Rules-writing tips:
  - Start simple, then add complexity (new models, sockets and connections) iteratively. Adding one model can have a huge influence on the generation results, and may require weights tweaks.
@@ -403,14 +318,14 @@ Limitations:
 Why "ghx" ?
 - It serves as a namespace to avoid picking cargo names such as `proc_gen` or `bevy_proc_gen`
 
-## Credits
+# Credits
 
 Thanks to:
 - Paul Merrel for the [Model Synthesis](https://paulmerrell.org/model-synthesis/) algorithm & implementation
 - Maxim Gumin for the [Wave Function Collapse](https://github.com/mxgmn/WaveFunctionCollapse) algorithm & implementation
 - BorisTheBrave for his C# library [DeBroglie](https://github.com/BorisTheBrave/DeBroglie) and the article series on his [website](https://www.boristhebrave.com/)
 
-## License
+# License
 
 ### Code
 
