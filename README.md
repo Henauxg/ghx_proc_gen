@@ -246,7 +246,7 @@ https://github.com/Henauxg/ghx_proc_gen/assets/19689618/6a1108af-e078-4b27-bae1-
 cargo run --example bevy-checkerboard
 ```
 
-Simplest Bevy example, the same as in the [bevy quickstart](#bevy-quickstart) section.
+Simplest Bevy example, the same as in the [bevy quickstart](bevy_ghx_proc_gen/README.md#bevy-quickstart) section.
 
 </details>
 
@@ -261,7 +261,7 @@ This example generates multiple pillars of varying sizes in an empty room. Its `
 
 https://github.com/Henauxg/ghx_proc_gen/assets/19689618/7beaa23c-df88-47ca-b1e6-8dcfc579ede2
 
-*See the [keybindings](#keybindings)*
+*See the [keybindings](#examples-keybindings)*
 
 </details>
 
@@ -276,7 +276,7 @@ This example uses Bevy with a 2d Camera but generates a top-down tilemap by comb
 
 https://github.com/Henauxg/ghx_proc_gen/assets/19689618/3efe7b78-3c13-4100-999d-af07c94f5a4d
 
-*See the [keybindings](#keybindings)*
+*See the [keybindings](#examples-keybindings)*
 
 </details>
 
@@ -291,7 +291,7 @@ This example generates a canyon-like terrain with some animated windmills.
 
 https://github.com/Henauxg/ghx_proc_gen/assets/19689618/25cbc758-3f1f-4e61-b6ed-bcf571e229af
 
-*See the [keybindings](#keybindings)*
+*See the [keybindings](#examples-keybindings)*
 
 </details>
 
