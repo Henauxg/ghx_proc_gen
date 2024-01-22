@@ -184,7 +184,7 @@ impl<T: CoordinateSystem + Clone> Generator<T> {
     }
 
     /// Returns the seed that was used to initialize the generator RNG for this generation. See [`RngMode`] for more information.
-    pub fn get_seed(&self) -> u64 {
+    pub fn seed(&self) -> u64 {
         self.seed
     }
 

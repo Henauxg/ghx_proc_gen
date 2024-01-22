@@ -89,7 +89,7 @@ pub fn generate_and_spawn<C: CoordinateSystem, A: AssetsBundleSpawner, T: Compon
                     info!(
                         "Generation {:?} done, seed: {}; grid: {}",
                         gen_entity,
-                        generation.get_seed(),
+                        generation.seed(),
                         generation.grid()
                     );
                     for (node_index, node) in grid_data.nodes().iter().enumerate() {
@@ -109,7 +109,7 @@ pub fn generate_and_spawn<C: CoordinateSystem, A: AssetsBundleSpawner, T: Compon
                         "Generation {:?} failed at node {}, seed: {}; grid: {}",
                         gen_entity,
                         node_index,
-                        generation.get_seed(),
+                        generation.seed(),
                         generation.grid()
                     );
                 }

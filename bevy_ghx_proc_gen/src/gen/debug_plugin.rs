@@ -290,7 +290,7 @@ pub fn generate_all<C: CoordinateSystem>(
                 Ok(()) => {
                     info!(
                         "Generation done, seed: {}; grid: {}",
-                        generation.get_seed(),
+                        generation.seed(),
                         generation.grid()
                     );
                 }
@@ -298,7 +298,7 @@ pub fn generate_all<C: CoordinateSystem>(
                     warn!(
                         "Generation Failed at node {}, seed: {}; grid: {}",
                         node_index,
-                        generation.get_seed(),
+                        generation.seed(),
                         generation.grid()
                     );
                 }
@@ -422,7 +422,7 @@ fn step_generation<C: CoordinateSystem>(
                     GenerationStatus::Done => {
                         info!(
                             "Generation done, seed: {}; grid: {}",
-                            generation.get_seed(),
+                            generation.seed(),
                             generation.grid()
                         );
                         if generation_control.pause_when_done {
@@ -436,7 +436,7 @@ fn step_generation<C: CoordinateSystem>(
                 warn!(
                     "Generation Failed at node {}, seed: {}; grid: {}",
                     node_index,
-                    generation.get_seed(),
+                    generation.seed(),
                     generation.grid()
                 );
                 if generation_control.pause_on_error {
