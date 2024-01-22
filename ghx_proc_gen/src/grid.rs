@@ -8,6 +8,9 @@ use bevy::ecs::component::Component;
 /// Defines directions and coordinate systems
 pub mod direction;
 
+/// Index of a Node
+pub type NodeIndex = usize;
+
 /// Represents a position in a grid in a practical format
 #[derive(Debug, Clone)]
 pub struct GridPosition {
@@ -70,7 +73,7 @@ impl GridDefinition<Cartesian2D> {
     ///
     ///  NO CHECK is done to verify that the given position is a valid position for this grid.
     #[inline]
-    pub fn get_index_2d(&self, x: u32, y: u32) -> usize {
+    pub fn get_index_2d(&self, x: u32, y: u32) -> NodeIndex {
         (x + y * self.size_x).try_into().unwrap()
     }
 
@@ -78,7 +81,7 @@ impl GridDefinition<Cartesian2D> {
     ///
     ///  NO CHECK is done to verify that the given position is a valid position for this grid.
     #[inline]
-    pub fn get_index_from_pos_2d(&self, grid_position: &GridPosition) -> usize {
+    pub fn get_index_from_pos_2d(&self, grid_position: &GridPosition) -> NodeIndex {
         self.get_index_2d(grid_position.x, grid_position.y)
     }
 }
@@ -151,7 +154,7 @@ impl<T: CoordinateSystem + Clone> GridDefinition<T> {
     }
 
     /// Returns a [`Range`] over all node indexes in this grid
-    pub fn indexes(&self) -> Range<usize> {
+    pub fn indexes(&self) -> Range<NodeIndex> {
         0..self.total_size()
     }
 
@@ -159,21 +162,21 @@ impl<T: CoordinateSystem + Clone> GridDefinition<T> {
     ///
     /// NO CHECK is done to verify that the given position is a valid position for this grid.
     #[inline]
-    pub fn get_index(&self, x: u32, y: u32, z: u32) -> usize {
+    pub fn get_index(&self, x: u32, y: u32, z: u32) -> NodeIndex {
         (x + y * self.size_x + z * self.size_xy).try_into().unwrap()
     }
 
     /// Returns the index from a grid position.
     ///
     /// NO CHECK is done to verify that the given position is a valid position for this grid.
-    pub fn get_index_from_pos(&self, grid_position: &GridPosition) -> usize {
+    pub fn get_index_from_pos(&self, grid_position: &GridPosition) -> NodeIndex {
         self.get_index(grid_position.x, grid_position.y, grid_position.z)
     }
 
     /// Returns a [`GridPosition`] from the index of a node in this [`GridDefinition`].
     ///
     /// Panics if the index is not a valid index.
-    pub fn get_position(&self, grid_index: usize) -> GridPosition {
+    pub fn get_position(&self, grid_index: NodeIndex) -> GridPosition {
         let index = u32::try_from(grid_index).unwrap();
         GridPosition {
             x: index % self.size_x,
@@ -230,7 +233,7 @@ impl<T: CoordinateSystem + Clone> GridDefinition<T> {
         &self,
         grid_position: &GridPosition,
         direction: Direction,
-    ) -> Option<usize> {
+    ) -> Option<NodeIndex> {
         let delta = &self.coord_system.deltas()[direction as usize];
         match self.get_next_pos(grid_position, &delta) {
             Some(next_pos) => Some(self.get_index_from_pos(&next_pos)),
@@ -291,21 +294,21 @@ impl<T: CoordinateSystem + Clone, D> GridData<T, D> {
     /// Sets the value of the element at `index` in the grid.
     ///
     /// NO CHECK is done to verify that the given index is a valid index for this grid.
-    pub fn set(&mut self, index: usize, value: D) {
+    pub fn set(&mut self, index: NodeIndex, value: D) {
         self.data[index] = value;
     }
 
     /// Returns a reference to the element at this index.
     ///
     /// NO CHECK is done to verify that the given index is a valid index for this grid.
-    pub fn get(&self, index: usize) -> &D {
+    pub fn get(&self, index: NodeIndex) -> &D {
         &self.data[index]
     }
 
     /// Returns a mutable reference to the element at this index.
     ///
     /// NO CHECK is done to verify that the given index is a valid index for this grid.
-    pub fn get_mut(&mut self, index: usize) -> &mut D {
+    pub fn get_mut(&mut self, index: NodeIndex) -> &mut D {
         &mut self.data[index]
     }
 

@@ -10,8 +10,11 @@ use super::{
     socket::{Socket, SocketId, SocketsCartesian2D, SocketsCartesian3D},
 };
 
-/// Index of a model
+/// Index of an original model
 pub type ModelIndex = usize;
+
+/// Index of a model variation
+pub type ModelVariantIndex = usize;
 
 /// Represents a model to be used by a [`crate::generator::Generator`] as a "building-block" to fill out the generated area.
 #[derive(Clone)]

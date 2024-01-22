@@ -1,10 +1,10 @@
 use std::{marker::PhantomData, sync::Arc};
 
-use crate::grid::{direction::CoordinateSystem, GridDefinition};
+use crate::grid::{direction::CoordinateSystem, GridDefinition, NodeIndex};
 
 use super::{
-    node_heuristic::NodeSelectionHeuristic, rules::Rules, Generator, ModelSelectionHeuristic,
-    RngMode,
+    model::ModelVariantIndex, node_heuristic::NodeSelectionHeuristic, rules::Rules, Generator,
+    ModelSelectionHeuristic, RngMode,
 };
 
 /// Default retry count for the generator
@@ -46,6 +46,7 @@ pub struct GeneratorBuilder<G, R, T: CoordinateSystem + Clone> {
     node_selection_heuristic: NodeSelectionHeuristic,
     model_selection_heuristic: ModelSelectionHeuristic,
     rng_mode: RngMode,
+    initial_nodes: Vec<(NodeIndex, ModelVariantIndex)>,
     typestate: PhantomData<(G, R)>,
 }
 
@@ -59,6 +60,7 @@ impl<T: CoordinateSystem + Clone> GeneratorBuilder<Unset, Unset, T> {
             node_selection_heuristic: NodeSelectionHeuristic::MinimumRemainingValue,
             model_selection_heuristic: ModelSelectionHeuristic::WeightedProbability,
             rng_mode: RngMode::RandomSeed,
+            initial_nodes: Vec::new(),
             typestate: PhantomData,
         }
     }
@@ -74,6 +76,7 @@ impl<T: CoordinateSystem + Clone> GeneratorBuilder<Unset, Unset, T> {
             node_selection_heuristic: self.node_selection_heuristic,
             model_selection_heuristic: self.model_selection_heuristic,
             rng_mode: self.rng_mode,
+            initial_nodes: self.initial_nodes,
             typestate: PhantomData,
         }
     }
@@ -87,6 +90,7 @@ impl<T: CoordinateSystem + Clone> GeneratorBuilder<Unset, Unset, T> {
             node_selection_heuristic: self.node_selection_heuristic,
             model_selection_heuristic: self.model_selection_heuristic,
             rng_mode: self.rng_mode,
+            initial_nodes: self.initial_nodes,
             typestate: PhantomData,
         }
     }
@@ -102,6 +106,7 @@ impl<T: CoordinateSystem + Clone> GeneratorBuilder<Unset, Set, T> {
             node_selection_heuristic: self.node_selection_heuristic,
             model_selection_heuristic: self.model_selection_heuristic,
             rng_mode: self.rng_mode,
+            initial_nodes: self.initial_nodes,
             typestate: PhantomData,
         }
     }
@@ -131,6 +136,14 @@ impl<G, R, T: CoordinateSystem + Clone> GeneratorBuilder<G, R, T> {
 }
 
 impl<T: CoordinateSystem + Clone> GeneratorBuilder<Set, Set, T> {
+    pub fn with_initial_nodes(
+        mut self,
+        initial_nodes: Vec<(NodeIndex, ModelVariantIndex)>,
+    ) -> Self {
+        self.initial_nodes = initial_nodes;
+        self
+    }
+
     /// Instantiates a [`Generator`] as specified by the various builder parameters.
     pub fn build(self) -> Generator<T> {
         // We know that self.rules and self.grid are `Some` thanks to the typing.
@@ -139,6 +152,7 @@ impl<T: CoordinateSystem + Clone> GeneratorBuilder<Set, Set, T> {
         Generator::new(
             rules,
             grid,
+            self.initial_nodes,
             self.max_retry_count,
             self.node_selection_heuristic,
             self.model_selection_heuristic,

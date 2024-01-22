@@ -3,6 +3,9 @@
 //! A library for 2D & 3D procedural generation with Model synthesis/Wave function Collapse.
 //! Also provide grid utilities to manipulate 23&3d grid data.
 
+use generator::model::ModelVariantIndex;
+use grid::NodeIndex;
+
 /// Model synthesis/Wave function Collapse generator
 pub mod generator;
 /// Grid utilities
@@ -13,7 +16,7 @@ pub mod grid;
 #[error("Failed to generate, contradiction at node with index {}", node_index)]
 pub struct GenerationError {
     /// Node index at which the contradiction occurred
-    pub node_index: usize,
+    pub node_index: NodeIndex,
 }
 
 /// Error returned by a [`generator::rules::RulesBuilder`] when correct [`generator::rules::Rules`] cannot be built
@@ -22,4 +25,16 @@ pub enum RulesError {
     /// Rules cannot be built without models or sockets
     #[error("Empty models or sockets collection")]
     NoModelsOrSockets,
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum NodeSetError {
+    #[error("Invalid model index `{0}`, does not exist in the rules")]
+    InvalidModelIndex(ModelVariantIndex),
+    #[error("Invalid node index `{0}`, does not exist in the grid")]
+    InvalidNodeIndex(NodeIndex),
+    #[error("Model `{0}` not allowed by the Rules on node {1}")]
+    IllegalModel(ModelVariantIndex, NodeIndex),
+    #[error("Generation error: {0}")]
+    GenerationError(#[from] GenerationError),
 }
