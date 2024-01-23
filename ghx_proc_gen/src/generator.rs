@@ -89,6 +89,10 @@ pub struct GridNode {
     pub model_instance: ModelInstance,
 }
 
+pub struct GenInfo {
+    pub try_count: u32,
+}
+
 struct PropagationEntry {
     node_index: usize,
     model_index: ModelVariantIndex,
@@ -215,30 +219,46 @@ impl<T: CoordinateSystem> Generator<T> {
     /// Tries to generate the whole grid. If the generation fails due to a contradiction, it will retry `max_retry_count` times before returning the last encountered [`GenerationError`]
     ///
     /// If the generation has ended (successful or not), calling `generate` will reinitialize the generator before starting the generation.
-    /// If the generation was already started by previous calls to `select_and_propagate`, this will simply continue the generation.
-    pub fn generate_and_collect_all(
+    /// If the generation was already started by previous calls to `select_and_propagate`, this will simply continue the current generation.
+    pub fn generate_grid(
         &mut self,
-    ) -> Result<GridData<T, ModelInstance>, GenerationError> {
-        self.generate()?;
-        Ok(self.to_grid_data())
+    ) -> Result<(GenInfo, GridData<T, ModelInstance>), GenerationError> {
+        let gen_info = self.internal_generate(&mut None)?;
+        Ok((gen_info, self.to_grid_data()))
     }
 
-    /// Same as `generate_collected` but does not return a filled [`GridData`] when the generation is done. You can still retrieve a filled [`GridData`] by calling the `to_grid_data` function.
-    ///
-    /// This can be usefull if you retrieve the data via other means such as observers.
-    pub fn generate(&mut self) -> Result<(), GenerationError> {
-        for _i in 1..self.max_retry_count {
-            #[cfg(feature = "debug-traces")]
-            info!("Try n°{}", _i);
+    pub fn generate_collected(&mut self) -> Result<(GenInfo, Vec<GridNode>), GenerationError> {
+        let mut generated_nodes = Vec::new();
+        let gen_info = self.internal_generate(&mut Some(&mut generated_nodes))?;
+        Ok((gen_info, generated_nodes))
+    }
 
-            match self.internal_generate() {
-                Ok(_) => return Ok(()),
-                Err(_) => (),
+    pub fn generate(&mut self) -> Result<GenInfo, GenerationError> {
+        let gen_info = self.internal_generate(&mut None)?;
+        Ok(gen_info)
+    }
+
+    fn internal_generate(&mut self, collector: &mut Collector) -> Result<GenInfo, GenerationError> {
+        let mut last_error = None;
+        for try_index in 0..=self.max_retry_count {
+            #[cfg(feature = "debug-traces")]
+            info!("Try n°{}", try_index + 1);
+
+            if let Some(collector) = collector {
+                collector.clear();
+            }
+            match self.generate_remaining_nodes(collector) {
+                Ok(_) => {
+                    return Ok(GenInfo {
+                        try_count: try_index + 1,
+                    })
+                }
+                Err(err) => {
+                    last_error = Some(err);
+                }
             }
         }
-        #[cfg(feature = "debug-traces")]
-        info!("Try n°{}", self.max_retry_count + 1);
-        self.internal_generate()
+        Err(last_error.unwrap()) // We know that last_err is Some
     }
 
     /// Advances the generation by one "step": select a node and a model via the heuristics and propagate the changes.
@@ -585,15 +605,18 @@ impl<T: CoordinateSystem> Generator<T> {
         }
     }
 
-    fn internal_generate(&mut self) -> Result<(), GenerationError> {
+    fn generate_remaining_nodes(
+        &mut self,
+        collector: &mut Collector,
+    ) -> Result<(), GenerationError> {
         match self.reinitialize_if_needed(&mut None) {
             GenerationStatus::Ongoing => (),
             GenerationStatus::Done => return Ok(()),
         };
         // `nodes_left_to_generate` is an upper limit to the number of iterations. We avoid an unnecessary while loop.
         for _i in 0..self.nodes_left_to_generate {
-            match self.unchecked_select_and_propagate(&mut None) {
-                Ok(GenerationStatus::Done) => break,
+            match self.unchecked_select_and_propagate(collector) {
+                Ok(GenerationStatus::Done) => return Ok(()),
                 Ok(GenerationStatus::Ongoing) => (),
                 Err(e) => return Err(e),
             };

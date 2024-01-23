@@ -254,9 +254,10 @@ pub fn generate_all<C: CoordinateSystem>(
     for mut generation in observed_generations.iter_mut() {
         if generation_control.status == GenerationControlStatus::Ongoing {
             match generation.generate() {
-                Ok(()) => {
+                Ok(gen_info) => {
                     info!(
-                        "Generation done, seed: {}; grid: {}",
+                        "Generation done, try_count: {}, seed: {}; grid: {}",
+                        gen_info.try_count,
                         generation.seed(),
                         generation.grid()
                     );
