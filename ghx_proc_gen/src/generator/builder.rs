@@ -1,10 +1,16 @@
 use std::{marker::PhantomData, sync::Arc};
 
-use crate::grid::{direction::CoordinateSystem, GridDefinition, NodeIndex};
+use crate::{
+    grid::{direction::CoordinateSystem, GridDefinition, NodeIndex},
+    NodeSetError,
+};
 
 use super::{
-    model::ModelVariantIndex, node_heuristic::NodeSelectionHeuristic, rules::Rules, Generator,
-    ModelSelectionHeuristic, RngMode,
+    model::ModelVariantIndex,
+    node_heuristic::NodeSelectionHeuristic,
+    observer::{GenerationUpdate, QueuedObserver, QueuedStatefulObserver},
+    rules::Rules,
+    Generator, GridNode, ModelSelectionHeuristic, RngMode,
 };
 
 /// Default retry count for the generator
@@ -39,18 +45,19 @@ pub enum Unset {}
 ///    .with_grid(grid)
 ///    .build();
 /// ```
-pub struct GeneratorBuilder<G, R, T: CoordinateSystem + Clone> {
-    rules: Option<Arc<Rules<T>>>,
-    grid: Option<GridDefinition<T>>,
+pub struct GeneratorBuilder<G, R, C: CoordinateSystem> {
+    rules: Option<Arc<Rules<C>>>,
+    grid: Option<GridDefinition<C>>,
     max_retry_count: u32,
     node_selection_heuristic: NodeSelectionHeuristic,
     model_selection_heuristic: ModelSelectionHeuristic,
     rng_mode: RngMode,
+    observers: Vec<crossbeam_channel::Sender<GenerationUpdate>>,
     initial_nodes: Vec<(NodeIndex, ModelVariantIndex)>,
     typestate: PhantomData<(G, R)>,
 }
 
-impl<T: CoordinateSystem + Clone> GeneratorBuilder<Unset, Unset, T> {
+impl<C: CoordinateSystem> GeneratorBuilder<Unset, Unset, C> {
     /// Creates a [`GeneratorBuilder`] with its values set to their default.
     pub fn new() -> Self {
         Self {
@@ -60,59 +67,69 @@ impl<T: CoordinateSystem + Clone> GeneratorBuilder<Unset, Unset, T> {
             node_selection_heuristic: NodeSelectionHeuristic::MinimumRemainingValue,
             model_selection_heuristic: ModelSelectionHeuristic::WeightedProbability,
             rng_mode: RngMode::RandomSeed,
+            observers: Vec::new(),
             initial_nodes: Vec::new(),
             typestate: PhantomData,
         }
     }
 }
 
-impl<T: CoordinateSystem + Clone> GeneratorBuilder<Unset, Unset, T> {
+impl<C: CoordinateSystem> GeneratorBuilder<Unset, Unset, C> {
     /// Sets the [`Rules`] to be used by the [`Generator`]
-    pub fn with_rules(self, rules: Rules<T>) -> GeneratorBuilder<Unset, Set, T> {
+    pub fn with_rules(self, rules: Rules<C>) -> GeneratorBuilder<Unset, Set, C> {
         GeneratorBuilder {
-            grid: self.grid,
             rules: Some(Arc::new(rules)),
+
+            grid: self.grid,
             max_retry_count: self.max_retry_count,
             node_selection_heuristic: self.node_selection_heuristic,
             model_selection_heuristic: self.model_selection_heuristic,
             rng_mode: self.rng_mode,
+            observers: self.observers,
             initial_nodes: self.initial_nodes,
+
             typestate: PhantomData,
         }
     }
 
     /// Sets the [`Rules`] to be used by the [`Generator`]. The `Generator` will hold a read-only Rc onto those `Rules` which can be safely shared by multiple `Generator`.
-    pub fn with_shared_rules(self, rules: Arc<Rules<T>>) -> GeneratorBuilder<Unset, Set, T> {
+    pub fn with_shared_rules(self, rules: Arc<Rules<C>>) -> GeneratorBuilder<Unset, Set, C> {
         GeneratorBuilder {
-            grid: self.grid,
             rules: Some(rules),
+
+            grid: self.grid,
             max_retry_count: self.max_retry_count,
             node_selection_heuristic: self.node_selection_heuristic,
             model_selection_heuristic: self.model_selection_heuristic,
             rng_mode: self.rng_mode,
+            observers: self.observers,
             initial_nodes: self.initial_nodes,
+
             typestate: PhantomData,
         }
     }
 }
 
-impl<T: CoordinateSystem + Clone> GeneratorBuilder<Unset, Set, T> {
+impl<C: CoordinateSystem> GeneratorBuilder<Unset, Set, C> {
     /// Sets the [`GridDefinition`] to be used by the [`Generator`].
-    pub fn with_grid(self, grid: GridDefinition<T>) -> GeneratorBuilder<Set, Set, T> {
+    pub fn with_grid(self, grid: GridDefinition<C>) -> GeneratorBuilder<Set, Set, C> {
         GeneratorBuilder {
             grid: Some(grid),
+
             rules: self.rules,
             max_retry_count: self.max_retry_count,
             node_selection_heuristic: self.node_selection_heuristic,
             model_selection_heuristic: self.model_selection_heuristic,
             rng_mode: self.rng_mode,
+            observers: self.observers,
             initial_nodes: self.initial_nodes,
+
             typestate: PhantomData,
         }
     }
 }
 
-impl<G, R, T: CoordinateSystem + Clone> GeneratorBuilder<G, R, T> {
+impl<G, R, C: CoordinateSystem> GeneratorBuilder<G, R, C> {
     /// Specifies how many time the [`Generator`] should retry to generate the [`GridDefinition`] when a contradiction is encountered. Set to [`DEFAULT_RETRY_COUNT`] by default.
     pub fn with_max_retry_count(mut self, max_retry_count: u32) -> Self {
         self.max_retry_count = max_retry_count;
@@ -135,7 +152,20 @@ impl<G, R, T: CoordinateSystem + Clone> GeneratorBuilder<G, R, T> {
     }
 }
 
-impl<T: CoordinateSystem + Clone> GeneratorBuilder<Set, Set, T> {
+impl<T: CoordinateSystem> GeneratorBuilder<Set, Set, T> {
+    pub fn add_queued_stateful_observer(&mut self) -> QueuedStatefulObserver<T> {
+        let (sender, receiver) = crossbeam_channel::unbounded();
+        self.observers.push(sender);
+        let grid = self.grid.clone().unwrap(); // We know that self.grid is `Some` thanks to the typing.
+        QueuedStatefulObserver::create(receiver, &grid)
+    }
+
+    pub fn add_queued_observer(&mut self) -> QueuedObserver {
+        let (sender, receiver) = crossbeam_channel::unbounded();
+        self.observers.push(sender);
+        QueuedObserver::create(receiver)
+    }
+
     pub fn with_initial_nodes(
         mut self,
         initial_nodes: Vec<(NodeIndex, ModelVariantIndex)>,
@@ -145,11 +175,11 @@ impl<T: CoordinateSystem + Clone> GeneratorBuilder<Set, Set, T> {
     }
 
     /// Instantiates a [`Generator`] as specified by the various builder parameters.
-    pub fn build(self) -> Generator<T> {
+    pub fn build(self) -> Result<Generator<T>, NodeSetError> {
         // We know that self.rules and self.grid are `Some` thanks to the typing.
         let rules = self.rules.unwrap();
         let grid = self.grid.unwrap();
-        Generator::new(
+        Generator::create(
             rules,
             grid,
             self.initial_nodes,
@@ -157,6 +187,27 @@ impl<T: CoordinateSystem + Clone> GeneratorBuilder<Set, Set, T> {
             self.node_selection_heuristic,
             self.model_selection_heuristic,
             self.rng_mode,
+            self.observers,
+            &mut None,
         )
+    }
+
+    pub fn build_collected(self) -> Result<(Generator<T>, Vec<GridNode>), NodeSetError> {
+        // We know that self.rules and self.grid are `Some` thanks to the typing.
+        let rules = self.rules.unwrap();
+        let grid = self.grid.unwrap();
+        let mut generated_nodes = Vec::new();
+        let res = Generator::create(
+            rules,
+            grid,
+            self.initial_nodes,
+            self.max_retry_count,
+            self.node_selection_heuristic,
+            self.model_selection_heuristic,
+            self.rng_mode,
+            self.observers,
+            &mut Some(&mut generated_nodes),
+        )?;
+        Ok((res, generated_nodes))
     }
 }

@@ -70,16 +70,14 @@ pub enum GenerationStatus {
     Done,
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy)]
 enum InternalGeneratorStatus {
-    /// Initial state. Need to run [`Generator::initialize_supports_count`]
-    Init,
     /// Generation has not finished.
     Ongoing,
     /// Generation ended succesfully.
     Done,
     /// Generation failed due to a contradiction.
-    Failed,
+    Failed(GenerationError),
 }
 
 /// Output of a [`Generator`] in the context of its [`crate::grid::GridDefinition`].
@@ -96,10 +94,17 @@ struct PropagationEntry {
     model_index: ModelVariantIndex,
 }
 
+enum NodeSetStatus {
+    AlreadySet,
+    CanBeSet,
+}
+
+type Collector<'a> = Option<&'a mut Vec<GridNode>>;
+
 /// Model synthesis/WFC generator.
 /// Use a [`GeneratorBuilder`] to get an instance of a [`Generator`].
 #[cfg_attr(feature = "bevy", derive(Component))]
-pub struct Generator<T: CoordinateSystem + Clone> {
+pub struct Generator<T: CoordinateSystem> {
     // === Read-only configuration ===
     grid: GridDefinition<T>,
     rules: Arc<Rules<T>>,
@@ -127,13 +132,13 @@ pub struct Generator<T: CoordinateSystem + Clone> {
     supports_count: Array<usize, Ix3>,
 }
 
-impl<T: CoordinateSystem + Clone> Generator<T> {
+impl<T: CoordinateSystem> Generator<T> {
     /// Returns a new `GeneratorBuilder`
     pub fn builder() -> GeneratorBuilder<Unset, Unset, Cartesian2D> {
         GeneratorBuilder::new()
     }
 
-    fn new(
+    fn create(
         rules: Arc<Rules<T>>,
         grid: GridDefinition<T>,
         initial_nodes: Vec<(NodeIndex, ModelVariantIndex)>,
@@ -141,7 +146,9 @@ impl<T: CoordinateSystem + Clone> Generator<T> {
         node_selection_heuristic: NodeSelectionHeuristic,
         model_selection_heuristic: ModelSelectionHeuristic,
         rng_mode: RngMode,
-    ) -> Self {
+        observers: Vec<crossbeam_channel::Sender<GenerationUpdate>>,
+        collector: &mut Collector,
+    ) -> Result<Self, NodeSetError> {
         let models_count = rules.models_count();
         let nodes_count = grid.total_size();
         let direction_count = grid.directions().len();
@@ -157,7 +164,7 @@ impl<T: CoordinateSystem + Clone> Generator<T> {
             grid.total_size(),
         );
 
-        let generator = Self {
+        let mut generator = Self {
             grid,
             rules,
             max_retry_count,
@@ -169,18 +176,20 @@ impl<T: CoordinateSystem + Clone> Generator<T> {
             rng: StdRng::seed_from_u64(seed),
             seed,
 
-            status: InternalGeneratorStatus::Init,
+            status: InternalGeneratorStatus::Ongoing,
             nodes: bitvec![1; nodes_count * models_count],
             nodes_left_to_generate: nodes_count,
             possible_models_counts: vec![models_count; nodes_count],
 
-            observers: Vec::new(),
+            observers,
 
             propagation_stack: Vec::new(),
             supports_count: Array::zeros((nodes_count, models_count, direction_count)),
         };
-        // We don't do `initialize_supports_count` yet since it may generate some node(s) and we may not have our observers attache yet.
-        generator
+        match generator.pregen(collector) {
+            Ok(_) => Ok(generator),
+            Err(err) => Err(err),
+        }
     }
 
     /// Returns the seed that was used to initialize the generator RNG for this generation. See [`RngMode`] for more information.
@@ -207,7 +216,9 @@ impl<T: CoordinateSystem + Clone> Generator<T> {
     ///
     /// If the generation has ended (successful or not), calling `generate` will reinitialize the generator before starting the generation.
     /// If the generation was already started by previous calls to `select_and_propagate`, this will simply continue the generation.
-    pub fn generate_collected(&mut self) -> Result<GridData<T, ModelInstance>, GenerationError> {
+    pub fn generate_and_collect_all(
+        &mut self,
+    ) -> Result<GridData<T, ModelInstance>, GenerationError> {
         self.generate()?;
         Ok(self.to_grid_data())
     }
@@ -245,9 +256,9 @@ impl<T: CoordinateSystem + Clone> Generator<T> {
     pub fn select_and_propagate_collected(
         &mut self,
     ) -> Result<(GenerationStatus, Vec<GridNode>), GenerationError> {
-        let mut collector = Some(Vec::new());
-        let res = self.internal_select_and_propagate(&mut collector)?;
-        Ok((res, collector.unwrap())) // We know that collector is Some.
+        let mut generated_nodes = Vec::new();
+        let res = self.internal_select_and_propagate(&mut Some(&mut generated_nodes))?;
+        Ok((res, generated_nodes))
     }
 
     pub fn set_and_propagate_collected(
@@ -255,10 +266,13 @@ impl<T: CoordinateSystem + Clone> Generator<T> {
         node_index: NodeIndex,
         model_variant_index: ModelVariantIndex,
     ) -> Result<(GenerationStatus, Vec<GridNode>), NodeSetError> {
-        let mut collector = Some(Vec::new());
-        let res =
-            self.internal_set_and_propagate(node_index, model_variant_index, &mut collector)?;
-        Ok((res, collector.unwrap())) // We know that collector is Some.
+        let mut generated_nodes = Vec::new();
+        let res = self.internal_set_and_propagate(
+            node_index,
+            model_variant_index,
+            &mut Some(&mut generated_nodes),
+        )?;
+        Ok((res, generated_nodes))
     }
 
     pub fn set_and_propagate(
@@ -269,26 +283,31 @@ impl<T: CoordinateSystem + Clone> Generator<T> {
         self.internal_set_and_propagate(node_index, model_variant_index, &mut None)
     }
 
-    pub fn reinitialize(&mut self) -> Result<GenerationStatus, GenerationError> {
+    pub fn reinitialize(&mut self) -> GenerationStatus {
         self.internal_reinitialize(&mut None)
     }
 
-    pub fn reinitialize_collected(
-        &mut self,
-    ) -> Result<(GenerationStatus, Vec<GridNode>), GenerationError> {
-        let mut collector = Some(Vec::new());
-        let res = self.internal_reinitialize(&mut collector)?;
-        Ok((res, collector.unwrap())) // We know that collector is Some.
+    pub fn reinitialize_collected(&mut self) -> (GenerationStatus, Vec<GridNode>) {
+        let mut generated_nodes = Vec::new();
+        let res = self.internal_reinitialize(&mut Some(&mut generated_nodes));
+        (res, generated_nodes)
     }
 
-    pub(crate) fn pregen_initial_nodes(
+    fn pregen(&mut self, collector: &mut Collector) -> Result<GenerationStatus, NodeSetError> {
+        self.initialize_supports_count(collector)?;
+        // If done already, we still try to set all nodes and succeed only if initial nodes spawn requests match the already generated nodes.
+        self.pregen_initial_nodes(collector)
+    }
+
+    fn pregen_initial_nodes(
         &mut self,
-        collector: &mut Option<Vec<GridNode>>,
+        collector: &mut Collector,
     ) -> Result<GenerationStatus, NodeSetError> {
         let initial_nodes = Arc::clone(&self.initial_nodes);
         for (node_index, model_variant_index) in initial_nodes.iter() {
-            if self.check_set_and_propagate_parameters(*node_index, *model_variant_index)? {
-                continue;
+            match self.check_set_and_propagate_parameters(*node_index, *model_variant_index)? {
+                NodeSetStatus::AlreadySet => continue,
+                NodeSetStatus::CanBeSet => (),
             }
 
             match self.unchecked_set_and_propagate(*node_index, *model_variant_index, collector)? {
@@ -300,36 +319,58 @@ impl<T: CoordinateSystem + Clone> Generator<T> {
         Ok(GenerationStatus::Ongoing)
     }
 
-    /// First-handler of public API calls. Will call [`Generator::handle_internal_status`]
+    fn reinitialize_if_needed(&mut self, collector: &mut Collector) -> GenerationStatus {
+        match self.status {
+            InternalGeneratorStatus::Ongoing => GenerationStatus::Ongoing,
+            InternalGeneratorStatus::Done | InternalGeneratorStatus::Failed(_) => {
+                match self.internal_reinitialize(collector) {
+                    GenerationStatus::Ongoing => GenerationStatus::Ongoing,
+                    GenerationStatus::Done => GenerationStatus::Done,
+                }
+            }
+        }
+    }
+
+    /// First-handler of public API calls. Will call [`Generator::reinitialize_if_needed`]
     fn internal_set_and_propagate(
         &mut self,
         node_index: NodeIndex,
         model_variant_index: ModelVariantIndex,
-        collector: &mut Option<Vec<GridNode>>,
+        collector: &mut Collector,
     ) -> Result<GenerationStatus, NodeSetError> {
-        match self.handle_internal_status(collector)? {
+        match self.reinitialize_if_needed(collector) {
             GenerationStatus::Ongoing => (),
             GenerationStatus::Done => return Ok(GenerationStatus::Done),
-        }
+        };
 
-        if self.check_set_and_propagate_parameters(node_index, model_variant_index)? {
-            // We can't be done here, handle_internal_status would have seen it.
-            return Ok(GenerationStatus::Ongoing);
+        match self.check_set_and_propagate_parameters(node_index, model_variant_index)? {
+            NodeSetStatus::AlreadySet => {
+                // We can't be done here
+                return Ok(GenerationStatus::Ongoing);
+            }
+            NodeSetStatus::CanBeSet => (),
         }
 
         Ok(self.unchecked_set_and_propagate(node_index, model_variant_index, collector)?)
     }
 
-    /// First-handler of public API calls. Will call [`Generator::handle_internal_status`]
+    /// First-handler of public API calls. Will call [`Generator::reinitialize_if_needed`]
     fn internal_select_and_propagate(
         &mut self,
-        collector: &mut Option<Vec<GridNode>>,
+        collector: &mut Collector,
     ) -> Result<GenerationStatus, GenerationError> {
-        match self.handle_internal_status(collector)? {
+        match self.reinitialize_if_needed(collector) {
             GenerationStatus::Ongoing => (),
             GenerationStatus::Done => return Ok(GenerationStatus::Done),
-        }
+        };
 
+        self.unchecked_select_and_propagate(collector)
+    }
+
+    fn unchecked_select_and_propagate(
+        &mut self,
+        collector: &mut Collector,
+    ) -> Result<GenerationStatus, GenerationError> {
         let node_index = match self
             .node_selection_heuristic
             .select_node(&self.possible_models_counts, &mut self.rng)
@@ -365,32 +406,25 @@ impl<T: CoordinateSystem + Clone> Generator<T> {
         Ok(self.check_if_done())
     }
 
-    fn initialize(
-        &mut self,
-        collector: &mut Option<Vec<GridNode>>,
-    ) -> Result<GenerationStatus, GenerationError> {
-        self.initialize_supports_count(collector)?;
-        self.generate_initial_nodes(collector)
-    }
-
+    /// Cannot fail since pre-gen was successful
     fn generate_initial_nodes(
         &mut self,
-        collector: &mut Option<Vec<GridNode>>,
+        collector: &mut Collector,
     ) -> Result<GenerationStatus, GenerationError> {
         let initial_nodes = Arc::clone(&self.initial_nodes);
         for (node_index, model_variant_index) in initial_nodes.iter() {
             if self.possible_models_counts[*node_index] <= 1 {
-                // node_index is already generated. And since pre-gen was successful, we know that it must be set to "model_variant_index" already.
+                // This means node_index is already generated. And since pre-gen was successful, we know that it must be set to "model_variant_index" already. We skip this node.
                 continue;
             }
 
+            // This cannot fail
             match self.unchecked_set_and_propagate(*node_index, *model_variant_index, collector)? {
                 GenerationStatus::Ongoing => (),
                 GenerationStatus::Done => return Ok(GenerationStatus::Done),
             }
         }
-        // We can't be done here, internal_set_and_propagate would have seen it.
-        Ok(GenerationStatus::Ongoing)
+        Ok(self.check_if_done())
     }
 
     /// - node_index and model_variant_index must be valid
@@ -401,7 +435,7 @@ impl<T: CoordinateSystem + Clone> Generator<T> {
         &mut self,
         node_index: NodeIndex,
         model_variant_index: ModelVariantIndex,
-        collector: &mut Option<Vec<GridNode>>,
+        collector: &mut Collector,
     ) -> Result<GenerationStatus, GenerationError> {
         #[cfg(feature = "debug-traces")]
         debug!(
@@ -425,16 +459,25 @@ impl<T: CoordinateSystem + Clone> Generator<T> {
         Ok(self.check_if_done())
     }
 
-    fn internal_reinitialize(
-        &mut self,
-        collector: &mut Option<Vec<GridNode>>,
-    ) -> Result<GenerationStatus, GenerationError> {
-        for obs in &mut self.observers {
-            let _ = obs.send(GenerationUpdate::Reinitializing(self.seed));
-        }
+    fn reset_with_seed(&mut self, seed: u64) {
+        self.seed = seed;
+        self.rng = StdRng::seed_from_u64(seed);
 
-        self.seed = self.rng.gen::<u64>();
-        self.rng = StdRng::seed_from_u64(self.seed);
+        self.status = InternalGeneratorStatus::Ongoing;
+
+        let nodes_count = self.grid.total_size();
+        self.nodes = bitvec![1;self.rules.models_count() * nodes_count ];
+        self.nodes_left_to_generate = nodes_count;
+        self.possible_models_counts = vec![self.rules.models_count(); nodes_count];
+        self.propagation_stack = Vec::new();
+        self.node_selection_heuristic.reinitialize();
+    }
+
+    /// Advances the seed
+    fn internal_reinitialize(&mut self, collector: &mut Collector) -> GenerationStatus {
+        // Gen next seed from current rng
+        let next_seed = self.rng.gen::<u64>();
+        self.reset_with_seed(next_seed);
 
         #[cfg(feature = "debug-traces")]
         info!(
@@ -442,26 +485,25 @@ impl<T: CoordinateSystem + Clone> Generator<T> {
             self.seed, self.status
         );
 
-        let nodes_count = self.grid.total_size();
-        self.status = InternalGeneratorStatus::Ongoing;
-        self.node_selection_heuristic.reinitialize();
-        self.nodes = bitvec![1;self.rules.models_count() * nodes_count ];
-        self.nodes_left_to_generate = nodes_count;
-        self.possible_models_counts = vec![self.rules.models_count(); nodes_count];
-        self.propagation_stack = Vec::new();
-        self.initialize(collector)
+        for obs in &mut self.observers {
+            let _ = obs.send(GenerationUpdate::Reinitializing(self.seed));
+        }
+
+        // Since Pre-gen succeeded. The following calls will always succeed.
+        let _ = self.initialize_supports_count(collector);
+        self.generate_initial_nodes(collector).unwrap()
     }
 
     /// Returns an error if :
     /// - node_index is invalid
     /// - model_variant_index is invalid
     /// - model_variant_index is not possible on node_index
-    /// Returns Ok(false) if model_variant_index can be generated on node_index and Ok(true) if node_index is already generated to model_variant_index
+    /// Returns [`Ok(NodeSetStatus::CanBeSet)`] if model_variant_index can be generated on node_index and [`Ok(NodeSetStatus::AlreadySet)`] if node_index is already generated to model_variant_index
     fn check_set_and_propagate_parameters(
         &self,
         node_index: NodeIndex,
         model_variant_index: ModelVariantIndex,
-    ) -> Result<bool, NodeSetError> {
+    ) -> Result<NodeSetStatus, NodeSetError> {
         if model_variant_index > self.rules.models_count() {
             return Err(NodeSetError::InvalidModelIndex(model_variant_index));
         }
@@ -472,9 +514,9 @@ impl<T: CoordinateSystem + Clone> Generator<T> {
             return Err(NodeSetError::IllegalModel(model_variant_index, node_index));
         }
         if self.possible_models_counts[node_index] <= 1 {
-            return Ok(true);
+            return Ok(NodeSetStatus::AlreadySet);
         }
-        Ok(false)
+        Ok(NodeSetStatus::CanBeSet)
     }
 
     /// Initialize the supports counts array. This may already start to generate/ban/... some nodes according to the given constraints.
@@ -482,7 +524,7 @@ impl<T: CoordinateSystem + Clone> Generator<T> {
     /// Returns `Ok` if the initialization went well and sets the internal status to [`InternalGeneratorStatus::Ongoing`] or [`InternalGeneratorStatus::Done`]. Else, sets the internal status to [`InternalGeneratorStatus::Failed`] and returns [`GenerationError`]
     fn initialize_supports_count(
         &mut self,
-        collector: &mut Option<Vec<GridNode>>,
+        collector: &mut Collector,
     ) -> Result<GenerationStatus, GenerationError> {
         #[cfg(feature = "debug-traces")]
         debug!("Initializing support counts");
@@ -533,19 +575,6 @@ impl<T: CoordinateSystem + Clone> Generator<T> {
         Ok(self.check_if_done())
     }
 
-    fn handle_internal_status(
-        &mut self,
-        collector: &mut Option<Vec<GridNode>>,
-    ) -> Result<GenerationStatus, GenerationError> {
-        match self.status {
-            InternalGeneratorStatus::Init => self.initialize(collector),
-            InternalGeneratorStatus::Ongoing => Ok(GenerationStatus::Ongoing),
-            InternalGeneratorStatus::Done | InternalGeneratorStatus::Failed => {
-                self.internal_reinitialize(collector)
-            }
-        }
-    }
-
     fn check_if_done(&mut self) -> GenerationStatus {
         if self.nodes_left_to_generate == 0 {
             self.status = InternalGeneratorStatus::Done;
@@ -557,9 +586,13 @@ impl<T: CoordinateSystem + Clone> Generator<T> {
     }
 
     fn internal_generate(&mut self) -> Result<(), GenerationError> {
+        match self.reinitialize_if_needed(&mut None) {
+            GenerationStatus::Ongoing => (),
+            GenerationStatus::Done => return Ok(()),
+        };
         // `nodes_left_to_generate` is an upper limit to the number of iterations. We avoid an unnecessary while loop.
         for _i in 0..self.nodes_left_to_generate {
-            match self.internal_select_and_propagate(&mut None) {
+            match self.unchecked_select_and_propagate(&mut None) {
                 Ok(GenerationStatus::Done) => break,
                 Ok(GenerationStatus::Ongoing) => (),
                 Err(e) => return Err(e),
@@ -604,7 +637,7 @@ impl<T: CoordinateSystem + Clone> Generator<T> {
 
     fn signal_selection(
         &mut self,
-        collector: &mut Option<Vec<GridNode>>,
+        collector: &mut Collector,
         node_index: usize,
         model_index: ModelVariantIndex,
     ) {
@@ -625,7 +658,7 @@ impl<T: CoordinateSystem + Clone> Generator<T> {
     /// Returns [`GenerationError`] if a node has no possible models left. Else, returns `Ok`.
     ///
     /// Does not modify the generator internal status.
-    fn propagate(&mut self, collector: &mut Option<Vec<GridNode>>) -> Result<(), GenerationError> {
+    fn propagate(&mut self, collector: &mut Collector) -> Result<(), GenerationError> {
         // Clone the ref to allow for mutability of other members in the interior loops
         let rules = Arc::clone(&self.rules);
 
@@ -684,7 +717,7 @@ impl<T: CoordinateSystem + Clone> Generator<T> {
         &mut self,
         node_index: usize,
         model: usize,
-        collector: &mut Option<Vec<GridNode>>,
+        collector: &mut Collector,
     ) -> Result<(), GenerationError> {
         // Update the supports
         for dir in self.grid.directions() {
@@ -782,7 +815,7 @@ impl<T: CoordinateSystem + Clone> Generator<T> {
             .unwrap_or(0)
     }
 
-    fn add_observer_queue(&mut self) -> crossbeam_channel::Receiver<GenerationUpdate> {
+    fn create_observer_queue(&mut self) -> crossbeam_channel::Receiver<GenerationUpdate> {
         // We can't simply bound to the number of nodes since we might retry some generations. (and send more than number_of_nodes updates)
         let (sender, receiver) = crossbeam_channel::unbounded();
         self.observers.push(sender);
@@ -793,7 +826,7 @@ impl<T: CoordinateSystem + Clone> Generator<T> {
         #[cfg(feature = "debug-traces")]
         debug!("Generation failed due to a contradiction");
 
-        self.status = InternalGeneratorStatus::Failed;
+        self.status = InternalGeneratorStatus::Failed(GenerationError { node_index });
         for obs in &mut self.observers {
             let _ = obs.send(GenerationUpdate::Failed(node_index));
         }
