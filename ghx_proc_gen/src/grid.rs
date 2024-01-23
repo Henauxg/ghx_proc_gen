@@ -34,7 +34,7 @@ impl GridPosition {
 ///
 #[derive(Clone)]
 #[cfg_attr(feature = "bevy", derive(Component))]
-pub struct GridDefinition<T: CoordinateSystem + Clone> {
+pub struct GridDefinition<T: CoordinateSystem> {
     size_x: u32,
     size_y: u32,
     size_z: u32,
@@ -46,7 +46,7 @@ pub struct GridDefinition<T: CoordinateSystem + Clone> {
     size_xy: u32,
 }
 
-impl<T: CoordinateSystem + Clone> fmt::Display for GridDefinition<T> {
+impl<T: CoordinateSystem> fmt::Display for GridDefinition<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -110,7 +110,7 @@ impl GridDefinition<Cartesian3D> {
     }
 }
 
-impl<T: CoordinateSystem + Clone> GridDefinition<T> {
+impl<T: CoordinateSystem> GridDefinition<T> {
     /// Creates a new [`GridDefinition`]
     pub fn new(
         size_x: u32,
@@ -275,12 +275,12 @@ impl<T: CoordinateSystem + Clone> GridDefinition<T> {
 /// ```
 /// You can also retrieve a pre-created existing `GridData` from a [`crate::generator::Generator`], or from an observer like a [`crate::generator::observer::QueuedStatefulObserver`]
 #[cfg_attr(feature = "bevy", derive(Component))]
-pub struct GridData<T: CoordinateSystem + Clone, D> {
+pub struct GridData<T: CoordinateSystem, D> {
     grid: GridDefinition<T>,
     data: Vec<D>,
 }
 
-impl<T: CoordinateSystem + Clone, D> GridData<T, D> {
+impl<T: CoordinateSystem, D> GridData<T, D> {
     /// Prefer using `default_grid_data` or `new_grid_data` directly on an existing grid definition to create a `GridData` with a correct data Vec.
     pub fn new(grid: GridDefinition<T>, data: Vec<D>) -> Self {
         Self { grid, data }
@@ -318,7 +318,7 @@ impl<T: CoordinateSystem + Clone, D> GridData<T, D> {
     }
 }
 
-impl<T: CoordinateSystem + Clone, D: Copy> GridData<T, D> {
+impl<T: CoordinateSystem, D: Copy> GridData<T, D> {
     /// Resets the whole grid buffer by setting the value of each element to `value`
     pub fn reset(&mut self, value: D) {
         for d in self.data.iter_mut() {
