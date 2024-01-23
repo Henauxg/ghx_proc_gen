@@ -112,8 +112,10 @@ pub struct Generator<T: CoordinateSystem> {
     // === Read-only configuration ===
     grid: GridDefinition<T>,
     rules: Arc<Rules<T>>,
-    max_retry_count: u32,
     initial_nodes: Arc<Vec<(NodeIndex, ModelVariantIndex)>>,
+
+    // === Configuration ===
+    max_retry_count: u32,
 
     // === Generation state ===
     seed: u64,
@@ -171,8 +173,9 @@ impl<T: CoordinateSystem> Generator<T> {
         let mut generator = Self {
             grid,
             rules,
-            max_retry_count,
             initial_nodes: Arc::new(initial_nodes),
+
+            max_retry_count,
 
             node_selection_heuristic,
             model_selection_heuristic,
@@ -191,9 +194,17 @@ impl<T: CoordinateSystem> Generator<T> {
             supports_count: Array::zeros((nodes_count, models_count, direction_count)),
         };
         match generator.pregen(collector) {
-            Ok(_) => Ok(generator),
+            Ok(_status) => Ok((generator)),
             Err(err) => Err(err),
         }
+    }
+
+    pub fn max_retry_count(&self) -> u32 {
+        self.max_retry_count
+    }
+
+    pub fn set_max_retry_count(&mut self, max_retry_count: u32) {
+        self.max_retry_count = max_retry_count;
     }
 
     /// Returns the seed that was used to initialize the generator RNG for this generation. See [`RngMode`] for more information.
@@ -216,6 +227,14 @@ impl<T: CoordinateSystem> Generator<T> {
         self.nodes_left_to_generate
     }
 
+    pub fn to_grid_data(&self) -> Option<GridData<T, ModelInstance>> {
+        match self.status {
+            InternalGeneratorStatus::Ongoing => None,
+            InternalGeneratorStatus::Failed(_) => None,
+            InternalGeneratorStatus::Done => Some(self.internal_to_grid_data()),
+        }
+    }
+
     /// Tries to generate the whole grid. If the generation fails due to a contradiction, it will retry `max_retry_count` times before returning the last encountered [`GenerationError`]
     ///
     /// If the generation has ended (successful or not), calling `generate` will reinitialize the generator before starting the generation.
@@ -224,7 +243,7 @@ impl<T: CoordinateSystem> Generator<T> {
         &mut self,
     ) -> Result<(GenInfo, GridData<T, ModelInstance>), GenerationError> {
         let gen_info = self.internal_generate(&mut None)?;
-        Ok((gen_info, self.to_grid_data()))
+        Ok((gen_info, self.internal_to_grid_data()))
     }
 
     pub fn generate_collected(&mut self) -> Result<(GenInfo, Vec<GridNode>), GenerationError> {
@@ -339,28 +358,29 @@ impl<T: CoordinateSystem> Generator<T> {
         Ok(GenerationStatus::Ongoing)
     }
 
-    fn reinitialize_if_needed(&mut self, collector: &mut Collector) -> GenerationStatus {
+    /// - reinitializes the generator if needed
+    /// - returns `true` if the generation is [`GenerationStatus::Ongoing`] and the operation should continue, and false if the generation is [`GenerationStatus::Done`] and the operation should stop
+    fn auto_reinitialize_and_continue(&mut self, collector: &mut Collector) -> bool {
         match self.status {
-            InternalGeneratorStatus::Ongoing => GenerationStatus::Ongoing,
+            InternalGeneratorStatus::Ongoing => true,
             InternalGeneratorStatus::Done | InternalGeneratorStatus::Failed(_) => {
                 match self.internal_reinitialize(collector) {
-                    GenerationStatus::Ongoing => GenerationStatus::Ongoing,
-                    GenerationStatus::Done => GenerationStatus::Done,
+                    GenerationStatus::Ongoing => true,
+                    GenerationStatus::Done => false,
                 }
             }
         }
     }
 
-    /// First-handler of public API calls. Will call [`Generator::reinitialize_if_needed`]
+    /// Top-level handler of public API calls. Calls [`Generator::auto_reinitialize_and_continue`]
     fn internal_set_and_propagate(
         &mut self,
         node_index: NodeIndex,
         model_variant_index: ModelVariantIndex,
         collector: &mut Collector,
     ) -> Result<GenerationStatus, NodeSetError> {
-        match self.reinitialize_if_needed(collector) {
-            GenerationStatus::Ongoing => (),
-            GenerationStatus::Done => return Ok(GenerationStatus::Done),
+        if !self.auto_reinitialize_and_continue(collector) {
+            return Ok(GenerationStatus::Done);
         };
 
         match self.check_set_and_propagate_parameters(node_index, model_variant_index)? {
@@ -374,17 +394,36 @@ impl<T: CoordinateSystem> Generator<T> {
         Ok(self.unchecked_set_and_propagate(node_index, model_variant_index, collector)?)
     }
 
-    /// First-handler of public API calls. Will call [`Generator::reinitialize_if_needed`]
+    /// Top-level handler of public API calls. Calls [`Generator::auto_reinitialize_and_continue`]
     fn internal_select_and_propagate(
         &mut self,
         collector: &mut Collector,
     ) -> Result<GenerationStatus, GenerationError> {
-        match self.reinitialize_if_needed(collector) {
-            GenerationStatus::Ongoing => (),
-            GenerationStatus::Done => return Ok(GenerationStatus::Done),
+        if !self.auto_reinitialize_and_continue(collector) {
+            return Ok(GenerationStatus::Done);
         };
 
         self.unchecked_select_and_propagate(collector)
+    }
+
+    /// Top-level handler of public API calls. Calls [`Generator::auto_reinitialize_and_continue`]
+    fn generate_remaining_nodes(
+        &mut self,
+        collector: &mut Collector,
+    ) -> Result<(), GenerationError> {
+        if !self.auto_reinitialize_and_continue(collector) {
+            return Ok(());
+        };
+
+        // `nodes_left_to_generate` is an upper limit to the number of iterations. We avoid an unnecessary while loop.
+        for _i in 0..self.nodes_left_to_generate {
+            match self.unchecked_select_and_propagate(collector) {
+                Ok(GenerationStatus::Done) => return Ok(()),
+                Ok(GenerationStatus::Ongoing) => (),
+                Err(e) => return Err(e),
+            };
+        }
+        Ok(())
     }
 
     fn unchecked_select_and_propagate(
@@ -605,25 +644,6 @@ impl<T: CoordinateSystem> Generator<T> {
         }
     }
 
-    fn generate_remaining_nodes(
-        &mut self,
-        collector: &mut Collector,
-    ) -> Result<(), GenerationError> {
-        match self.reinitialize_if_needed(&mut None) {
-            GenerationStatus::Ongoing => (),
-            GenerationStatus::Done => return Ok(()),
-        };
-        // `nodes_left_to_generate` is an upper limit to the number of iterations. We avoid an unnecessary while loop.
-        for _i in 0..self.nodes_left_to_generate {
-            match self.unchecked_select_and_propagate(collector) {
-                Ok(GenerationStatus::Done) => return Ok(()),
-                Ok(GenerationStatus::Ongoing) => (),
-                Err(e) => return Err(e),
-            };
-        }
-        Ok(())
-    }
-
     fn handle_selected(&mut self, node_index: usize, selected_model_index: ModelVariantIndex) {
         // Iterate all the possible models because we don't have an easy way to iterate only the models possible at node_index. But we'll filter impossible models right away. TODO: benchmark iter_ones
         for model_index in 0..self.rules.models_count() {
@@ -820,7 +840,7 @@ impl<T: CoordinateSystem> Generator<T> {
     }
 
     /// Should only be called when the nodes are fully generated
-    fn to_grid_data(&self) -> GridData<T, ModelInstance> {
+    fn internal_to_grid_data(&self) -> GridData<T, ModelInstance> {
         let mut generated_nodes = Vec::with_capacity(self.nodes.len());
         for node_index in 0..self.grid.total_size() {
             let model_index = self.get_model_index(node_index);
