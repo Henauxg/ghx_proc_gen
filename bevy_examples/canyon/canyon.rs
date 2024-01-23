@@ -125,14 +125,16 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         .build()
         .unwrap();
     let grid = GridDefinition::new_cartesian_3d(GRID_X, GRID_HEIGHT, GRID_Z, false, false, false);
-    let generator = GeneratorBuilder::new()
+
+    let mut gen_builder = GeneratorBuilder::new()
         .with_rules(rules)
         .with_grid(grid.clone())
         .with_max_retry_count(50)
         .with_rng(RngMode::RandomSeed)
         .with_node_heuristic(NodeSelectionHeuristic::MinimumEntropy)
-        .with_model_heuristic(ModelSelectionHeuristic::WeightedProbability)
-        .build();
+        .with_model_heuristic(ModelSelectionHeuristic::WeightedProbability);
+    let observer = gen_builder.add_queued_observer();
+    let generator = gen_builder.build().unwrap();
 
     // Load assets
     let models_assets = load_assets::<Scene, CustomComponents>(
@@ -158,6 +160,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
                 Vec3::ZERO,
             ),
         },
+        observer,
         DebugGridView3d {
             config: DebugGridViewConfig3d {
                 node_size: NODE_SIZE,

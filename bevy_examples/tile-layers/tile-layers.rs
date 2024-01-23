@@ -66,13 +66,14 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         .build()
         .unwrap();
     let grid = GridDefinition::new_cartesian_3d(GRID_X, GRID_Y, GRID_Z, false, false, false);
-    let generator = GeneratorBuilder::new()
+    let mut gen_builder = GeneratorBuilder::new()
         .with_rules(rules)
         .with_grid(grid.clone())
         .with_rng(RngMode::RandomSeed)
         .with_node_heuristic(NodeSelectionHeuristic::MinimumRemainingValue)
-        .with_model_heuristic(ModelSelectionHeuristic::WeightedProbability)
-        .build();
+        .with_model_heuristic(ModelSelectionHeuristic::WeightedProbability);
+    let observer = gen_builder.add_queued_observer();
+    let generator = gen_builder.build().unwrap();
 
     let models_assets: RulesModelsAssets<Handle<Image>> =
         load_assets(&asset_server, assets_definitions, ASSETS_PATH, "png");
@@ -89,6 +90,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
             asset_spawner: AssetSpawner::new(models_assets, NODE_SIZE, Vec3::ZERO)
                 .with_z_offset_from_y(true),
         },
+        observer,
         DebugGridView2d {
             config: DebugGridViewConfig2d {
                 node_size: Vec2::splat(TILE_SIZE),

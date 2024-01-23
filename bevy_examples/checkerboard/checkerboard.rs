@@ -66,7 +66,8 @@ fn setup_generator(
     let generator = GeneratorBuilder::new()
         .with_rules(rules)
         .with_grid(grid.clone())
-        .build();
+        .build()
+        .unwrap();
 
     // Create our assets. We define them in a separate collection for the sake of simplicity
     let cube_mesh = meshes.add(Mesh::from(shape::Cube { size: CUBE_SIZE }));
