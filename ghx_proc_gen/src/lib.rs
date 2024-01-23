@@ -12,7 +12,7 @@ pub mod generator;
 pub mod grid;
 
 /// Error returned by a [`generator::Generator`] when a generation fails
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, Clone, Copy)]
 #[error("Failed to generate, contradiction at node with index {}", node_index)]
 pub struct GenerationError {
     /// Node index at which the contradiction occurred
@@ -20,14 +20,14 @@ pub struct GenerationError {
 }
 
 /// Error returned by a [`generator::rules::RulesBuilder`] when correct [`generator::rules::Rules`] cannot be built
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, Clone, Copy)]
 pub enum RulesError {
     /// Rules cannot be built without models or sockets
     #[error("Empty models or sockets collection")]
     NoModelsOrSockets,
 }
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, Clone, Copy)]
 pub enum NodeSetError {
     #[error("Invalid model index `{0}`, does not exist in the rules")]
     InvalidModelIndex(ModelVariantIndex),
