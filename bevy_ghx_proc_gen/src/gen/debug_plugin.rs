@@ -79,7 +79,6 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
                     Update,
                     (
                         register_void_nodes_for_new_generations::<C, A, T>,
-                        observe_new_generations::<C>,
                         step_by_step_timed_update::<C>,
                         update_generation_view::<C, A, T>,
                     )
@@ -95,7 +94,6 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
                     Update,
                     (
                         register_void_nodes_for_new_generations::<C, A, T>,
-                        observe_new_generations::<C>,
                         step_by_step_input_update::<C>,
                         update_generation_view::<C, A, T>,
                     )
@@ -105,12 +103,7 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
             GenerationViewMode::Final => {
                 app.add_systems(
                     Update,
-                    (
-                        observe_new_generations::<C>,
-                        generate_all::<C>,
-                        update_generation_view::<C, A, T>,
-                    )
-                        .chain(),
+                    (generate_all::<C>, update_generation_view::<C, A, T>).chain(),
                 );
             }
         }
@@ -208,32 +201,6 @@ impl Default for ProcGenKeyBindings {
     }
 }
 
-/// Component added by the [`ProcGenDebugPlugin`] to entities with a [`Generator`] component. Used to analyze the generation process.
-#[derive(Component)]
-pub struct Observed {
-    /// Generator observer
-    pub obs: QueuedObserver,
-}
-impl Observed {
-    fn new<C: CoordinateSystem>(mut generation: &mut Generator<C>) -> Self {
-        Self {
-            obs: QueuedObserver::new(&mut generation),
-        }
-    }
-}
-
-/// This system adds an [`Observed`] component to every `Entity` with a [`Generator`] component
-pub fn observe_new_generations<C: CoordinateSystem>(
-    mut commands: Commands,
-    mut new_generations: Query<(Entity, &mut Generator<C>), Without<Observed>>,
-) {
-    for (gen_entity, mut generation) in new_generations.iter_mut() {
-        commands
-            .entity(gen_entity)
-            .insert(Observed::new(&mut generation));
-    }
-}
-
 /// Component used to store model indexes of models with no assets, just to be able to skip their generation when stepping
 #[derive(Component, Deref)]
 pub struct VoidNodes(HashSet<ModelIndex>);
@@ -282,7 +249,7 @@ pub fn update_generation_control(
 /// This system request the full generation to all [`Generator`] components, if they already are observed through an [`Observed`] component and if the current control status is [`GenerationControlStatus::Ongoing`]
 pub fn generate_all<C: CoordinateSystem>(
     mut generation_control: ResMut<GenerationControl>,
-    mut observed_generations: Query<&mut Generator<C>, With<Observed>>,
+    mut observed_generations: Query<&mut Generator<C>, With<QueuedObserver>>,
 ) {
     for mut generation in observed_generations.iter_mut() {
         if generation_control.status == GenerationControlStatus::Ongoing {
@@ -315,7 +282,7 @@ pub fn step_by_step_input_update<C: CoordinateSystem>(
     keys: Res<Input<KeyCode>>,
     proc_gen_key_bindings: Res<ProcGenKeyBindings>,
     mut generation_control: ResMut<GenerationControl>,
-    mut observed_generations: Query<(&mut Generator<C>, &VoidNodes), With<Observed>>,
+    mut observed_generations: Query<(&mut Generator<C>, &VoidNodes), With<QueuedObserver>>,
 ) {
     if generation_control.status == GenerationControlStatus::Ongoing
         && (keys.just_pressed(proc_gen_key_bindings.step)
@@ -332,7 +299,7 @@ pub fn step_by_step_timed_update<C: CoordinateSystem>(
     mut generation_control: ResMut<GenerationControl>,
     mut steps_and_timer: ResMut<StepByStepTimed>,
     time: Res<Time>,
-    mut observed_generations: Query<(&mut Generator<C>, &VoidNodes), With<Observed>>,
+    mut observed_generations: Query<(&mut Generator<C>, &VoidNodes), With<QueuedObserver>>,
 ) {
     steps_and_timer.timer.tick(time.delta());
     if steps_and_timer.timer.finished()
@@ -356,14 +323,14 @@ fn update_generation_view<C: CoordinateSystem, A: AssetsBundleSpawner, T: Compon
         Entity,
         &GridDefinition<C>,
         &AssetSpawner<A, T>,
-        &mut Observed,
+        &mut QueuedObserver,
     )>,
     existing_nodes: Query<Entity, With<SpawnedNode>>,
 ) {
     for (gen_entity, grid, asset_spawner, mut observer) in generators.iter_mut() {
         let mut reinitialized = false;
         let mut nodes_to_spawn = Vec::new();
-        for update in observer.obs.dequeue_all() {
+        for update in observer.dequeue_all() {
             match update {
                 GenerationUpdate::Generated(grid_node) => {
                     nodes_to_spawn.push(grid_node);
