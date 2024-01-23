@@ -63,13 +63,13 @@ impl<C: CoordinateSystem> Plugin for GridDebugPlugin<C> {
 
 /// Add this bundle to a [`bevy::prelude::Entity`] with a [`ghx_proc_gen::grid::GridDefinition`] if you are using a 3d camera ([`bevy::prelude::Camera3d`]).
 #[derive(Bundle)]
-pub struct DebugGridView3d {
+pub struct DebugGridView3dBundle {
     /// 3d-specific configuration of the debug view
     pub config: DebugGridViewConfig3d,
     /// Debug view of the grid
     pub view: DebugGridView,
 }
-impl Default for DebugGridView3d {
+impl Default for DebugGridView3dBundle {
     fn default() -> Self {
         Self {
             config: Default::default(),
@@ -80,13 +80,13 @@ impl Default for DebugGridView3d {
 
 /// Add this bundle to a [`bevy::prelude::Entity`] with a [`ghx_proc_gen::grid::GridDefinition`] if you are using a 2d camera ([`bevy::prelude::Camera2d`]).
 #[derive(Bundle)]
-pub struct DebugGridView2d {
+pub struct DebugGridView2dBundle {
     /// 2d-specific configuration of the debug view
     pub config: DebugGridViewConfig2d,
     /// Debug view of the grid
     pub view: DebugGridView,
 }
-impl Default for DebugGridView2d {
+impl Default for DebugGridView2dBundle {
     fn default() -> Self {
         Self {
             config: Default::default(),

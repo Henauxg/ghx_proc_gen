@@ -15,7 +15,7 @@ use bevy_ghx_proc_gen::{
     },
     grid::{
         view::{DebugGridView, DebugGridViewConfig3d},
-        DebugGridView3d,
+        DebugGridView3dBundle,
     },
     proc_gen::{
         generator::{
@@ -161,7 +161,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
             ),
         },
         observer,
-        DebugGridView3d {
+        DebugGridView3dBundle {
             config: DebugGridViewConfig3d {
                 node_size: NODE_SIZE,
             },
