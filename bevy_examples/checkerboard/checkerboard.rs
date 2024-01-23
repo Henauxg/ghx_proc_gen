@@ -66,6 +66,8 @@ fn setup_generator(
     let generator = GeneratorBuilder::new()
         .with_rules(rules)
         .with_grid(grid.clone())
+        // Let's ensure that we make a chessboard, with a black square bottom-left
+        .with_initial_nodes(vec![(0, 1)])
         .build()
         .unwrap();
 

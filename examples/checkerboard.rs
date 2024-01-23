@@ -31,6 +31,8 @@ fn main() {
     let mut generator = GeneratorBuilder::new()
         .with_rules(rules)
         .with_grid(grid)
+        // Let's ensure that we make a chessboard, with a black square bottom-left
+        .with_initial_nodes(vec![(0, 1)])
         .build()
         .unwrap();
 
@@ -39,7 +41,8 @@ fn main() {
     let (_gen_info, checker_pattern) = generator.generate_grid().unwrap();
 
     let icons = vec!["◻️ ", "⬛"];
-    for y in 0..checker_pattern.grid().size_y() {
+    // We draw from top to bottom
+    for y in (0..checker_pattern.grid().size_y()).rev() {
         for x in 0..checker_pattern.grid().size_x() {
             print!("{}", icons[checker_pattern.get_2d(x, y).model_index]);
         }
