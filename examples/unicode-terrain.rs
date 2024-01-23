@@ -91,7 +91,8 @@ fn main() {
         .with_rng(RngMode::RandomSeed)
         .with_node_heuristic(NodeSelectionHeuristic::Random)
         .with_model_heuristic(ModelSelectionHeuristic::WeightedProbability)
-        .build();
+        .build()
+        .unwrap();
     let mut observer = QueuedStatefulObserver::new(&mut generator);
 
     match GENERATION_VIEW_MODE {
