@@ -1,6 +1,9 @@
-use crate::grid::{direction::CoordinateSystem, GridData};
+use crate::grid::{direction::CoordinateSystem, GridData, GridDefinition};
 
 use super::{model::ModelInstance, Generator, GridNode};
+
+#[cfg(feature = "bevy")]
+use bevy::ecs::component::Component;
 
 /// Update sent by a [`crate::generator::Generator`]
 #[derive(Clone, Copy, Debug)]
@@ -16,20 +19,25 @@ pub enum GenerationUpdate {
 /// Observer with a queue of the [`GenerationUpdate`] sent by the [`crate::generator::Generator`] which also maintains a coherent state of the current generation in a [`GridData`]
 ///
 /// Can be used in a different thread than the generator's thread.
-pub struct QueuedStatefulObserver<T: CoordinateSystem + Clone> {
+#[cfg_attr(feature = "bevy", derive(Component))]
+pub struct QueuedStatefulObserver<T: CoordinateSystem> {
     grid_data: GridData<T, Option<ModelInstance>>,
     receiver: crossbeam_channel::Receiver<GenerationUpdate>,
 }
 
-impl<T: CoordinateSystem + Clone> QueuedStatefulObserver<T> {
+impl<T: CoordinateSystem> QueuedStatefulObserver<T> {
     /// Creates a new [`QueuedStatefulObserver`] for a given [`crate::generator::Generator`]
     pub fn new(generator: &mut Generator<T>) -> Self {
-        let receiver = generator.add_observer_queue();
+        let receiver = generator.create_observer_queue();
+        QueuedStatefulObserver::create(receiver, generator.grid())
+    }
+
+    pub(crate) fn create(
+        receiver: crossbeam_channel::Receiver<GenerationUpdate>,
+        grid: &GridDefinition<T>,
+    ) -> Self {
         QueuedStatefulObserver {
-            grid_data: GridData::new(
-                generator.grid.clone(),
-                vec![None; generator.grid.total_size()],
-            ),
+            grid_data: GridData::new(grid.clone(), vec![None; grid.total_size()]),
             receiver,
         }
     }
@@ -75,15 +83,20 @@ impl<T: CoordinateSystem + Clone> QueuedStatefulObserver<T> {
 /// Observer with just a queue of the [`GenerationUpdate`] sent by the [`crate::generator::Generator`]
 ///
 /// Can be used in a different thread than the generator's thread.
+#[cfg_attr(feature = "bevy", derive(Component))]
 pub struct QueuedObserver {
     receiver: crossbeam_channel::Receiver<GenerationUpdate>,
 }
 
 impl QueuedObserver {
     /// Creates a new [`QueuedObserver`] for a given [`crate::generator::Generator`]
-    pub fn new<T: CoordinateSystem + Clone>(generator: &mut Generator<T>) -> Self {
-        let receiver = generator.add_observer_queue();
+    pub fn new<T: CoordinateSystem>(generator: &mut Generator<T>) -> Self {
+        let receiver = generator.create_observer_queue();
         QueuedObserver { receiver }
+    }
+
+    pub(crate) fn create(receiver: crossbeam_channel::Receiver<GenerationUpdate>) -> Self {
+        Self { receiver }
     }
 
     /// Dequeues all queued updates.
