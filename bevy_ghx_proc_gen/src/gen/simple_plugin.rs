@@ -84,7 +84,7 @@ pub fn generate_and_spawn<C: CoordinateSystem, A: AssetsBundleSpawner, T: Compon
     let mut generations_done = vec![];
     for &gen_entity in pending_generations.pendings.iter() {
         if let Ok((mut generation, asset_spawner)) = generations.get_mut(gen_entity) {
-            match generation.generate_collected() {
+            match generation.generate_and_collect_all() {
                 Ok(grid_data) => {
                     info!(
                         "Generation {:?} done, seed: {}; grid: {}",
