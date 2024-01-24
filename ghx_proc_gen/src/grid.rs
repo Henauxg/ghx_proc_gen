@@ -29,6 +29,14 @@ impl GridPosition {
             i64::from(self.z) + i64::from(delta.dz),
         )
     }
+
+    pub fn new(x: u32, y: u32, z: u32) -> GridPosition {
+        Self { x, y, z }
+    }
+
+    pub fn new_xy(x: u32, y: u32) -> GridPosition {
+        Self { x, y, z: 0 }
+    }
 }
 
 ///
