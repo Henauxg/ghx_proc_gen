@@ -9,7 +9,7 @@ use ndarray::{Array, Ix1, Ix2};
 use tracing::trace;
 
 use super::{
-    model::{create_model_variations, Model, ModelIndex, ModelVariation},
+    model::{create_model_variations, Model, ModelInstance, ModelVariantIndex},
     socket::SocketCollection,
 };
 use crate::{
@@ -149,7 +149,11 @@ pub struct Rules<T: CoordinateSystem> {
     /// All the models in this ruleset.
     ///
     /// This is expanded from a given collection of base models, with added variations of rotations around an axis.
-    models: Vec<ModelVariation>,
+    models: Vec<ModelInstance>,
+    weights: Vec<f32>,
+    #[cfg(feature = "debug-traces")]
+    names: Vec<Option<&'static str>>,
+
     /// The vector `allowed_neighbours[model_index][direction]` holds all the allowed adjacent models (indexes) to `model_index` in `direction`.
     ///
     /// Calculated from expanded models.
@@ -176,7 +180,7 @@ impl<T: CoordinateSystem> Rules<T> {
         // Temporary collection to reverse the relation: sockets_to_models.get(socket)[direction] will hold all the models that have 'socket' from 'direction'
         let mut sockets_to_models = HashMap::new();
         // Using a BTreeSet because HashSet order is not deterministic. Performance impact is non-existant since `sockets_to_models` is discarded after building the Rules.
-        let empty_in_all_directions: Array<BTreeSet<ModelIndex>, Ix1> =
+        let empty_in_all_directions: Array<BTreeSet<ModelVariantIndex>, Ix1> =
             Array::from_elem(coord_system.directions().len(), BTreeSet::new());
         for (model_index, model) in model_variations.iter().enumerate() {
             for &direction in coord_system.directions() {
@@ -219,6 +223,21 @@ impl<T: CoordinateSystem> Rules<T> {
             }
         }
 
+        // Discard socket information, build linear buffers containing the info needed during the generation
+
+        #[cfg(feature = "debug-traces")]
+        let mut names = Vec::with_capacity(model_variations.len());
+
+        let mut weights = Vec::with_capacity(model_variations.len());
+        let mut model_instances = Vec::with_capacity(model_variations.len());
+        for model_variation in model_variations {
+            weights.push(model_variation.weight());
+            model_instances.push(model_variation.to_instance());
+
+            #[cfg(feature = "debug-traces")]
+            names.push(model_variation.name);
+        }
+
         #[cfg(feature = "debug-traces")]
         {
             trace!(
@@ -229,7 +248,10 @@ impl<T: CoordinateSystem> Rules<T> {
 
         Ok(Rules {
             original_models_count,
-            models: model_variations,
+            models: model_instances,
+            weights,
+            #[cfg(feature = "debug-traces")]
+            names,
             allowed_neighbours,
             typestate: PhantomData,
         })
@@ -238,15 +260,10 @@ impl<T: CoordinateSystem> Rules<T> {
     #[inline]
     pub(crate) fn allowed_models(
         &self,
-        model: ModelIndex,
+        model: ModelVariantIndex,
         direction: Direction,
-    ) -> &Vec<ModelIndex> {
+    ) -> &Vec<ModelVariantIndex> {
         &self.allowed_neighbours[(model, direction as usize)]
-    }
-
-    #[inline]
-    pub(crate) fn weight(&self, model_index: ModelIndex) -> f32 {
-        self.models[model_index].weight()
     }
 
     /// Returns the number of models (expanded from the input models) present in the rules
@@ -262,7 +279,21 @@ impl<T: CoordinateSystem> Rules<T> {
     }
 
     #[inline]
-    pub(crate) fn model(&self, index: usize) -> &ModelVariation {
+    pub(crate) fn model(&self, index: ModelVariantIndex) -> &ModelInstance {
         &self.models[index]
+    }
+
+    #[inline]
+    pub(crate) fn weight(&self, model_index: ModelVariantIndex) -> f32 {
+        self.weights[model_index]
+    }
+
+    #[cfg(feature = "debug-traces")]
+    #[inline]
+    pub(crate) fn name(&self, model_index: ModelVariantIndex) -> &'static str {
+        match self.names[model_index] {
+            None => "None",
+            Some(name) => name,
+        }
     }
 }

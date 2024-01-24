@@ -230,19 +230,6 @@ impl ModelVariation {
     }
 }
 
-#[cfg(feature = "debug-traces")]
-impl fmt::Display for ModelVariation {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "[{} ({:?}) rotation {}]",
-            self.original_index,
-            self.name,
-            self.rotation.value()
-        )
-    }
-}
-
 /// Used to identify a specific variation of an input model.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ModelInstance {

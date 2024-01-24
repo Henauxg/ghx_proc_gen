@@ -194,7 +194,7 @@ impl<T: CoordinateSystem> Generator<T> {
             supports_count: Array::zeros((nodes_count, models_count, direction_count)),
         };
         match generator.pregen(collector) {
-            Ok(_status) => Ok((generator)),
+            Ok(_status) => Ok(generator),
             Err(err) => Err(err),
         }
     }
@@ -446,8 +446,9 @@ impl<T: CoordinateSystem> Generator<T> {
 
         #[cfg(feature = "debug-traces")]
         debug!(
-            "Heuristics selected model {} for node {} at position {:?}",
+            "Heuristics selected model {:?} named '{}' for node {} at position {:?}",
             self.rules.model(selected_model_index),
+            self.rules.name(selected_model_index),
             node_index,
             self.grid.get_position(node_index)
         );
@@ -498,8 +499,9 @@ impl<T: CoordinateSystem> Generator<T> {
     ) -> Result<GenerationStatus, GenerationError> {
         #[cfg(feature = "debug-traces")]
         debug!(
-            "Set model {} for node {} at position {:?}",
-            self.rules.model(model_index),
+            "Set model {:?} named '{}' for node {} at position {:?}",
+            self.rules.model(model_variant_index),
+            self.rules.name(model_variant_index),
             node_index,
             self.grid.get_position(node_index)
         );
@@ -686,7 +688,7 @@ impl<T: CoordinateSystem> Generator<T> {
     ) {
         let grid_node = GridNode {
             node_index,
-            model_instance: self.rules.model(model_index).to_instance(),
+            model_instance: self.rules.model(model_index).clone(),
         };
         let update = GenerationUpdate::Generated(grid_node);
         for obs in &mut self.observers {
@@ -710,8 +712,9 @@ impl<T: CoordinateSystem> Generator<T> {
 
             #[cfg(feature = "debug-traces")]
             trace!(
-                "Propagate removal of model {} for node {}",
+                "Propagate removal of model {:?} named '{}' for node {}",
                 self.rules.model(from.model_index),
+                self.rules.name(from.model_index),
                 from.node_index
             );
 
@@ -741,8 +744,9 @@ impl<T: CoordinateSystem> Generator<T> {
     fn enqueue_removal_to_propagate(&mut self, node_index: usize, model_index: ModelVariantIndex) {
         #[cfg(feature = "debug-traces")]
         trace!(
-            "Enqueue removal for propagation: model {} from node {}",
+            "Enqueue removal for propagation: model {:?} named '{}' from node {}",
             self.rules.model(model_index),
+            self.rules.name(model_index),
             node_index
         );
         self.propagation_stack.push(PropagationEntry {
@@ -779,8 +783,9 @@ impl<T: CoordinateSystem> Generator<T> {
 
         #[cfg(feature = "debug-traces")]
         trace!(
-            "Ban model {} from node {} at position {:?}, {} models left",
+            "Ban model {:?} named '{}' from node {} at position {:?}, {} models left",
             self.rules.model(model),
+            self.rules.name(model),
             node_index,
             self.grid.get_position(node_index),
             number_of_models_left
@@ -793,8 +798,9 @@ impl<T: CoordinateSystem> Generator<T> {
                 {
                     let forced_model = self.get_model_index(node_index);
                     debug!(
-                        "Previous bans force model {} for node {} at position {:?}",
+                        "Previous bans force model {:?} named '{}' for node {} at position {:?}",
                         self.rules.model(forced_model),
+                        self.rules.name(model),
                         node_index,
                         self.grid.get_position(node_index)
                     );
@@ -844,8 +850,7 @@ impl<T: CoordinateSystem> Generator<T> {
         let mut generated_nodes = Vec::with_capacity(self.nodes.len());
         for node_index in 0..self.grid.total_size() {
             let model_index = self.get_model_index(node_index);
-            let expanded_model = self.rules.model(model_index);
-            generated_nodes.push(expanded_model.to_instance())
+            generated_nodes.push(self.rules.model(model_index).clone())
         }
 
         GridData::new(self.grid.clone(), generated_nodes)
