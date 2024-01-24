@@ -1,12 +1,12 @@
 use std::{marker::PhantomData, sync::Arc};
 
 use crate::{
-    grid::{direction::CoordinateSystem, GridDefinition, NodeIndex},
+    grid::{direction::CoordinateSystem, GridDefinition, GridPosition, NodeIndex},
     NodeSetError,
 };
 
 use super::{
-    model::ModelVariantIndex,
+    model::{Model, ModelIndex, ModelRotation, ModelVariantIndex},
     node_heuristic::NodeSelectionHeuristic,
     observer::{GenerationUpdate, QueuedObserver, QueuedStatefulObserver},
     rules::Rules,
@@ -54,6 +54,7 @@ pub struct GeneratorBuilder<G, R, C: CoordinateSystem> {
     rng_mode: RngMode,
     observers: Vec<crossbeam_channel::Sender<GenerationUpdate>>,
     initial_nodes: Vec<(NodeIndex, ModelVariantIndex)>,
+    initial_nodes_ref: Vec<(NodeRef, ModelVariantRef<C>)>,
     typestate: PhantomData<(G, R)>,
 }
 
@@ -69,6 +70,7 @@ impl<C: CoordinateSystem> GeneratorBuilder<Unset, Unset, C> {
             rng_mode: RngMode::RandomSeed,
             observers: Vec::new(),
             initial_nodes: Vec::new(),
+            initial_nodes_ref: Vec::new(),
             typestate: PhantomData,
         }
     }
@@ -87,6 +89,7 @@ impl<C: CoordinateSystem> GeneratorBuilder<Unset, Unset, C> {
             rng_mode: self.rng_mode,
             observers: self.observers,
             initial_nodes: self.initial_nodes,
+            initial_nodes_ref: self.initial_nodes_ref,
 
             typestate: PhantomData,
         }
@@ -104,6 +107,7 @@ impl<C: CoordinateSystem> GeneratorBuilder<Unset, Unset, C> {
             rng_mode: self.rng_mode,
             observers: self.observers,
             initial_nodes: self.initial_nodes,
+            initial_nodes_ref: self.initial_nodes_ref,
 
             typestate: PhantomData,
         }
@@ -123,6 +127,7 @@ impl<C: CoordinateSystem> GeneratorBuilder<Unset, Set, C> {
             rng_mode: self.rng_mode,
             observers: self.observers,
             initial_nodes: self.initial_nodes,
+            initial_nodes_ref: self.initial_nodes_ref,
 
             typestate: PhantomData,
         }
@@ -166,11 +171,23 @@ impl<T: CoordinateSystem> GeneratorBuilder<Set, Set, T> {
         QueuedObserver::create(receiver)
     }
 
-    pub fn with_initial_nodes(
+    // TODO: Remove, covered by with_initial_nodes
+    pub fn with_initial_nodes_raw(
         mut self,
         initial_nodes: Vec<(NodeIndex, ModelVariantIndex)>,
     ) -> Self {
         self.initial_nodes = initial_nodes;
+        self
+    }
+
+    pub fn with_initial_nodes<N: Into<NodeRef>, M: Into<ModelVariantRef<T>>>(
+        mut self,
+        initial_nodes: Vec<(N, M)>,
+    ) -> Self {
+        for (node_ref, model_ref) in initial_nodes {
+            self.initial_nodes_ref
+                .push((node_ref.into(), model_ref.into()));
+        }
         self
     }
 
@@ -209,5 +226,44 @@ impl<T: CoordinateSystem> GeneratorBuilder<Set, Set, T> {
             &mut Some(&mut generated_nodes),
         )?;
         Ok((res, generated_nodes))
+    }
+}
+
+pub enum NodeRef {
+    Index(NodeIndex),
+    Pos(GridPosition),
+}
+
+pub enum ModelVariantRef<C: CoordinateSystem> {
+    VariantIndex(ModelVariantIndex),
+    Model(Model<C>),                   // TODO use first rotation available
+    ModelRot(Model<C>, ModelRotation), // TODO Same as above + Handle case if ModelRotation is not in Model.
+    Index(ModelIndex, ModelRotation),
+}
+
+impl Into<NodeRef> for NodeIndex {
+    fn into(self) -> NodeRef {
+        NodeRef::Index(self)
+    }
+}
+impl Into<NodeRef> for GridPosition {
+    fn into(self) -> NodeRef {
+        NodeRef::Pos(self)
+    }
+}
+
+impl<C: CoordinateSystem> Into<ModelVariantRef<C>> for ModelVariantIndex {
+    fn into(self) -> ModelVariantRef<C> {
+        ModelVariantRef::VariantIndex(self)
+    }
+}
+impl<C: CoordinateSystem> Into<ModelVariantRef<C>> for Model<C> {
+    fn into(self) -> ModelVariantRef<C> {
+        ModelVariantRef::Model(self)
+    }
+}
+impl<C: CoordinateSystem> Into<ModelVariantRef<C>> for (ModelIndex, ModelRotation) {
+    fn into(self) -> ModelVariantRef<C> {
+        ModelVariantRef::Index(self.0, self.1)
     }
 }

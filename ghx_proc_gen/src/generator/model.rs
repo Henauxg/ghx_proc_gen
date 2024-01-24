@@ -16,16 +16,22 @@ pub type ModelIndex = usize;
 /// Index of a model variation
 pub type ModelVariantIndex = usize;
 
-/// Represents a model to be used by a [`crate::generator::Generator`] as a "building-block" to fill out the generated area.
+pub const DEFAULT_MODEL_WEIGHT: f32 = 1.0;
+
+pub struct ModelCollection<C: CoordinateSystem> {
+    models: Vec<Model<C>>,
+    typestate: PhantomData<C>,
+}
+
 #[derive(Clone)]
-pub struct Model<T: CoordinateSystem> {
-    /// Allowed connections for this [`Model`] in the output.
+pub struct ModelTemplate<C> {
+    /// Allowed connections for this [`ModelTemplate`] in the output.
     sockets: Vec<Vec<Socket>>,
-    /// Weight factor influencing the density of this [`Model`] in the generated output.
+    /// Weight factor influencing the density of this [`ModelTemplate`] in the generated output.
     ///
-    ///  Defaults to 1.0
+    ///  Defaults to [`DEFAULT_MODEL_WEIGHT`]
     weight: f32,
-    /// Allowed rotations of this [`Model`] in the output, around the rotation axis specified in the rules.
+    /// Allowed rotations of this [`ModelTemplate`] in the output, around the rotation axis specified in the rules.
     ///
     /// Defaults to only [`ModelRotation::Rot0`].
     ///
@@ -33,45 +39,15 @@ pub struct Model<T: CoordinateSystem> {
     /// - In 3d, sockets of a model that are on the rotation axis are rotated into new sockets when the model itself is rotated. See [`crate::generator::socket::SocketCollection`] for how to define and/or constrain sockets connections on the rotation axis.
     /// - In 2d, the rotation axis cannot be modified and is set to [`Direction::ZForward`].
     allowed_rotations: HashSet<ModelRotation>,
-
-    /// Name given to this model for debug purposes.
-    name: Option<&'static str>,
-
-    typestate: PhantomData<T>,
+    typestate: PhantomData<C>,
 }
 
-impl Model<Cartesian2D> {
-    /// Create a [`Model`] from a [`SocketsCartesian2D`] definition, with default values for the other members.
-    pub fn new_cartesian_2d(sockets: SocketsCartesian2D) -> Model<Cartesian2D> {
+impl ModelTemplate<Cartesian3D> {
+    pub(crate) fn new(sockets: SocketsCartesian3D) -> ModelTemplate<Cartesian3D> {
         Self {
             sockets: sockets.into(),
             allowed_rotations: HashSet::from([ModelRotation::Rot0]),
-            weight: 1.0,
-            name: None,
-            typestate: PhantomData,
-        }
-    }
-
-    /// Returns a clone of the [`Model`] with its sockets rotated by `rotation` around [`CARTESIAN_2D_ROTATION_AXIS`].
-    pub fn rotated(&self, rotation: ModelRotation) -> Self {
-        Self {
-            sockets: self.rotated_sockets(rotation, CARTESIAN_2D_ROTATION_AXIS),
-            weight: self.weight,
-            allowed_rotations: self.allowed_rotations.clone(),
-            name: self.name.clone(),
-            typestate: PhantomData,
-        }
-    }
-}
-
-impl Model<Cartesian3D> {
-    /// Create a [`Model`] from a [`SocketsCartesian3D`] definition, with default values for the other members: weight is 1.0 and the model will not be rotated.
-    pub fn new_cartesian_3d(sockets: SocketsCartesian3D) -> Model<Cartesian3D> {
-        Self {
-            sockets: sockets.into(),
-            allowed_rotations: HashSet::from([ModelRotation::Rot0]),
-            weight: 1.0,
-            name: None,
+            weight: DEFAULT_MODEL_WEIGHT,
             typestate: PhantomData,
         }
     }
@@ -82,35 +58,55 @@ impl Model<Cartesian3D> {
             sockets: self.rotated_sockets(rotation, axis),
             weight: self.weight,
             allowed_rotations: self.allowed_rotations.clone(),
-            name: self.name.clone(),
             typestate: PhantomData,
         }
     }
 }
 
-impl<T: CoordinateSystem> Model<T> {
-    /// Specify that this [`Model`] can be rotated in exactly one way: `rotation`
+impl ModelTemplate<Cartesian2D> {
+    pub(crate) fn new(sockets: SocketsCartesian2D) -> ModelTemplate<Cartesian2D> {
+        Self {
+            sockets: sockets.into(),
+            allowed_rotations: HashSet::from([ModelRotation::Rot0]),
+            weight: DEFAULT_MODEL_WEIGHT,
+            typestate: PhantomData,
+        }
+    }
+
+    /// Returns a clone of the [`Model`] with its sockets rotated by `rotation` around [`CARTESIAN_2D_ROTATION_AXIS`].
+    pub fn rotated(&self, rotation: ModelRotation) -> Self {
+        Self {
+            sockets: self.rotated_sockets(rotation, CARTESIAN_2D_ROTATION_AXIS),
+            weight: self.weight,
+            allowed_rotations: self.allowed_rotations.clone(),
+            typestate: PhantomData,
+        }
+    }
+}
+
+impl<C> ModelTemplate<C> {
+    /// Specify that this [`ModelTemplate`] can be rotated in exactly one way: `rotation`
     ///
     /// Rotations are specified as counter-clockwise
     pub fn with_rotation(mut self, rotation: ModelRotation) -> Self {
         self.allowed_rotations = HashSet::from([rotation]);
         self
     }
-    /// Specify that this [`Model`] can be rotated by `rotation`, in addition to its currently allowed rotations.
+    /// Specify that this [`ModelTemplate`] can be rotated by `rotation`, in addition to its currently allowed rotations.
     ///
     /// Rotations are specified as counter-clockwise
     pub fn with_additional_rotation(mut self, rotation: ModelRotation) -> Self {
         self.allowed_rotations.insert(rotation);
         self
     }
-    /// Specify that this [`Model`] can be rotated in every way specified in `rotations`.
+    /// Specify that this [`ModelTemplate`] can be rotated in every way specified in `rotations`.
     ///
     /// Rotations are specified as counter-clockwise
     pub fn with_rotations<R: Into<HashSet<ModelRotation>>>(mut self, rotations: R) -> Self {
         self.allowed_rotations = rotations.into();
         self
     }
-    /// Specify that this [`Model`] can be rotated in every way specified in `rotations` in addition to its currently allowed rotations.
+    /// Specify that this [`ModelTemplate`] can be rotated in every way specified in `rotations` in addition to its currently allowed rotations.
     ///
     /// Rotations are specified as counter-clockwise
     pub fn with_additional_rotations<R: IntoIterator<Item = ModelRotation>>(
@@ -120,7 +116,7 @@ impl<T: CoordinateSystem> Model<T> {
         self.allowed_rotations.extend(rotations.into_iter());
         self
     }
-    /// Specify that this [`Model`] can be rotated in every way.
+    /// Specify that this [`ModelTemplate`] can be rotated in every way.
     ///
     /// Rotations are specified as counter-clockwise
     pub fn with_all_rotations(mut self) -> Self {
@@ -128,35 +124,23 @@ impl<T: CoordinateSystem> Model<T> {
         self
     }
 
-    /// Specify this [`Model`] weight. The `weight` value should be strictly superior to `0`. If it is not the case, the value will be overriden by `f32::MIN_POSITIVE`.
+    /// Specify this [`ModelTemplate`] weight. The `weight` value should be strictly superior to `0`. If it is not the case, the value will be overriden by `f32::MIN_POSITIVE`.
     ///
-    /// Used by a [`super::Generator`] when using [`super::ModelSelectionHeuristic::WeightedProbability`].
+    /// Used by a [`super::Generator`] when using [`super::ModelSelectionHeuristic::WeightedProbability`] and [`super::node_heuristic::NodeSelectionHeuristic::MinimumEntropy`].
     ///
-    /// All the variations (rotations) of this [`Model`] will use the same weight.
+    /// All the variations (rotations) of this [`ModelTemplate`] will use the same weight.
     pub fn with_weight<W: Into<f32>>(mut self, weight: W) -> Self {
         let mut checked_weight = weight.into();
         if checked_weight <= 0. {
             #[cfg(feature = "debug-traces")]
             warn!(
-                "Model with name {:?}, had an invalid weight {} <= 0., weight overriden to f32::MIN: {}",
-                self.name, checked_weight, f32::MIN_POSITIVE
+                "Template had an invalid weight {} <= 0., weight overriden to f32::MIN: {}",
+                checked_weight,
+                f32::MIN_POSITIVE
             );
             checked_weight = f32::MIN_POSITIVE
         };
         self.weight = checked_weight;
-        self
-    }
-
-    #[allow(unused_mut)]
-    /// Register the given name for this model.
-    ///
-    /// Does nothing if the `debug-traces` feature is not enabled.
-    pub fn with_name(mut self, _name: &'static str) -> Self {
-        #[cfg(feature = "debug-traces")]
-        {
-            self.name = Some(_name);
-        }
-
         self
     }
 
@@ -184,6 +168,145 @@ impl<T: CoordinateSystem> Model<T> {
                 .extend(self.sockets[rotated_basis[i] as usize].clone());
         }
         rotated_sockets
+    }
+}
+
+impl<C: CoordinateSystem> ModelCollection<C> {
+    /// Creates a new [`ModelCollection`]
+    pub fn new() -> Self {
+        Self {
+            models: Vec::new(),
+            typestate: PhantomData,
+        }
+    }
+
+    pub fn create<T: Into<ModelTemplate<C>>>(&mut self, template: T) -> &mut Model<C> {
+        let model = Model::<C>::from_template(template.into(), self.models.len());
+        self.models.push(model);
+        self.models.last_mut().unwrap()
+    }
+
+    pub fn models_count(&self) -> usize {
+        self.models.len()
+    }
+
+    pub(crate) fn create_variations(&self, rotation_axis: Direction) -> Vec<ModelVariation> {
+        let mut model_variations = Vec::new();
+        for model in self.models.iter() {
+            // Iterate on a vec of all possible node rotations and filter with the set to have a deterministic insertion order of model variations.
+            for rotation in ALL_MODEL_ROTATIONS {
+                if model.template.allowed_rotations.contains(&rotation) {
+                    let rotated_sockets = model.template.rotated_sockets(*rotation, rotation_axis);
+                    model_variations.push(ModelVariation {
+                        sockets: rotated_sockets
+                            .iter()
+                            .map(|dir| dir.iter().map(|s| s.id()).collect())
+                            .collect(),
+                        weight: model.template.weight,
+                        original_index: model.index,
+                        rotation: *rotation,
+                        #[cfg(feature = "debug-traces")]
+                        name: model.name,
+                    });
+                }
+            }
+        }
+        model_variations
+    }
+}
+
+/// Represents a model to be used by a [`crate::generator::Generator`] as a "building-block" to fill out the generated area.
+#[derive(Clone)]
+pub struct Model<T: CoordinateSystem> {
+    index: ModelIndex,
+    template: ModelTemplate<T>,
+
+    /// Name given to this model for debug purposes.
+    #[cfg(feature = "debug-traces")]
+    name: Option<&'static str>,
+}
+
+impl<T: CoordinateSystem> Model<T> {
+    pub(crate) fn from_template(template: ModelTemplate<T>, index: ModelIndex) -> Model<T> {
+        Self {
+            index,
+            template,
+            #[cfg(feature = "debug-traces")]
+            name: None,
+        }
+    }
+
+    /// Specify that this [`Model`] can be rotated in exactly one way: `rotation`
+    ///
+    /// Rotations are specified as counter-clockwise
+    pub fn with_rotation(&mut self, rotation: ModelRotation) -> &mut Self {
+        self.template.allowed_rotations = HashSet::from([rotation]);
+        self
+    }
+    /// Specify that this [`Model`] can be rotated by `rotation`, in addition to its currently allowed rotations.
+    ///
+    /// Rotations are specified as counter-clockwise
+    pub fn with_additional_rotation(&mut self, rotation: ModelRotation) -> &mut Self {
+        self.template.allowed_rotations.insert(rotation);
+        self
+    }
+    /// Specify that this [`Model`] can be rotated in every way specified in `rotations`.
+    ///
+    /// Rotations are specified as counter-clockwise
+    pub fn with_rotations<R: Into<HashSet<ModelRotation>>>(&mut self, rotations: R) -> &mut Self {
+        self.template.allowed_rotations = rotations.into();
+        self
+    }
+    /// Specify that this [`Model`] can be rotated in every way specified in `rotations` in addition to its currently allowed rotations.
+    ///
+    /// Rotations are specified as counter-clockwise
+    pub fn with_additional_rotations<R: IntoIterator<Item = ModelRotation>>(
+        &mut self,
+        rotations: R,
+    ) -> &mut Self {
+        self.template
+            .allowed_rotations
+            .extend(rotations.into_iter());
+        self
+    }
+    /// Specify that this [`Model`] can be rotated in every way.
+    ///
+    /// Rotations are specified as counter-clockwise
+    pub fn with_all_rotations(&mut self) -> &mut Self {
+        self.template.allowed_rotations = ALL_MODEL_ROTATIONS.iter().cloned().collect();
+        self
+    }
+
+    /// Specify this [`Model`] weight. The `weight` value should be strictly superior to `0`. If it is not the case, the value will be overriden by `f32::MIN_POSITIVE`.
+    ///
+    /// Used by a [`super::Generator`] when using [`super::ModelSelectionHeuristic::WeightedProbability`] and [`super::node_heuristic::NodeSelectionHeuristic::MinimumEntropy`].
+    ///
+    /// All the variations (rotations) of this [`Model`] will use the same weight.
+    pub fn with_weight<W: Into<f32>>(&mut self, weight: W) -> &mut Self {
+        let mut checked_weight = weight.into();
+        if checked_weight <= 0. {
+            #[cfg(feature = "debug-traces")]
+            warn!(
+                "Model with index {}, name {:?}, had an invalid weight {} <= 0., weight overriden to f32::MIN: {}",
+                self.index, self.name, checked_weight, f32::MIN_POSITIVE
+            );
+            checked_weight = f32::MIN_POSITIVE
+        };
+        self.template.weight = checked_weight;
+        self
+    }
+
+    #[allow(unused_mut)]
+    /// Register the given name for this model.
+    ///
+    /// Does nothing if the `debug-traces` feature is not enabled.
+    pub fn with_name(&mut self, _name: &'static str) -> &mut Self {
+        #[cfg(feature = "debug-traces")]
+        {
+            self.name = Some(_name);
+        }
+
+        self
     }
 }
 
@@ -330,30 +453,3 @@ pub const ALL_MODEL_ROTATIONS: &'static [ModelRotation] = &[
     ModelRotation::Rot180,
     ModelRotation::Rot270,
 ];
-
-pub(crate) fn create_model_variations<T: CoordinateSystem>(
-    models: Vec<Model<T>>,
-    rotation_axis: Direction,
-) -> Vec<ModelVariation> {
-    let mut model_variations = Vec::new();
-    for (index, model) in models.iter().enumerate() {
-        // Iterate on a vec of all possible node rotations and filter with the set to have a deterministic insertion order of expanded nodes.
-        for rotation in ALL_MODEL_ROTATIONS {
-            if model.allowed_rotations.contains(&rotation) {
-                let rotated_sockets = model.rotated_sockets(*rotation, rotation_axis);
-                model_variations.push(ModelVariation {
-                    sockets: rotated_sockets
-                        .iter()
-                        .map(|dir| dir.iter().map(|s| s.id()).collect())
-                        .collect(),
-                    weight: model.weight,
-                    original_index: index,
-                    rotation: *rotation,
-                    #[cfg(feature = "debug-traces")]
-                    name: model.name,
-                });
-            }
-        }
-    }
-    model_variations
-}

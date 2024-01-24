@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::grid::direction::{Cartesian2D, Cartesian3D};
 
-use super::model::{Model, ModelRotation, ALL_MODEL_ROTATIONS};
+use super::model::{ModelRotation, ModelTemplate, ALL_MODEL_ROTATIONS};
 
 /// Id of a possible connection type
 pub(crate) type SocketId = u64;
@@ -285,9 +285,15 @@ impl Into<Vec<Vec<Socket>>> for SocketsCartesian2D {
 }
 
 impl SocketsCartesian2D {
-    /// Create a [`Model`] from its sockets definition, with default values for the other members.
-    pub fn new_model(self) -> Model<Cartesian2D> {
-        Model::new_cartesian_2d(self)
+    /// Creates a [`ModelTemplate`] from its sockets definition, with default values for the other members: weight is [`super::model::DEFAULT_MODEL_WEIGHT`] and the model will not be rotated.
+    pub fn to_template(self) -> ModelTemplate<Cartesian2D> {
+        ModelTemplate::<Cartesian2D>::new(self)
+    }
+}
+
+impl Into<ModelTemplate<Cartesian2D>> for SocketsCartesian2D {
+    fn into(self) -> ModelTemplate<Cartesian2D> {
+        self.to_template()
     }
 }
 
@@ -362,9 +368,15 @@ impl Into<Vec<Vec<Socket>>> for SocketsCartesian3D {
     }
 }
 
+impl Into<ModelTemplate<Cartesian3D>> for SocketsCartesian3D {
+    fn into(self) -> ModelTemplate<Cartesian3D> {
+        self.to_template()
+    }
+}
+
 impl SocketsCartesian3D {
-    /// Create a [`Model`] from its sockets definition, with default values for the other members: weight is 1.0 and the model will not be rotated.
-    pub fn new_model(self) -> Model<Cartesian3D> {
-        Model::new_cartesian_3d(self)
+    /// Creates a [`ModelTemplate`] from its sockets definition, with default values for the other members: weight is [`super::model::DEFAULT_MODEL_WEIGHT`] and the model will not be rotated.
+    pub fn to_template(self) -> ModelTemplate<Cartesian3D> {
+        ModelTemplate::<Cartesian3D>::new(self)
     }
 }

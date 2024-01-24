@@ -9,7 +9,10 @@ use ndarray::{Array, Ix1, Ix2};
 use tracing::trace;
 
 use super::{
-    model::{create_model_variations, Model, ModelInstance, ModelVariantIndex},
+    model::{
+        ModelCollection, ModelIndex, ModelInstance, ModelRotation, ModelVariantIndex,
+        ALL_MODEL_ROTATIONS,
+    },
     socket::SocketCollection,
 };
 use crate::{
@@ -22,7 +25,7 @@ pub const CARTESIAN_2D_ROTATION_AXIS: Direction = Direction::ZForward;
 
 /// Used to create new [`Rules`]
 pub struct RulesBuilder<T: CoordinateSystem> {
-    models: Vec<Model<T>>,
+    models: ModelCollection<T>,
     socket_collection: SocketCollection,
     rotation_axis: Direction,
     coord_system: T,
@@ -47,7 +50,7 @@ impl RulesBuilder<Cartesian2D> {
     /// let rules = RulesBuilder::new_cartesian_2d(models, sockets).build().unwrap();
     /// ```
     pub fn new_cartesian_2d(
-        models: Vec<Model<Cartesian2D>>,
+        models: ModelCollection<Cartesian2D>,
         socket_collection: SocketCollection,
     ) -> Self {
         Self {
@@ -106,7 +109,7 @@ impl RulesBuilder<Cartesian3D> {
     /// let rules = RulesBuilder::new_cartesian_3d(models, sockets).build().unwrap();
     /// ```
     pub fn new_cartesian_3d(
-        models: Vec<Model<Cartesian3D>>,
+        models: ModelCollection<Cartesian3D>,
         socket_collection: SocketCollection,
     ) -> Self {
         Self {
@@ -146,6 +149,9 @@ impl<T: CoordinateSystem> RulesBuilder<T> {
 pub struct Rules<T: CoordinateSystem> {
     /// Number of original input models used to build these rules.
     original_models_count: usize,
+    /// Maps a [`super::model::ModelIndex`] and a [`super::model::ModelRotation`] to an optionnal corresponding [`ModelVariantIndex`]
+    models_mapping: Array<Option<ModelVariantIndex>, Ix2>,
+
     /// All the models in this ruleset.
     ///
     /// This is expanded from a given collection of base models, with added variations of rotations around an axis.
@@ -160,18 +166,19 @@ pub struct Rules<T: CoordinateSystem> {
     ///
     /// Note: this cannot be a simple 3d array since the third dimension is different for each element.
     allowed_neighbours: Array<Vec<usize>, Ix2>,
+
     typestate: PhantomData<T>,
 }
 
 impl<T: CoordinateSystem> Rules<T> {
     fn new(
-        models: Vec<Model<T>>,
+        models: ModelCollection<T>,
         socket_collection: SocketCollection,
         rotation_axis: Direction,
         coord_system: T,
     ) -> Result<Rules<T>, RulesError> {
-        let original_models_count = models.len();
-        let model_variations = create_model_variations(models, rotation_axis);
+        let original_models_count = models.models_count();
+        let model_variations = models.create_variations(rotation_axis);
         // We test the expanded models because a model may have no rotations allowed.
         if model_variations.len() == 0 || socket_collection.is_empty() {
             return Err(RulesError::NoModelsOrSockets);
@@ -224,18 +231,23 @@ impl<T: CoordinateSystem> Rules<T> {
         }
 
         // Discard socket information, build linear buffers containing the info needed during the generation
-
+        let mut weights = Vec::with_capacity(model_variations.len());
+        let mut model_instances = Vec::with_capacity(model_variations.len());
         #[cfg(feature = "debug-traces")]
         let mut names = Vec::with_capacity(model_variations.len());
 
-        let mut weights = Vec::with_capacity(model_variations.len());
-        let mut model_instances = Vec::with_capacity(model_variations.len());
-        for model_variation in model_variations {
+        let mut models_mapping =
+            Array::from_elem((original_models_count, ALL_MODEL_ROTATIONS.len()), None);
+        for (index, model_variation) in model_variations.iter().enumerate() {
             weights.push(model_variation.weight());
             model_instances.push(model_variation.to_instance());
-
             #[cfg(feature = "debug-traces")]
             names.push(model_variation.name);
+
+            models_mapping[(
+                model_variation.original_index(),
+                model_variation.rotation().index() as usize,
+            )] = Some(index);
         }
 
         #[cfg(feature = "debug-traces")]
@@ -248,6 +260,7 @@ impl<T: CoordinateSystem> Rules<T> {
 
         Ok(Rules {
             original_models_count,
+            models_mapping,
             models: model_instances,
             weights,
             #[cfg(feature = "debug-traces")]
@@ -286,6 +299,19 @@ impl<T: CoordinateSystem> Rules<T> {
     #[inline]
     pub(crate) fn weight(&self, model_index: ModelVariantIndex) -> f32 {
         self.weights[model_index]
+    }
+
+    /// Returns [`Some(ModelVariantIndex)`] corresponding to the original model with index `model_index` rotated by `rot`. Returns [`None`] if this variation does not exist.
+    pub fn variant_index(
+        &self,
+        model_index: ModelIndex,
+        rot: ModelRotation,
+    ) -> Option<ModelVariantIndex> {
+        if model_index < self.original_models_count {
+            self.models_mapping[(model_index, rot.index() as usize)]
+        } else {
+            None
+        }
     }
 
     #[cfg(feature = "debug-traces")]
