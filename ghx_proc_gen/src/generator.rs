@@ -661,9 +661,7 @@ impl<T: CoordinateSystem> Generator<T> {
 
             // None of these model are possible on this node now, set their support to 0
             for dir in self.grid.directions() {
-                let supports_count =
-                    &mut self.supports_count[(node_index, model_index, *dir as usize)];
-                *supports_count = 0;
+                self.supports_count[(node_index, model_index, *dir as usize)] = 0;
             }
         }
         // Remove eliminated possibilities (after enqueuing the propagation entries because we currently filter on the possible models)
