@@ -21,7 +21,7 @@ use crate::{
 pub const CARTESIAN_2D_ROTATION_AXIS: Direction = Direction::ZForward;
 
 /// Used to create new [`Rules`]
-pub struct RulesBuilder<T: CoordinateSystem + Clone> {
+pub struct RulesBuilder<T: CoordinateSystem> {
     models: Vec<Model<T>>,
     socket_collection: SocketCollection,
     rotation_axis: Direction,
@@ -126,7 +126,7 @@ impl RulesBuilder<Cartesian3D> {
     }
 }
 
-impl<T: CoordinateSystem + Clone> RulesBuilder<T> {
+impl<T: CoordinateSystem> RulesBuilder<T> {
     /// Builds the [`Rules`] from the current configuration of the [`RulesBuilder`]
     ///
     /// May return [`crate::RulesError::NoModelsOrSockets`] if `models` or `socket_collection` are empty.
