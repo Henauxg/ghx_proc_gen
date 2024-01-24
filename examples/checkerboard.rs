@@ -1,6 +1,10 @@
-use ghx_proc_gen::generator::{
-    rules::RulesBuilder,
-    socket::{SocketCollection, SocketsCartesian2D},
+use ghx_proc_gen::{
+    generator::{
+        model::ModelCollection,
+        rules::RulesBuilder,
+        socket::{SocketCollection, SocketsCartesian2D},
+    },
+    grid::{direction::Cartesian2D, GridPosition},
 };
 
 use {ghx_proc_gen::generator::builder::GeneratorBuilder, ghx_proc_gen::grid::GridDefinition};
@@ -14,10 +18,9 @@ fn main() {
     sockets.add_connection(white, vec![black]);
 
     // We define 2 very simple models, a white tile model with the `white` socket on each side and a black tile model with the `black` socket on each side
-    let models = vec![
-        SocketsCartesian2D::Mono(white).new_model(),
-        SocketsCartesian2D::Mono(black).new_model(),
-    ];
+    let mut models = ModelCollection::<Cartesian2D>::new();
+    models.create(SocketsCartesian2D::Mono(white));
+    let black_model = models.create(SocketsCartesian2D::Mono(black)).clone();
 
     // We give those to a RulesBuilder and get our Rules
     let rules = RulesBuilder::new_cartesian_2d(models, sockets)
@@ -32,7 +35,7 @@ fn main() {
         .with_rules(rules)
         .with_grid(grid)
         // Let's ensure that we make a chessboard, with a black square bottom-left
-        .with_initial_nodes(vec![(0, 1)])
+        .with_initial_nodes(vec![(GridPosition::new_xy(0, 0), black_model)])
         .build()
         .unwrap();
 

@@ -5,7 +5,7 @@ use std::{
 
 use ghx_proc_gen::{
     generator::{
-        model::ModelInstance,
+        model::{ModelCollection, ModelInstance},
         node_heuristic::NodeSelectionHeuristic,
         observer::QueuedStatefulObserver,
         rules::RulesBuilder,
@@ -43,30 +43,35 @@ fn main() {
     let sea = sockets.create();
     let deep_sea = sockets.create();
 
-    let icons_and_models = vec![
-        ("🗻", SocketsCartesian2D::Mono(mountain).new_model()),
-        (
-            "🌲", // Variation 1
-            SocketsCartesian2D::Mono(forest)
-                .new_model()
-                .with_weight(0.5),
-        ),
-        (
-            "🌳", // Variation 2
-            SocketsCartesian2D::Mono(forest)
-                .new_model()
-                .with_weight(0.5),
-        ),
-        ("🟩", SocketsCartesian2D::Mono(meadows).new_model()),
-        ("🟨", SocketsCartesian2D::Mono(beach).new_model()),
-        ("🟦", SocketsCartesian2D::Mono(sea).new_model()),
-        (
-            "🟦",
-            SocketsCartesian2D::Mono(deep_sea)
-                .new_model()
-                .with_weight(2.),
-        ),
-    ];
+    let mut models = ModelCollection::<Cartesian2D>::new();
+    let mut icons = Vec::new();
+
+    icons.push("🗻");
+    models.create(SocketsCartesian2D::Mono(mountain));
+
+    icons.push("🌲"); // Variation 1
+    models
+        .create(SocketsCartesian2D::Mono(forest))
+        .with_weight(0.5);
+
+    icons.push("🌳"); // Variation 2
+    models
+        .create(SocketsCartesian2D::Mono(forest))
+        .with_weight(0.5);
+
+    icons.push("🟩");
+    models.create(SocketsCartesian2D::Mono(meadows));
+
+    icons.push("🟨");
+    models.create(SocketsCartesian2D::Mono(beach));
+
+    icons.push("🟦");
+    models.create(SocketsCartesian2D::Mono(sea));
+
+    icons.push("🟦");
+    models
+        .create(SocketsCartesian2D::Mono(deep_sea))
+        .with_weight(2.);
 
     sockets.add_connections(vec![
         (mountain, vec![mountain, forest]),
@@ -76,9 +81,6 @@ fn main() {
         (sea, vec![sea]),
         (deep_sea, vec![sea]),
     ]);
-
-    let icons: Vec<&'static str> = icons_and_models.iter().map(|t| t.0).collect();
-    let models = icons_and_models.iter().map(|t| t.1.clone()).collect();
 
     let rules = RulesBuilder::new_cartesian_2d(models, sockets)
         .build()
