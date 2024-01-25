@@ -9,10 +9,11 @@ use bevy_ghx_proc_gen::{
     proc_gen::{
         generator::{
             builder::GeneratorBuilder,
+            model::ModelCollection,
             rules::RulesBuilder,
             socket::{SocketCollection, SocketsCartesian2D},
         },
-        grid::{direction::Cartesian2D, GridDefinition},
+        grid::{direction::Cartesian2D, GridDefinition, GridPosition},
     },
     GeneratorBundle,
 };
@@ -51,23 +52,24 @@ fn setup_generator(
     sockets.add_connection(white, vec![black]);
 
     // We define 2 very simple models, a white tile model with the `white` socket on each side and a black tile model with the `black` socket on each side
-    let models = vec![
-        SocketsCartesian2D::Mono(white).new_model(),
-        SocketsCartesian2D::Mono(black).new_model(),
-    ];
+    let mut models = ModelCollection::<Cartesian2D>::new();
+    models.create(SocketsCartesian2D::Mono(white));
+    let black_model = models.create(SocketsCartesian2D::Mono(black)).clone();
 
     // We give the models and socket collection to a RulesBuilder and get our Rules
     let rules = RulesBuilder::new_cartesian_2d(models, sockets)
         .build()
         .unwrap();
+
     // Like a chess board, let's do an 8x8 2d grid
     let grid = GridDefinition::new_cartesian_2d(8, 8, false, false);
+
     // There many more parameters you can tweak on a Generator before building it, explore the API.
     let generator = GeneratorBuilder::new()
         .with_rules(rules)
         .with_grid(grid.clone())
         // Let's ensure that we make a chessboard, with a black square bottom-left
-        .with_initial_nodes(vec![(0, 1)])
+        .with_initial_nodes(vec![(GridPosition::new_xy(0, 0), black_model)])
         .build()
         .unwrap();
 

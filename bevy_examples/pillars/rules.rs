@@ -1,7 +1,7 @@
 use bevy_examples::utils::AssetDef;
 use bevy_ghx_proc_gen::proc_gen::{
     generator::{
-        model::Model,
+        model::ModelCollection,
         socket::{SocketCollection, SocketsCartesian3D},
     },
     grid::direction::Cartesian3D,
@@ -9,7 +9,7 @@ use bevy_ghx_proc_gen::proc_gen::{
 
 pub(crate) fn rules_and_assets() -> (
     Vec<Vec<AssetDef>>,
-    Vec<Model<Cartesian3D>>,
+    ModelCollection<Cartesian3D>,
     SocketCollection,
 ) {
     let mut sockets = SocketCollection::new();
@@ -27,42 +27,45 @@ pub(crate) fn rules_and_assets() -> (
     let pillar_cap_bottom = sockets.create();
     let pillar_cap_top = sockets.create();
 
-    let models_asset_paths: Vec<Vec<AssetDef>> = vec![
-        vec![],
-        vec![AssetDef::new("pillar_base")],
-        vec![AssetDef::new("pillar_core")],
-        vec![AssetDef::new("pillar_cap")],
-    ];
-    let models = vec![
-        SocketsCartesian3D::Mono(void).new_model().with_weight(60.),
-        SocketsCartesian3D::Simple {
-            x_pos: pillar_side,
-            x_neg: pillar_side,
-            z_pos: pillar_side,
-            z_neg: pillar_side,
-            y_pos: pillar_base_top,
-            y_neg: pillar_base_bottom,
-        }
-        .new_model(),
-        SocketsCartesian3D::Simple {
-            x_pos: pillar_side,
-            x_neg: pillar_side,
-            z_pos: pillar_side,
-            z_neg: pillar_side,
-            y_pos: pillar_core_top,
-            y_neg: pillar_core_bottom,
-        }
-        .new_model(),
-        SocketsCartesian3D::Simple {
-            x_pos: pillar_side,
-            x_neg: pillar_side,
-            z_pos: pillar_side,
-            z_neg: pillar_side,
-            y_pos: pillar_cap_top,
-            y_neg: pillar_cap_bottom,
-        }
-        .new_model(),
-    ];
+    let mut models_assets: Vec<Vec<AssetDef>> = Vec::new();
+    let mut models = ModelCollection::new();
+
+    models_assets.push(vec![]);
+    models.create(
+        SocketsCartesian3D::Mono(void)
+            .to_template()
+            .with_weight(60.),
+    );
+
+    models_assets.push(vec![AssetDef::new("pillar_base")]);
+    models.create(SocketsCartesian3D::Simple {
+        x_pos: pillar_side,
+        x_neg: pillar_side,
+        z_pos: pillar_side,
+        z_neg: pillar_side,
+        y_pos: pillar_base_top,
+        y_neg: pillar_base_bottom,
+    });
+
+    models_assets.push(vec![AssetDef::new("pillar_core")]);
+    models.create(SocketsCartesian3D::Simple {
+        x_pos: pillar_side,
+        x_neg: pillar_side,
+        z_pos: pillar_side,
+        z_neg: pillar_side,
+        y_pos: pillar_core_top,
+        y_neg: pillar_core_bottom,
+    });
+
+    models_assets.push(vec![AssetDef::new("pillar_cap")]);
+    models.create(SocketsCartesian3D::Simple {
+        x_pos: pillar_side,
+        x_neg: pillar_side,
+        z_pos: pillar_side,
+        z_neg: pillar_side,
+        y_pos: pillar_cap_top,
+        y_neg: pillar_cap_bottom,
+    });
 
     sockets
         .add_connections(vec![
@@ -78,5 +81,5 @@ pub(crate) fn rules_and_assets() -> (
             (pillar_cap_top, vec![void]),
         ]);
 
-    (models_asset_paths, models, sockets)
+    (models_assets, models, sockets)
 }

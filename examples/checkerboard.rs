@@ -22,7 +22,7 @@ fn main() {
     models.create(SocketsCartesian2D::Mono(white));
     let black_model = models.create(SocketsCartesian2D::Mono(black)).clone();
 
-    // We give those to a RulesBuilder and get our Rules
+    // We give the models and socket collection to a RulesBuilder and get our Rules
     let rules = RulesBuilder::new_cartesian_2d(models, sockets)
         .build()
         .unwrap();
