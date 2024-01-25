@@ -337,11 +337,74 @@ impl<C: CoordinateSystem, D> GridData<C, D> {
     }
 }
 
-impl<C: CoordinateSystem, D: Copy> GridData<C, D> {
+/// Uses Copy if possible.
+impl<C: CoordinateSystem, D: Clone> GridData<C, D> {
     /// Resets the whole grid buffer by setting the value of each element to `value`
     pub fn reset(&mut self, value: D) {
         for d in self.data.iter_mut() {
-            *d = value;
+            *d = value.clone();
+        }
+    }
+
+    /// Sets all nodes of the grix with x=`x` to `value`
+    pub fn set_all_x(&mut self, x: u32, value: D) {
+        let mut index = x;
+        for _z in 0..self.grid.size_z {
+            for _y in 0..self.grid.size_y {
+                self.data[index as usize] = value.clone();
+                index += self.grid.size_x;
+            }
+            index += self.grid.size_xy;
+        }
+    }
+
+    /// Sets all nodes of the grix with y=`y` to `value`
+    pub fn set_all_y(&mut self, y: u32, value: D) {
+        let mut index = y * self.grid.size_x;
+        for _z in 0..self.grid.size_z {
+            for _x in 0..self.grid.size_x {
+                self.data[index as usize] = value.clone();
+                index += 1;
+            }
+            index += self.grid.size_xy;
+        }
+    }
+    /// Sets all nodes of the grix with z=`z` to `value`
+    pub fn set_all_z(&mut self, z: u32, value: D) {
+        let mut index = z * self.grid.size_xy;
+        for _y in 0..self.grid.size_y {
+            for _x in 0..self.grid.size_x {
+                self.data[index as usize] = value.clone();
+                index += 1;
+            }
+            index += self.grid.size_x;
+        }
+    }
+
+    /// Sets all nodes of the grix with x=`x`and y=`y` to `value`
+    pub fn set_all_xy(&mut self, x: u32, y: u32, value: D) {
+        let mut index = x + y * self.grid.size_x;
+        for _z in 0..self.grid.size_z {
+            self.data[index as usize] = value.clone();
+            index += self.grid.size_xy;
+        }
+    }
+
+    /// Sets all nodes of the grix with x=`x`and z=`z` to `value`
+    pub fn set_all_xz(&mut self, x: u32, z: u32, value: D) {
+        let mut index = x + z * self.grid.size_xy;
+        for _y in 0..self.grid.size_y {
+            self.data[index as usize] = value.clone();
+            index += self.grid.size_x;
+        }
+    }
+
+    /// Sets all nodes of the grix with y=`y` and z=`z` to `value`
+    pub fn set_all_yz(&mut self, y: u32, z: u32, value: D) {
+        let mut index = y * self.grid.size_x + z * self.grid.size_xy;
+        for _x in 0..self.grid.size_x {
+            self.data[index as usize] = value.clone();
+            index += 1;
         }
     }
 }
