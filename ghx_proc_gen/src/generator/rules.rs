@@ -38,15 +38,16 @@ impl RulesBuilder<Cartesian2D> {
     ///
     /// Create simple `Rules` for a chess-like pattern
     /// ```
-    /// use ghx_proc_gen::generator::{socket::{SocketsCartesian2D, SocketCollection}, rules::{Rules, RulesBuilder}};
+    /// use ghx_proc_gen::generator::{socket::{SocketsCartesian2D, SocketCollection}, rules::{Rules, RulesBuilder}, model::ModelCollection};
     ///
     /// let mut sockets = SocketCollection::new();
     /// let (white, black) = (sockets.create(), sockets.create());
     /// sockets.add_connection(white, vec![black]);
-    /// let models = vec![
-    ///     SocketsCartesian2D::Mono(white).new_model(),
-    ///     SocketsCartesian2D::Mono(black).new_model(),
-    /// ];
+    ///
+    /// let mut models = ModelCollection::<Cartesian2D>::new();
+    /// models.create(SocketsCartesian2D::Mono(white));
+    /// models.create(SocketsCartesian2D::Mono(black));
+    ///
     /// let rules = RulesBuilder::new_cartesian_2d(models, sockets).build().unwrap();
     /// ```
     pub fn new_cartesian_2d(
@@ -69,38 +70,39 @@ impl RulesBuilder<Cartesian3D> {
     /// Create simple `Rules` to describe an empty room with variable length pillars (with Y up in a right-handed cooridnate system).
     /// ```
     /// use ghx_proc_gen::grid::GridDefinition;
-    /// use ghx_proc_gen::generator::{socket::{SocketsCartesian3D, SocketCollection}, rules::{Rules, RulesBuilder}};
+    /// use ghx_proc_gen::generator::{socket::{SocketsCartesian3D, SocketCollection}, rules::{Rules, RulesBuilder}, model::ModelCollection};
     ///
     /// let mut sockets = SocketCollection::new();
     /// let void = sockets.create();
     /// let (pillar_base_top, pillar_core_bottom, pillar_core_top, pillar_cap_bottom) = (sockets.create(), sockets.create(), sockets.create(), sockets.create());
-    /// let models = vec![
-    ///     SocketsCartesian3D::Mono(void).new_model(),
-    ///     SocketsCartesian3D::Simple {
+    ///
+    /// let mut models = ModelCollection::<Cartesian2D>::new();
+    /// models.create(SocketsCartesian3D::Mono(void));
+    /// models.create(SocketsCartesian3D::Simple {
     ///         x_pos: void,
     ///         x_neg: void,
     ///         z_pos: void,
     ///         z_neg: void,
     ///         y_pos: pillar_base_top,
     ///         y_neg: void,
-    ///     }.new_model(),
-    ///     SocketsCartesian3D::Simple {
+    /// });
+    /// models.create(SocketsCartesian3D::Simple {
     ///         x_pos: void,
     ///         x_neg: void,
     ///         z_pos: void,
     ///         z_neg: void,
     ///         y_pos: pillar_core_top,
     ///         y_neg: pillar_core_bottom,
-    ///     }.new_model(),
-    ///     SocketsCartesian3D::Simple {
+    /// });
+    /// models.create(SocketsCartesian3D::Simple {
     ///         x_pos: void,
     ///         x_neg: void,
     ///         z_pos: void,
     ///         z_neg: void,
     ///         y_pos: void,
     ///         y_neg: pillar_cap_bottom,
-    ///     }.new_model(),
-    /// ];
+    /// });
+    ///
     /// sockets.add_connections(vec![
     ///     (void, vec![void]),
     ///     (pillar_base_top, vec![pillar_core_bottom]),
@@ -152,7 +154,7 @@ pub struct Rules<T: CoordinateSystem> {
     /// Maps a [`super::model::ModelIndex`] and a [`super::model::ModelRotation`] to an optionnal corresponding [`ModelVariantIndex`]
     models_mapping: Array<Option<ModelVariantIndex>, Ix2>,
 
-    /// All the models in this ruleset.
+    /// All the model variations in this ruleset.
     ///
     /// This is expanded from a given collection of base models, with added variations of rotations around an axis.
     models: Vec<ModelInstance>,
@@ -162,7 +164,7 @@ pub struct Rules<T: CoordinateSystem> {
 
     /// The vector `allowed_neighbours[model_index][direction]` holds all the allowed adjacent models (indexes) to `model_index` in `direction`.
     ///
-    /// Calculated from expanded models.
+    /// Calculated from models variations.
     ///
     /// Note: this cannot be a simple 3d array since the third dimension is different for each element.
     allowed_neighbours: Array<Vec<usize>, Ix2>,
