@@ -366,3 +366,28 @@ impl<D> GridData<Cartesian3D, D> {
         &mut self.data[self.grid.get_index(x, y, z)]
     }
 }
+
+pub enum NodeRef {
+    Index(NodeIndex),
+    Pos(GridPosition),
+}
+
+impl NodeRef {
+    pub fn to_index<T: CoordinateSystem>(&self, grid: &GridDefinition<T>) -> NodeIndex {
+        match self {
+            NodeRef::Index(index) => *index,
+            NodeRef::Pos(pos) => grid.get_index_from_pos(pos),
+        }
+    }
+}
+
+impl Into<NodeRef> for NodeIndex {
+    fn into(self) -> NodeRef {
+        NodeRef::Index(self)
+    }
+}
+impl Into<NodeRef> for GridPosition {
+    fn into(self) -> NodeRef {
+        NodeRef::Pos(self)
+    }
+}

@@ -217,23 +217,27 @@ impl<C: CoordinateSystem> ModelCollection<C> {
 
 /// Represents a model to be used by a [`crate::generator::Generator`] as a "building-block" to fill out the generated area.
 #[derive(Clone)]
-pub struct Model<T: CoordinateSystem> {
+pub struct Model<C: CoordinateSystem> {
     index: ModelIndex,
-    template: ModelTemplate<T>,
+    template: ModelTemplate<C>,
 
     /// Name given to this model for debug purposes.
     #[cfg(feature = "debug-traces")]
     name: Option<&'static str>,
 }
 
-impl<T: CoordinateSystem> Model<T> {
-    pub(crate) fn from_template(template: ModelTemplate<T>, index: ModelIndex) -> Model<T> {
+impl<C: CoordinateSystem> Model<C> {
+    pub(crate) fn from_template(template: ModelTemplate<C>, index: ModelIndex) -> Model<C> {
         Self {
             index,
             template,
             #[cfg(feature = "debug-traces")]
             name: None,
         }
+    }
+
+    pub fn index(&self) -> ModelIndex {
+        self.index
     }
 
     /// Specify that this [`Model`] can be rotated in exactly one way: `rotation`
@@ -307,6 +311,15 @@ impl<T: CoordinateSystem> Model<T> {
         }
 
         self
+    }
+
+    pub(crate) fn first_rot(&self) -> ModelRotation {
+        for rot in ALL_MODEL_ROTATIONS {
+            if self.template.allowed_rotations.contains(rot) {
+                return *rot;
+            }
+        }
+        ModelRotation::Rot0
     }
 }
 

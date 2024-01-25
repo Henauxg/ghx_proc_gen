@@ -1,7 +1,7 @@
-use std::{marker::PhantomData, sync::Arc};
+use std::{fmt, marker::PhantomData, sync::Arc};
 
 use crate::{
-    grid::{direction::CoordinateSystem, GridDefinition, GridPosition, NodeIndex},
+    grid::{direction::CoordinateSystem, GridDefinition, NodeRef},
     NodeSetError,
 };
 
@@ -10,7 +10,7 @@ use super::{
     node_heuristic::NodeSelectionHeuristic,
     observer::{GenerationUpdate, QueuedObserver, QueuedStatefulObserver},
     rules::Rules,
-    Generator, GridNode, ModelSelectionHeuristic, RngMode,
+    Collector, Generator, GridNode, ModelSelectionHeuristic, RngMode,
 };
 
 /// Default retry count for the generator
@@ -53,8 +53,7 @@ pub struct GeneratorBuilder<G, R, C: CoordinateSystem> {
     model_selection_heuristic: ModelSelectionHeuristic,
     rng_mode: RngMode,
     observers: Vec<crossbeam_channel::Sender<GenerationUpdate>>,
-    initial_nodes: Vec<(NodeIndex, ModelVariantIndex)>,
-    initial_nodes_ref: Vec<(NodeRef, ModelVariantRef<C>)>,
+    initial_nodes_refs: Vec<(NodeRef, ModelVariantRef<C>)>,
     typestate: PhantomData<(G, R)>,
 }
 
@@ -69,8 +68,7 @@ impl<C: CoordinateSystem> GeneratorBuilder<Unset, Unset, C> {
             model_selection_heuristic: ModelSelectionHeuristic::WeightedProbability,
             rng_mode: RngMode::RandomSeed,
             observers: Vec::new(),
-            initial_nodes: Vec::new(),
-            initial_nodes_ref: Vec::new(),
+            initial_nodes_refs: Vec::new(),
             typestate: PhantomData,
         }
     }
@@ -88,8 +86,7 @@ impl<C: CoordinateSystem> GeneratorBuilder<Unset, Unset, C> {
             model_selection_heuristic: self.model_selection_heuristic,
             rng_mode: self.rng_mode,
             observers: self.observers,
-            initial_nodes: self.initial_nodes,
-            initial_nodes_ref: self.initial_nodes_ref,
+            initial_nodes_refs: self.initial_nodes_refs,
 
             typestate: PhantomData,
         }
@@ -106,8 +103,7 @@ impl<C: CoordinateSystem> GeneratorBuilder<Unset, Unset, C> {
             model_selection_heuristic: self.model_selection_heuristic,
             rng_mode: self.rng_mode,
             observers: self.observers,
-            initial_nodes: self.initial_nodes,
-            initial_nodes_ref: self.initial_nodes_ref,
+            initial_nodes_refs: self.initial_nodes_refs,
 
             typestate: PhantomData,
         }
@@ -126,8 +122,7 @@ impl<C: CoordinateSystem> GeneratorBuilder<Unset, Set, C> {
             model_selection_heuristic: self.model_selection_heuristic,
             rng_mode: self.rng_mode,
             observers: self.observers,
-            initial_nodes: self.initial_nodes,
-            initial_nodes_ref: self.initial_nodes_ref,
+            initial_nodes_refs: self.initial_nodes_refs,
 
             typestate: PhantomData,
         }
@@ -171,21 +166,12 @@ impl<T: CoordinateSystem> GeneratorBuilder<Set, Set, T> {
         QueuedObserver::create(receiver)
     }
 
-    // TODO: Remove, covered by with_initial_nodes
-    pub fn with_initial_nodes_raw(
-        mut self,
-        initial_nodes: Vec<(NodeIndex, ModelVariantIndex)>,
-    ) -> Self {
-        self.initial_nodes = initial_nodes;
-        self
-    }
-
     pub fn with_initial_nodes<N: Into<NodeRef>, M: Into<ModelVariantRef<T>>>(
         mut self,
         initial_nodes: Vec<(N, M)>,
     ) -> Self {
         for (node_ref, model_ref) in initial_nodes {
-            self.initial_nodes_ref
+            self.initial_nodes_refs
                 .push((node_ref.into(), model_ref.into()));
         }
         self
@@ -193,62 +179,97 @@ impl<T: CoordinateSystem> GeneratorBuilder<Set, Set, T> {
 
     /// Instantiates a [`Generator`] as specified by the various builder parameters.
     pub fn build(self) -> Result<Generator<T>, NodeSetError> {
+        self.internal_build(&mut None)
+    }
+
+    /// Instantiates a [`Generator`] as specified by the various builder parameters and return the initially generated nodes if any
+    pub fn build_collected(self) -> Result<(Generator<T>, Vec<GridNode>), NodeSetError> {
+        let mut generated_nodes = Vec::new();
+        let res = self.internal_build(&mut Some(&mut generated_nodes))?;
+        Ok((res, generated_nodes))
+    }
+
+    fn internal_build(self, collector: &mut Collector) -> Result<Generator<T>, NodeSetError> {
         // We know that self.rules and self.grid are `Some` thanks to the typing.
         let rules = self.rules.unwrap();
         let grid = self.grid.unwrap();
+
+        // We don't fully check them here, simply dereference to obtain (NodeIndex, ModelVariantIndex) pairs.
+        // Generator will fully verify them during pre-gen.
+        let mut initial_nodes = Vec::with_capacity(self.initial_nodes_refs.len());
+        for (node_ref, model_variant_ref) in self.initial_nodes_refs {
+            let node_index = node_ref.to_index(&grid);
+            let model_variant_index = model_variant_ref.to_index_err(&rules)?;
+            initial_nodes.push((node_index, model_variant_index));
+        }
+
         Generator::create(
             rules,
             grid,
-            self.initial_nodes,
+            initial_nodes,
             self.max_retry_count,
             self.node_selection_heuristic,
             self.model_selection_heuristic,
             self.rng_mode,
             self.observers,
-            &mut None,
+            collector,
         )
     }
-
-    pub fn build_collected(self) -> Result<(Generator<T>, Vec<GridNode>), NodeSetError> {
-        // We know that self.rules and self.grid are `Some` thanks to the typing.
-        let rules = self.rules.unwrap();
-        let grid = self.grid.unwrap();
-        let mut generated_nodes = Vec::new();
-        let res = Generator::create(
-            rules,
-            grid,
-            self.initial_nodes,
-            self.max_retry_count,
-            self.node_selection_heuristic,
-            self.model_selection_heuristic,
-            self.rng_mode,
-            self.observers,
-            &mut Some(&mut generated_nodes),
-        )?;
-        Ok((res, generated_nodes))
-    }
-}
-
-pub enum NodeRef {
-    Index(NodeIndex),
-    Pos(GridPosition),
 }
 
 pub enum ModelVariantRef<C: CoordinateSystem> {
     VariantIndex(ModelVariantIndex),
-    Model(Model<C>),                   // TODO use first rotation available
-    ModelRot(Model<C>, ModelRotation), // TODO Same as above + Handle case if ModelRotation is not in Model.
     Index(ModelIndex, ModelRotation),
+    ModelRot(Model<C>, ModelRotation),
+    Model(Model<C>),
 }
 
-impl Into<NodeRef> for NodeIndex {
-    fn into(self) -> NodeRef {
-        NodeRef::Index(self)
+impl<C: CoordinateSystem> fmt::Display for ModelVariantRef<C> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ModelVariantRef::VariantIndex(index) => write!(f, "VariantIndex({})", index),
+            ModelVariantRef::Index(model_index, rot) => {
+                write!(f, "Index(model: {model_index}, rot: {:?})", rot)
+            }
+            ModelVariantRef::Model(model) => {
+                write!(
+                    f,
+                    "Model(model: {:?} with found rotation {:?})",
+                    model.index(),
+                    model.first_rot()
+                )
+            }
+            ModelVariantRef::ModelRot(model, rot) => {
+                write!(f, "ModelRot(model: {:?}, rot: {:?})", model.index(), rot)
+            }
+        }
     }
 }
-impl Into<NodeRef> for GridPosition {
-    fn into(self) -> NodeRef {
-        NodeRef::Pos(self)
+
+impl<C: CoordinateSystem> ModelVariantRef<C> {
+    pub(crate) fn to_index(&self, rules: &Rules<C>) -> Option<ModelVariantIndex> {
+        match self {
+            ModelVariantRef::VariantIndex(index) => Some(*index),
+            ModelVariantRef::Index(model_index, rot) => rules.variant_index(*model_index, *rot),
+            ModelVariantRef::Model(model) => rules.variant_index(model.index(), model.first_rot()),
+            ModelVariantRef::ModelRot(model, rot) => rules.variant_index(model.index(), *rot),
+        }
+    }
+
+    pub(crate) fn to_index_err(&self, rules: &Rules<C>) -> Result<ModelVariantIndex, NodeSetError> {
+        self.to_index(rules).ok_or_else(|| match self {
+            ModelVariantRef::VariantIndex(index) => NodeSetError::InvalidModelIndex(*index),
+            ModelVariantRef::Index(model_index, rot) => {
+                NodeSetError::InvalidModelRef(*model_index, *rot)
+            }
+            ModelVariantRef::ModelRot(model, rot) => {
+                NodeSetError::InvalidModelRef(model.index(), *rot)
+            }
+            ModelVariantRef::Model(model) => {
+                let rot = model.first_rot();
+                NodeSetError::InvalidModelRef(model.index(), rot)
+            }
+        })
     }
 }
 

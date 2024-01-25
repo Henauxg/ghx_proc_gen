@@ -14,13 +14,13 @@ use bevy::ecs::component::Component;
 use crate::{
     grid::{
         direction::{Cartesian2D, CoordinateSystem},
-        GridData, GridDefinition, NodeIndex,
+        GridData, GridDefinition, NodeIndex, NodeRef,
     },
     GenerationError, NodeSetError,
 };
 
 use self::{
-    builder::{GeneratorBuilder, Unset},
+    builder::{GeneratorBuilder, ModelVariantRef, Unset},
     model::{ModelInstance, ModelVariantIndex},
     node_heuristic::{InternalNodeSelectionHeuristic, NodeSelectionHeuristic},
     observer::GenerationUpdate,
@@ -257,6 +257,66 @@ impl<T: CoordinateSystem> Generator<T> {
         Ok(gen_info)
     }
 
+    /// Advances the generation by one "step": select a node and a model via the heuristics and propagate the changes.
+    ///
+    /// Returns the [`GenerationStatus`] if the step executed successfully and [`crate::GenerationError`] if the generation fails due to a contradiction.
+    ///
+    /// If the generation has ended (successfully or not), calling `select_and_propagate` again will reinitialize the [`Generator`] before starting a new generation.
+    ///
+    /// **Note**: One call to `select_and_propagate` **can** lead to more than one node generated if the propagation phase forces some other node(s) into a definite state (due to only one possible model remaining on a node)
+    pub fn select_and_propagate(&mut self) -> Result<GenerationStatus, GenerationError> {
+        self.internal_select_and_propagate(&mut None)
+    }
+
+    /// Same as `select_and_propagate` but collects and return the generated [`GridNode`] when successful.
+    pub fn select_and_propagate_collected(
+        &mut self,
+    ) -> Result<(GenerationStatus, Vec<GridNode>), GenerationError> {
+        let mut generated_nodes = Vec::new();
+        let res = self.internal_select_and_propagate(&mut Some(&mut generated_nodes))?;
+        Ok((res, generated_nodes))
+    }
+
+    pub fn set_and_propagate_collected<N: Into<NodeRef>, M: Into<ModelVariantRef<T>>>(
+        &mut self,
+        node_ref: N,
+        model_variant_ref: M,
+    ) -> Result<(GenerationStatus, Vec<GridNode>), NodeSetError> {
+        let mut generated_nodes = Vec::new();
+        let (node_index, model_variant_index) = (
+            NodeRef::from(node_ref.into()).to_index(&self.grid),
+            ModelVariantRef::from(model_variant_ref.into()).to_index_err(&self.rules)?,
+        );
+        let res = self.internal_set_and_propagate(
+            node_index,
+            model_variant_index,
+            &mut Some(&mut generated_nodes),
+        )?;
+        Ok((res, generated_nodes))
+    }
+
+    pub fn set_and_propagate<N: Into<NodeRef>, M: Into<ModelVariantRef<T>>>(
+        &mut self,
+        node_ref: N,
+        model_variant_ref: M,
+    ) -> Result<GenerationStatus, NodeSetError> {
+        let (node_index, model_variant_index) = (
+            NodeRef::from(node_ref.into()).to_index(&self.grid),
+            ModelVariantRef::from(model_variant_ref.into()).to_index_err(&self.rules)?,
+        );
+        self.internal_set_and_propagate(node_index, model_variant_index, &mut None)
+    }
+
+    pub fn reinitialize(&mut self) -> GenerationStatus {
+        self.internal_reinitialize(&mut None)
+    }
+
+    pub fn reinitialize_collected(&mut self) -> (GenerationStatus, Vec<GridNode>) {
+        let mut generated_nodes = Vec::new();
+        let res = self.internal_reinitialize(&mut Some(&mut generated_nodes));
+        (res, generated_nodes)
+    }
+
     fn internal_generate(&mut self, collector: &mut Collector) -> Result<GenInfo, GenerationError> {
         let mut last_error = None;
         for try_index in 0..=self.max_retry_count {
@@ -278,58 +338,6 @@ impl<T: CoordinateSystem> Generator<T> {
             }
         }
         Err(last_error.unwrap()) // We know that last_err is Some
-    }
-
-    /// Advances the generation by one "step": select a node and a model via the heuristics and propagate the changes.
-    ///
-    /// Returns the [`GenerationStatus`] if the step executed successfully and [`crate::GenerationError`] if the generation fails due to a contradiction.
-    ///
-    /// If the generation has ended (successfully or not), calling `select_and_propagate` again will reinitialize the [`Generator`] before starting a new generation.
-    ///
-    /// **Note**: One call to `select_and_propagate` **can** lead to more than one node generated if the propagation phase forces some other node(s) into a definite state (due to only one possible model remaining on a node)
-    pub fn select_and_propagate(&mut self) -> Result<GenerationStatus, GenerationError> {
-        self.internal_select_and_propagate(&mut None)
-    }
-
-    /// Same as `select_and_propagate` but collects and return the generated [`GridNode`] when successful.
-    pub fn select_and_propagate_collected(
-        &mut self,
-    ) -> Result<(GenerationStatus, Vec<GridNode>), GenerationError> {
-        let mut generated_nodes = Vec::new();
-        let res = self.internal_select_and_propagate(&mut Some(&mut generated_nodes))?;
-        Ok((res, generated_nodes))
-    }
-
-    pub fn set_and_propagate_collected(
-        &mut self,
-        node_index: NodeIndex,
-        model_variant_index: ModelVariantIndex,
-    ) -> Result<(GenerationStatus, Vec<GridNode>), NodeSetError> {
-        let mut generated_nodes = Vec::new();
-        let res = self.internal_set_and_propagate(
-            node_index,
-            model_variant_index,
-            &mut Some(&mut generated_nodes),
-        )?;
-        Ok((res, generated_nodes))
-    }
-
-    pub fn set_and_propagate(
-        &mut self,
-        node_index: NodeIndex,
-        model_variant_index: ModelVariantIndex,
-    ) -> Result<GenerationStatus, NodeSetError> {
-        self.internal_set_and_propagate(node_index, model_variant_index, &mut None)
-    }
-
-    pub fn reinitialize(&mut self) -> GenerationStatus {
-        self.internal_reinitialize(&mut None)
-    }
-
-    pub fn reinitialize_collected(&mut self) -> (GenerationStatus, Vec<GridNode>) {
-        let mut generated_nodes = Vec::new();
-        let res = self.internal_reinitialize(&mut Some(&mut generated_nodes));
-        (res, generated_nodes)
     }
 
     fn pregen(&mut self, collector: &mut Collector) -> Result<GenerationStatus, NodeSetError> {
@@ -359,7 +367,7 @@ impl<T: CoordinateSystem> Generator<T> {
     }
 
     /// - reinitializes the generator if needed
-    /// - returns `true` if the generation is [`GenerationStatus::Ongoing`] and the operation should continue, and false if the generation is [`GenerationStatus::Done`] and the operation should stop
+    /// - returns `true` if the generation is [`GenerationStatus::Ongoing`] and the operation should continue, and `false` if the generation is [`GenerationStatus::Done`] and the operation should stop
     fn auto_reinitialize_and_continue(&mut self, collector: &mut Collector) -> bool {
         match self.status {
             InternalGeneratorStatus::Ongoing => true,
@@ -385,7 +393,7 @@ impl<T: CoordinateSystem> Generator<T> {
 
         match self.check_set_and_propagate_parameters(node_index, model_variant_index)? {
             NodeSetStatus::AlreadySet => {
-                // We can't be done here
+                // Nothing to do. We can't be done here
                 return Ok(GenerationStatus::Ongoing);
             }
             NodeSetStatus::CanBeSet => (),

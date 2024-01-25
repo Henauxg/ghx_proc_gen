@@ -3,7 +3,7 @@
 //! A library for 2D & 3D procedural generation with Model synthesis/Wave function Collapse.
 //! Also provide grid utilities to manipulate 23&3d grid data.
 
-use generator::model::ModelVariantIndex;
+use generator::model::{ModelIndex, ModelRotation, ModelVariantIndex};
 use grid::NodeIndex;
 
 /// Model synthesis/Wave function Collapse generator
@@ -27,13 +27,15 @@ pub enum RulesError {
     NoModelsOrSockets,
 }
 
-#[derive(thiserror::Error, Debug, Clone, Copy)]
+#[derive(thiserror::Error, Debug, Clone)]
 pub enum NodeSetError {
-    #[error("Invalid model index `{0}`, does not exist in the rules")]
+    #[error("Invalid model variant index `{0}`, does not exist in the rules")]
     InvalidModelIndex(ModelVariantIndex),
+    #[error("Invalid model variant reference: model index `{0}` with rotation `{1:?}`, does not exist in the rules")]
+    InvalidModelRef(ModelIndex, ModelRotation),
     #[error("Invalid node index `{0}`, does not exist in the grid")]
     InvalidNodeIndex(NodeIndex),
-    #[error("Model `{0}` not allowed by the Rules on node {1}")]
+    #[error("Model variant `{0}` not allowed by the Rules on node {1}")]
     IllegalModel(ModelVariantIndex, NodeIndex),
     #[error("Generation error: {0}")]
     GenerationError(#[from] GenerationError),
