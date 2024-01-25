@@ -41,7 +41,7 @@ The building pieces of a generation are called `Models`, and adjacency constrain
 
 Connections are then defined between the sockets, which allows models with connected sockets on opposite sides to be neighbours.
 
-Let's build a checker board pattern:
+Let's build a chessboard pattern:
 
 1) Start by creating the `Rules` for the algorithm:
 ```rust
@@ -53,12 +53,12 @@ Let's build a checker board pattern:
   // With the following, a `white` socket can connect to a `black` socket and vice-versa
   sockets.add_connection(white, vec![black]);
 
+  let mut models = ModelCollection::<Cartesian2D>::new();
   // We define 2 very simple models: a white tile model with the `white` socket on each side
   // and a black tile model with the `black` socket on each side
-  let models = vec![
-      SocketsCartesian2D::Mono(white).new_model(),
-      SocketsCartesian2D::Mono(black).new_model(),
-  ];
+  models.create(SocketsCartesian2D::Mono(white));
+  // We keep the black model for later
+  let black_model = models.create(SocketsCartesian2D::Mono(black)).clone();
 
   // We give the models and socket collection to a RulesBuilder and get our Rules
   let rules = RulesBuilder::new_cartesian_2d(models, sockets).build().unwrap();
@@ -66,7 +66,7 @@ Let's build a checker board pattern:
 
 2) Create a `GridDefinition`:
 ```rust
-  // Like a chess board, let's do an 8x8 2d grid
+  // Like a chessboard, let's do an 8x8 2d grid
   let grid = GridDefinition::new_cartesian_2d(8, 8, false, false);
 ```
 
@@ -76,22 +76,25 @@ Let's build a checker board pattern:
   let mut generator = GeneratorBuilder::new()
       .with_rules(rules)
       .with_grid(grid)
-      .build();
+      // Let's ensure that we make a chessboard, with a black square bottom-left
+      .with_initial_nodes(vec![(GridPosition::new_xy(0, 0), black_model)])
+      .build()
+      .unwrap();
 ```
 
 4) Get a result:
 ```rust
   // Here we directly generate the whole grid, and ask for the result to be returned.
   // The generation could also be done iteratively via `generator.select_and_propagate()`, or the results could be obtained through an `Observer`
-  let checker_pattern = generator.generate_collected().unwrap();
+  let chess_pattern = generator.generate_collected().unwrap();
 ```
 
 If we simply print the result in the terminal we should obtain:
 ```rust
   let icons = vec!["◻️ ", "⬛"];
-  for y in 0..checker_pattern.grid().size_y() {
-      for x in 0..checker_pattern.grid().size_x() {
-        print!("{}", icons[checker_pattern.get_2d(x, y).model_index]);
+  for y in 0..chess_pattern.grid().size_y() {
+      for x in 0..chess_pattern.grid().size_x() {
+        print!("{}", icons[chess_pattern.get_2d(x, y).model_index]);
       }
       println!();
   }
@@ -196,14 +199,14 @@ cargo add bevy_ghx_proc_gen
 # Examples
 <div align="center">
 
-|                     | Grid coordinate system | Assets            | Engine | Camera |
-| ------------------- | ---------------------- | ----------------- | ------ | ------ |
-| `Checkerboard`      | Cartesian2D            | Unicode           | None   | N/A    |
-| `Unicode terrain`   | Cartesian2D            | Unicode           | None   | N/A    |
-| `Bevy-checkerboard` | Cartesian2D            | Procedural meshes | Bevy   | 3D     |
-| `Pillars`           | Cartesian3D            | .glb              | Bevy   | 3D     |
-| `Tile-layers`       | Cartesian3D            | .png              | Bevy   | 2D     |
-| `Canyon`            | Cartesian3D            | .glb              | Bevy   | 3D     |
+|                   | Grid coordinate system | Assets            | Engine | Camera |
+| ----------------- | ---------------------- | ----------------- | ------ | ------ |
+| `Chessboard`      | Cartesian2D            | Unicode           | None   | N/A    |
+| `Unicode terrain` | Cartesian2D            | Unicode           | None   | N/A    |
+| `Bevy-chessboard` | Cartesian2D            | Procedural meshes | Bevy   | 3D     |
+| `Pillars`         | Cartesian3D            | .glb              | Bevy   | 3D     |
+| `Tile-layers`     | Cartesian3D            | .png              | Bevy   | 2D     |
+| `Canyon`          | Cartesian3D            | .glb              | Bevy   | 3D     |
 
 *Examples videos for `unicode-terrain`, `pillars`, `tile-layers` & `canyon` are slowed down (with the `ProcGenDebugPlugin` for Bevy) in order to see the generation happen*
 
@@ -213,12 +216,12 @@ cargo add bevy_ghx_proc_gen
 
 
 <details>
-  <summary>[Command-line] Checkerboard example</summary>
+  <summary>[Command-line] Chessboard example</summary>
   
-## Checkerboard example
+## Chessboard example
 
 ```
-cargo run --example checkerboard
+cargo run --example chessboard
 ```
 Simple standalone example, the same as in the [quickstart](#quickstart) section.
 
@@ -240,10 +243,10 @@ https://github.com/Henauxg/ghx_proc_gen/assets/19689618/6a1108af-e078-4b27-bae1-
 </details>
 
 <details>
-  <summary>[Bevy + ProcGenSimplePlugin] Bevy checkerboard example</summary>
+  <summary>[Bevy + ProcGenSimplePlugin] Bevy chessboard example</summary>
 
 ```
-cargo run --example bevy-checkerboard
+cargo run --example bevy-chessboard
 ```
 
 Simplest Bevy example, the same as in the [bevy quickstart](bevy_ghx_proc_gen/README.md#bevy-quickstart) section.

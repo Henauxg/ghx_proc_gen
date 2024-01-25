@@ -46,14 +46,16 @@ fn setup_generator(
 ) {
     // A SocketCollection is what we use to create sockets and define their connections
     let mut sockets = SocketCollection::new();
+    // For this example, we will only need two sockets
     let (white, black) = (sockets.create(), sockets.create());
 
     // With the following, a white socket can connect to a black socket and vice-versa
     sockets.add_connection(white, vec![black]);
 
-    // We define 2 very simple models, a white tile model with the `white` socket on each side and a black tile model with the `black` socket on each side
     let mut models = ModelCollection::<Cartesian2D>::new();
+    // We define 2 very simple models, a white tile model with the `white` socket on each side and a black tile model with the `black` socket on each side
     models.create(SocketsCartesian2D::Mono(white));
+    // We keep the black model for later
     let black_model = models.create(SocketsCartesian2D::Mono(black)).clone();
 
     // We give the models and socket collection to a RulesBuilder and get our Rules
