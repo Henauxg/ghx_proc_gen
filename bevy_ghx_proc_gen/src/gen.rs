@@ -127,7 +127,7 @@ pub fn spawn_node<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawn
         None => return,
     };
 
-    let pos = grid.get_position(node_index);
+    let pos = grid.pos_from_index(node_index);
     for node_asset in node_assets {
         let offset = &node_asset.offset;
         let grid_offset = &node_asset.grid_offset;

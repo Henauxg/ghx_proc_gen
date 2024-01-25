@@ -72,7 +72,7 @@ pub fn update_debug_markers<T: CoordinateSystem>(
                         *node_index,
                         Marker {
                             color: *color,
-                            pos: grid.get_position(*node_index),
+                            pos: grid.pos_from_index(*node_index),
                         },
                     );
                 }

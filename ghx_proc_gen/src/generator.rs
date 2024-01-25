@@ -598,7 +598,7 @@ impl<T: CoordinateSystem> Generator<T> {
         for node in 0..self.grid.total_size() {
             // For a given `node`, `neighbours[direction]` will hold the optionnal index of the neighbour node in `direction`
             for direction in self.grid.directions() {
-                let grid_pos = self.grid.get_position(node);
+                let grid_pos = self.grid.pos_from_index(node);
                 neighbours[*direction as usize] = self.grid.get_next_index(&grid_pos, *direction);
             }
 
@@ -710,7 +710,7 @@ impl<T: CoordinateSystem> Generator<T> {
         let rules = Arc::clone(&self.rules);
 
         while let Some(from) = self.propagation_stack.pop() {
-            let from_position = self.grid.get_position(from.node_index);
+            let from_position = self.grid.pos_from_index(from.node_index);
 
             #[cfg(feature = "debug-traces")]
             trace!(

@@ -191,7 +191,7 @@ impl<T: CoordinateSystem> GridDefinition<T> {
     /// Returns a [`GridPosition`] from the index of a node in this [`GridDefinition`].
     ///
     /// Panics if the index is not a valid index.
-    pub fn get_position(&self, grid_index: NodeIndex) -> GridPosition {
+    pub fn pos_from_index(&self, grid_index: NodeIndex) -> GridPosition {
         let index = u32::try_from(grid_index).unwrap();
         GridPosition {
             x: index % self.size_x,
