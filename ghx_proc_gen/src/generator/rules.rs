@@ -316,24 +316,16 @@ impl<C: CoordinateSystem> Rules<C> {
         }
     }
 
-    pub(crate) fn var_index_from_ref<M: Into<ModelVariantRef<C>>>(
+    pub(crate) fn var_index_from_ref<M: Into<ModelVariantRef>>(
         &self,
         model_ref: M,
     ) -> Result<ModelVariantIndex, NodeSetError> {
         let model_ref = model_ref.into();
         match model_ref {
             ModelVariantRef::VariantIndex(index) => Ok(index),
-            ModelVariantRef::Index(model_index, rot) => self
+            ModelVariantRef::IndexRot(model_index, rot) => self
                 .variant_index(model_index, rot)
                 .ok_or(NodeSetError::InvalidModelRef(model_index, rot)),
-            ModelVariantRef::ModelRot(model, rot) => self
-                .variant_index(model.index(), rot)
-                .ok_or(NodeSetError::InvalidModelRef(model.index(), rot)),
-            ModelVariantRef::Model(model) => {
-                let rot = model.first_rot();
-                self.variant_index(model.index(), model.first_rot())
-                    .ok_or(NodeSetError::InvalidModelRef(model.index(), rot))
-            }
         }
     }
 
@@ -347,25 +339,43 @@ impl<C: CoordinateSystem> Rules<C> {
     }
 }
 
-pub enum ModelVariantRef<C: CoordinateSystem> {
+pub enum ModelVariantRef {
     VariantIndex(ModelVariantIndex),
-    Index(ModelIndex, ModelRotation),
-    ModelRot(Model<C>, ModelRotation),
-    Model(Model<C>),
+    IndexRot(ModelIndex, ModelRotation),
 }
 
-impl<C: CoordinateSystem> Into<ModelVariantRef<C>> for ModelVariantIndex {
-    fn into(self) -> ModelVariantRef<C> {
+impl Into<ModelVariantRef> for ModelVariantIndex {
+    fn into(self) -> ModelVariantRef {
         ModelVariantRef::VariantIndex(self)
     }
 }
-impl<C: CoordinateSystem> Into<ModelVariantRef<C>> for Model<C> {
-    fn into(self) -> ModelVariantRef<C> {
-        ModelVariantRef::Model(self)
+impl<C: CoordinateSystem> Into<ModelVariantRef> for Model<C> {
+    fn into(self) -> ModelVariantRef {
+        ModelVariantRef::IndexRot(self.index(), self.first_rot())
     }
 }
-impl<C: CoordinateSystem> Into<ModelVariantRef<C>> for (ModelIndex, ModelRotation) {
-    fn into(self) -> ModelVariantRef<C> {
-        ModelVariantRef::Index(self.0, self.1)
+impl Into<ModelVariantRef> for (ModelIndex, ModelRotation) {
+    fn into(self) -> ModelVariantRef {
+        ModelVariantRef::IndexRot(self.0, self.1)
+    }
+}
+impl<C: CoordinateSystem> Into<ModelVariantRef> for (Model<C>, ModelRotation) {
+    fn into(self) -> ModelVariantRef {
+        ModelVariantRef::IndexRot(self.0.index(), self.1)
+    }
+}
+impl<C: CoordinateSystem> Into<ModelVariantRef> for (&Model<C>, ModelRotation) {
+    fn into(self) -> ModelVariantRef {
+        ModelVariantRef::IndexRot(self.0.index(), self.1)
+    }
+}
+impl Into<ModelVariantRef> for ModelInstance {
+    fn into(self) -> ModelVariantRef {
+        ModelVariantRef::IndexRot(self.model_index, self.rotation)
+    }
+}
+impl Into<ModelVariantRef> for &ModelInstance {
+    fn into(self) -> ModelVariantRef {
+        ModelVariantRef::IndexRot(self.model_index, self.rotation)
     }
 }

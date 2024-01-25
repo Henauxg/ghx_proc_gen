@@ -277,7 +277,7 @@ impl<T: CoordinateSystem> Generator<T> {
         Ok((res, generated_nodes))
     }
 
-    pub fn set_and_propagate_collected<N: Into<NodeRef>, M: Into<ModelVariantRef<T>>>(
+    pub fn set_and_propagate_collected<N: Into<NodeRef>, M: Into<ModelVariantRef>>(
         &mut self,
         node_ref: N,
         model_variant_ref: M,
@@ -293,7 +293,7 @@ impl<T: CoordinateSystem> Generator<T> {
         Ok((res, generated_nodes))
     }
 
-    pub fn set_and_propagate<N: Into<NodeRef>, M: Into<ModelVariantRef<T>>>(
+    pub fn set_and_propagate<N: Into<NodeRef>, M: Into<ModelVariantRef>>(
         &mut self,
         node_ref: N,
         model_variant_ref: M,

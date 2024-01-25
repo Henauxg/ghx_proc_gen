@@ -1,8 +1,8 @@
 use std::{marker::PhantomData, sync::Arc};
 
 use crate::{
-    grid::{direction::CoordinateSystem, GridDefinition, NodeRef},
-    NodeSetError,
+    grid::{direction::CoordinateSystem, GridData, GridDefinition, NodeRef},
+    InvalidGridSize, NodeSetError,
 };
 
 use super::{
@@ -52,7 +52,7 @@ pub struct GeneratorBuilder<G, R, C: CoordinateSystem> {
     model_selection_heuristic: ModelSelectionHeuristic,
     rng_mode: RngMode,
     observers: Vec<crossbeam_channel::Sender<GenerationUpdate>>,
-    initial_nodes_refs: Vec<(NodeRef, ModelVariantRef<C>)>,
+    initial_nodes_refs: Vec<(NodeRef, ModelVariantRef)>,
     typestate: PhantomData<(G, R)>,
 }
 
@@ -149,23 +149,8 @@ impl<G, R, C: CoordinateSystem> GeneratorBuilder<G, R, C> {
         self.rng_mode = rng_mode;
         self
     }
-}
 
-impl<T: CoordinateSystem> GeneratorBuilder<Set, Set, T> {
-    pub fn add_queued_stateful_observer(&mut self) -> QueuedStatefulObserver<T> {
-        let (sender, receiver) = crossbeam_channel::unbounded();
-        self.observers.push(sender);
-        let grid = self.grid.clone().unwrap(); // We know that self.grid is `Some` thanks to the typing.
-        QueuedStatefulObserver::create(receiver, &grid)
-    }
-
-    pub fn add_queued_observer(&mut self) -> QueuedObserver {
-        let (sender, receiver) = crossbeam_channel::unbounded();
-        self.observers.push(sender);
-        QueuedObserver::create(receiver)
-    }
-
-    pub fn with_initial_nodes<N: Into<NodeRef>, M: Into<ModelVariantRef<T>>>(
+    pub fn with_initial_nodes<N: Into<NodeRef>, M: Into<ModelVariantRef>>(
         mut self,
         initial_nodes: Vec<(N, M)>,
     ) -> Self {
@@ -175,20 +160,61 @@ impl<T: CoordinateSystem> GeneratorBuilder<Set, Set, T> {
         }
         self
     }
+}
 
+// For functions in this impl, we know that self.grid is `Some` thanks to the typing.
+impl<C: CoordinateSystem, R> GeneratorBuilder<Set, R, C> {
+    pub fn add_queued_stateful_observer(&mut self) -> QueuedStatefulObserver<C> {
+        let (sender, receiver) = crossbeam_channel::unbounded();
+        self.observers.push(sender);
+        let grid = self.grid.clone().unwrap();
+        QueuedStatefulObserver::create(receiver, &grid)
+    }
+
+    pub fn add_queued_observer(&mut self) -> QueuedObserver {
+        let (sender, receiver) = crossbeam_channel::unbounded();
+        self.observers.push(sender);
+        QueuedObserver::create(receiver)
+    }
+
+    pub fn with_initial_grid<M>(
+        mut self,
+        data: GridData<C, Option<M>>,
+    ) -> Result<Self, InvalidGridSize>
+    where
+        for<'a> &'a M: Into<ModelVariantRef>,
+    {
+        let grid = self.grid.as_ref().unwrap();
+        if grid.size() != data.grid().size() {
+            return Err(InvalidGridSize(data.grid().size(), grid.size()));
+        } else {
+            for (node_index, node) in data.nodes().iter().enumerate() {
+                match node {
+                    Some(model_ref) => self
+                        .initial_nodes_refs
+                        .push((node_index.into(), model_ref.into())),
+                    None => (),
+                }
+            }
+            Ok(self)
+        }
+    }
+}
+
+impl<C: CoordinateSystem> GeneratorBuilder<Set, Set, C> {
     /// Instantiates a [`Generator`] as specified by the various builder parameters.
-    pub fn build(self) -> Result<Generator<T>, NodeSetError> {
+    pub fn build(self) -> Result<Generator<C>, NodeSetError> {
         self.internal_build(&mut None)
     }
 
     /// Instantiates a [`Generator`] as specified by the various builder parameters and return the initially generated nodes if any
-    pub fn build_collected(self) -> Result<(Generator<T>, Vec<GridNode>), NodeSetError> {
+    pub fn build_collected(self) -> Result<(Generator<C>, Vec<GridNode>), NodeSetError> {
         let mut generated_nodes = Vec::new();
         let res = self.internal_build(&mut Some(&mut generated_nodes))?;
         Ok((res, generated_nodes))
     }
 
-    fn internal_build(self, collector: &mut Collector) -> Result<Generator<T>, NodeSetError> {
+    fn internal_build(self, collector: &mut Collector) -> Result<Generator<C>, NodeSetError> {
         // We know that self.rules and self.grid are `Some` thanks to the typing.
         let rules = self.rules.unwrap();
         let grid = self.grid.unwrap();

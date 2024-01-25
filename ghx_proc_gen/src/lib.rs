@@ -27,6 +27,7 @@ pub enum RulesError {
     NoModelsOrSockets,
 }
 
+/// Error returned by a [`generator::Generator`] or a [`generator::builder::GeneratorBuilder`] when a node set operation fails
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum NodeSetError {
     #[error("Invalid model variant index `{0}`, does not exist in the rules")]
@@ -40,3 +41,7 @@ pub enum NodeSetError {
     #[error("Generation error: {0}")]
     GenerationError(#[from] GenerationError),
 }
+
+#[derive(thiserror::Error, Debug, Clone)]
+#[error("Given grid size {0:?} does not match the expected size {1:?}")]
+pub struct InvalidGridSize((u32, u32, u32), (u32, u32, u32));

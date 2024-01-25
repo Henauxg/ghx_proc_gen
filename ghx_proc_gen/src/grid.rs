@@ -42,19 +42,19 @@ impl GridPosition {
 ///
 #[derive(Clone)]
 #[cfg_attr(feature = "bevy", derive(Component))]
-pub struct GridDefinition<T: CoordinateSystem> {
+pub struct GridDefinition<C: CoordinateSystem> {
     size_x: u32,
     size_y: u32,
     size_z: u32,
     looping_x: bool,
     looping_y: bool,
     looping_z: bool,
-    pub(crate) coord_system: T,
+    pub(crate) coord_system: C,
     /// Cache value of `size_x` * `size_y` for index computations
     size_xy: u32,
 }
 
-impl<T: CoordinateSystem> fmt::Display for GridDefinition<T> {
+impl<C: CoordinateSystem> fmt::Display for GridDefinition<C> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -118,7 +118,7 @@ impl GridDefinition<Cartesian3D> {
     }
 }
 
-impl<T: CoordinateSystem> GridDefinition<T> {
+impl<C: CoordinateSystem> GridDefinition<C> {
     /// Creates a new [`GridDefinition`]
     pub fn new(
         size_x: u32,
@@ -127,8 +127,8 @@ impl<T: CoordinateSystem> GridDefinition<T> {
         looping_x: bool,
         looping_y: bool,
         looping_z: bool,
-        coord_system: T,
-    ) -> GridDefinition<T> {
+        coord_system: C,
+    ) -> GridDefinition<C> {
         Self {
             size_x,
             size_y,
@@ -154,6 +154,10 @@ impl<T: CoordinateSystem> GridDefinition<T> {
     /// Returns the size of the grid in the Z axis.
     pub fn size_z(&self) -> u32 {
         self.size_z
+    }
+
+    pub fn size(&self) -> (u32, u32, u32) {
+        (self.size_x, self.size_y, self.size_z)
     }
 
     /// Returns the total size of the grid
@@ -262,7 +266,7 @@ impl<T: CoordinateSystem> GridDefinition<T> {
     }
 
     /// Creates a default [`GridData`] with the size of the [`GridDefinition`] with each element value set to its default one.
-    pub fn default_grid_data<D: Default + Clone>(&self) -> GridData<T, D> {
+    pub fn default_grid_data<D: Default + Clone>(&self) -> GridData<C, D> {
         GridData {
             grid: self.clone(),
             data: vec![D::default(); self.total_size()],
@@ -270,7 +274,7 @@ impl<T: CoordinateSystem> GridDefinition<T> {
     }
 
     /// Creates a [`GridData`] with the size of the [`GridDefinition`] with each element value being a copy of the given one.
-    pub fn new_grid_data<D: Clone>(&self, element: D) -> GridData<T, D> {
+    pub fn new_grid_data<D: Clone>(&self, element: D) -> GridData<C, D> {
         GridData {
             grid: self.clone(),
             data: vec![element; self.total_size()],
@@ -290,19 +294,19 @@ impl<T: CoordinateSystem> GridDefinition<T> {
 /// ```
 /// You can also retrieve a pre-created existing `GridData` from a [`crate::generator::Generator`], or from an observer like a [`crate::generator::observer::QueuedStatefulObserver`]
 #[cfg_attr(feature = "bevy", derive(Component))]
-pub struct GridData<T: CoordinateSystem, D> {
-    grid: GridDefinition<T>,
+pub struct GridData<C: CoordinateSystem, D> {
+    grid: GridDefinition<C>,
     data: Vec<D>,
 }
 
-impl<T: CoordinateSystem, D> GridData<T, D> {
+impl<C: CoordinateSystem, D> GridData<C, D> {
     /// Prefer using `default_grid_data` or `new_grid_data` directly on an existing grid definition to create a `GridData` with a correct data Vec.
-    pub fn new(grid: GridDefinition<T>, data: Vec<D>) -> Self {
+    pub fn new(grid: GridDefinition<C>, data: Vec<D>) -> Self {
         Self { grid, data }
     }
 
     /// Returns a reference to the `GridDefinition` this is based on
-    pub fn grid(&self) -> &GridDefinition<T> {
+    pub fn grid(&self) -> &GridDefinition<C> {
         &self.grid
     }
 
@@ -327,13 +331,13 @@ impl<T: CoordinateSystem, D> GridData<T, D> {
         &mut self.data[index]
     }
 
-    /// Returns a reference to the undelying data buffer.
+    /// Returns a reference to the underlying data buffer.
     pub fn nodes(&self) -> &Vec<D> {
         &self.data
     }
 }
 
-impl<T: CoordinateSystem, D: Copy> GridData<T, D> {
+impl<C: CoordinateSystem, D: Copy> GridData<C, D> {
     /// Resets the whole grid buffer by setting the value of each element to `value`
     pub fn reset(&mut self, value: D) {
         for d in self.data.iter_mut() {
