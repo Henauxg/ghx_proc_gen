@@ -20,7 +20,6 @@ pub const DEFAULT_MODEL_WEIGHT: f32 = 1.0;
 
 pub struct ModelCollection<C: CoordinateSystem> {
     models: Vec<Model<C>>,
-    typestate: PhantomData<C>,
 }
 
 #[derive(Clone)]
@@ -174,10 +173,7 @@ impl<C> ModelTemplate<C> {
 impl<C: CoordinateSystem> ModelCollection<C> {
     /// Creates a new [`ModelCollection`]
     pub fn new() -> Self {
-        Self {
-            models: Vec::new(),
-            typestate: PhantomData,
-        }
+        Self { models: Vec::new() }
     }
 
     pub fn create<T: Into<ModelTemplate<C>>>(&mut self, template: T) -> &mut Model<C> {
@@ -369,9 +365,9 @@ impl ModelVariation {
 /// Used to identify a specific variation of an input model.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ModelInstance {
-    /// Index of the [`Model`] this was expanded from
+    /// Index of the original [`Model`]
     pub model_index: ModelIndex,
-    /// Rotation of the [`Model`]
+    /// Rotation of the original [`Model`]
     pub rotation: ModelRotation,
 }
 
