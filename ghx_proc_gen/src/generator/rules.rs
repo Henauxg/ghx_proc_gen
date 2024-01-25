@@ -38,7 +38,7 @@ impl RulesBuilder<Cartesian2D> {
     ///
     /// Create simple `Rules` for a chess-like pattern
     /// ```
-    /// use ghx_proc_gen::generator::{socket::{SocketsCartesian2D, SocketCollection}, rules::{Rules, RulesBuilder}, model::ModelCollection};
+    /// use ghx_proc_gen::{generator::{socket::{SocketsCartesian2D, SocketCollection}, rules::{Rules, RulesBuilder}, model::ModelCollection}, grid::direction::Cartesian2D};
     ///
     /// let mut sockets = SocketCollection::new();
     /// let (white, black) = (sockets.create(), sockets.create());
@@ -67,16 +67,16 @@ impl RulesBuilder<Cartesian3D> {
     ///
     /// ### Example
     ///
-    /// Create simple `Rules` to describe an empty room with variable length pillars (with Y up in a right-handed cooridnate system).
+    /// Create simple `Rules` to describe an empty room with variable length pillars (with Y up in a right-handed coordinate system).
     /// ```
-    /// use ghx_proc_gen::grid::GridDefinition;
+    /// use ghx_proc_gen::grid::{GridDefinition, direction::Cartesian2D};
     /// use ghx_proc_gen::generator::{socket::{SocketsCartesian3D, SocketCollection}, rules::{Rules, RulesBuilder}, model::ModelCollection};
     ///
     /// let mut sockets = SocketCollection::new();
     /// let void = sockets.create();
     /// let (pillar_base_top, pillar_core_bottom, pillar_core_top, pillar_cap_bottom) = (sockets.create(), sockets.create(), sockets.create(), sockets.create());
     ///
-    /// let mut models = ModelCollection::<Cartesian2D>::new();
+    /// let mut models = ModelCollection::new();
     /// models.create(SocketsCartesian3D::Mono(void));
     /// models.create(SocketsCartesian3D::Simple {
     ///         x_pos: void,

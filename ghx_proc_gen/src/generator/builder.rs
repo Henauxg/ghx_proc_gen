@@ -28,15 +28,16 @@ pub enum Unset {}
 ///
 /// Create a `Generator` from a `GeneratorBuilder`.
 /// ```
-/// use ghx_proc_gen::{grid::GridDefinition, generator::{builder::GeneratorBuilder, rules::{Rules, RulesBuilder}, socket::{SocketsCartesian2D, SocketCollection}}};
+/// use ghx_proc_gen::{grid::GridDefinition, generator::{builder::GeneratorBuilder, rules::{Rules, RulesBuilder}, socket::{SocketsCartesian2D, SocketCollection}, model::ModelCollection}};
 ///
 /// let mut sockets = SocketCollection::new();
 /// let a = sockets.create();
 /// sockets.add_connection(a, vec![a]);
 ///
-/// let rules = RulesBuilder::new_cartesian_2d(
-///     vec![SocketsCartesian2D::Mono(a).new_model()],
-///     sockets).build().unwrap();
+/// let mut models = ModelCollection::new();
+/// models.create(SocketsCartesian2D::Mono(a));
+///
+/// let rules = RulesBuilder::new_cartesian_2d(models,sockets).build().unwrap();
 ///
 /// let grid = GridDefinition::new_cartesian_2d(10, 10, false, false);
 /// let mut generator = GeneratorBuilder::new()

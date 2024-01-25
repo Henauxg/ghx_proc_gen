@@ -94,28 +94,31 @@ impl SocketCollection {
     /// - By default (until the connection is explicitly added), a socket is not "compatible" with itself.
     /// ### Example
     /// ```
-    /// use ghx_proc_gen::generator::socket::{SocketCollection, SocketsCartesian3D};
+    /// use ghx_proc_gen::generator::{socket::{SocketCollection, SocketsCartesian3D}, model::ModelCollection};
     ///
     /// let mut sockets = SocketCollection::new();
     /// let (side_a, vertical_a) = (sockets.create(), sockets.create());
     /// let (side_b, vertical_b) = (sockets.create(), sockets.create());
-    /// // If Y+ is our rotation axis. We could have such node models:
-    /// let model_a = SocketsCartesian3D::Simple {
+    ///
+    /// // If Y+ is our rotation axis. We could have such models:
+    /// let mut models = ModelCollection::new();
+    /// let model_a = models.create(SocketsCartesian3D::Simple {
     ///     x_pos: side_a,
     ///     x_neg: side_a,
     ///     z_pos: side_a,
     ///     z_neg: side_a,
     ///     y_pos: vertical_a,
     ///     y_neg: vertical_a,
-    /// }.new_model().with_all_rotations();
-    /// let model_b = SocketsCartesian3D::Simple {
+    /// }).with_all_rotations();
+    /// let model_b = models.create(SocketsCartesian3D::Simple {
     ///     x_pos: side_b,
     ///     x_neg: side_b,
     ///     z_pos: side_b,
     ///     z_neg: side_b,
     ///     y_pos: vertical_b,
     ///     y_neg: vertical_b,
-    /// }.new_model().with_all_rotations();
+    /// }).with_all_rotations();
+    ///
     /// sockets.add_rotated_connection(vertical_a, vec![vertical_b]);
     /// // `model_a` and `model_b` can now be stacked on top of each other (no matter their rotations)
     /// // Note: here two `model_a` cannot be stacked on top of each other since `vertical_a` was not said to be connected to itself.
