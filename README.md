@@ -123,7 +123,7 @@ We will take this rope-bridge model as an example:
     y_pos: bridge_top,
     y_neg: bridge_bottom,
   }
-  .new_model()
+  .to_template()
   .with_additional_rotation(ModelRotation::Rot90)
 ```
 With the above declaration, we declared our base model (with `Rot0` allowed by default), and allowed an extra rotation of `Rot90` degrees. Internally, when building the `Rules`, two models variations will be created.
