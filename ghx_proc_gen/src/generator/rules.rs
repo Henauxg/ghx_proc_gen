@@ -10,25 +10,25 @@ use tracing::trace;
 
 use super::{
     model::{
-        ModelCollection, ModelIndex, ModelInstance, ModelRotation, ModelVariantIndex,
+        Model, ModelCollection, ModelIndex, ModelInstance, ModelRotation, ModelVariantIndex,
         ALL_MODEL_ROTATIONS,
     },
     socket::SocketCollection,
 };
 use crate::{
     grid::direction::{Cartesian2D, Cartesian3D, CoordinateSystem, Direction},
-    RulesError,
+    NodeSetError, RulesError,
 };
 
 /// Rotation axis in a 2D cartesian coordinate system
 pub const CARTESIAN_2D_ROTATION_AXIS: Direction = Direction::ZForward;
 
 /// Used to create new [`Rules`]
-pub struct RulesBuilder<T: CoordinateSystem> {
-    models: ModelCollection<T>,
+pub struct RulesBuilder<C: CoordinateSystem> {
+    models: ModelCollection<C>,
     socket_collection: SocketCollection,
     rotation_axis: Direction,
-    coord_system: T,
+    coord_system: C,
 }
 
 impl RulesBuilder<Cartesian2D> {
@@ -131,11 +131,11 @@ impl RulesBuilder<Cartesian3D> {
     }
 }
 
-impl<T: CoordinateSystem> RulesBuilder<T> {
+impl<C: CoordinateSystem> RulesBuilder<C> {
     /// Builds the [`Rules`] from the current configuration of the [`RulesBuilder`]
     ///
     /// May return [`crate::RulesError::NoModelsOrSockets`] if `models` or `socket_collection` are empty.
-    pub fn build(self) -> Result<Rules<T>, RulesError> {
+    pub fn build(self) -> Result<Rules<C>, RulesError> {
         Rules::new(
             self.models,
             self.socket_collection,
@@ -148,7 +148,7 @@ impl<T: CoordinateSystem> RulesBuilder<T> {
 /// Defines the rules of a generation: the coordinate system, the models, the way they can be rotated, the sockets and their connections.
 ///
 /// A same set of [`Rules`] can be shared by multiple generators.
-pub struct Rules<T: CoordinateSystem> {
+pub struct Rules<C: CoordinateSystem> {
     /// Number of original input models used to build these rules.
     original_models_count: usize,
     /// Maps a [`super::model::ModelIndex`] and a [`super::model::ModelRotation`] to an optionnal corresponding [`ModelVariantIndex`]
@@ -169,16 +169,16 @@ pub struct Rules<T: CoordinateSystem> {
     /// Note: this cannot be a simple 3d array since the third dimension is different for each element.
     allowed_neighbours: Array<Vec<usize>, Ix2>,
 
-    typestate: PhantomData<T>,
+    typestate: PhantomData<C>,
 }
 
-impl<T: CoordinateSystem> Rules<T> {
+impl<C: CoordinateSystem> Rules<C> {
     fn new(
-        models: ModelCollection<T>,
+        models: ModelCollection<C>,
         socket_collection: SocketCollection,
         rotation_axis: Direction,
-        coord_system: T,
-    ) -> Result<Rules<T>, RulesError> {
+        coord_system: C,
+    ) -> Result<Rules<C>, RulesError> {
         let original_models_count = models.models_count();
         let model_variations = models.create_variations(rotation_axis);
         // We test the expanded models because a model may have no rotations allowed.
@@ -316,6 +316,27 @@ impl<T: CoordinateSystem> Rules<T> {
         }
     }
 
+    pub(crate) fn var_index_from_ref<M: Into<ModelVariantRef<C>>>(
+        &self,
+        model_ref: M,
+    ) -> Result<ModelVariantIndex, NodeSetError> {
+        let model_ref = model_ref.into();
+        match model_ref {
+            ModelVariantRef::VariantIndex(index) => Ok(index),
+            ModelVariantRef::Index(model_index, rot) => self
+                .variant_index(model_index, rot)
+                .ok_or(NodeSetError::InvalidModelRef(model_index, rot)),
+            ModelVariantRef::ModelRot(model, rot) => self
+                .variant_index(model.index(), rot)
+                .ok_or(NodeSetError::InvalidModelRef(model.index(), rot)),
+            ModelVariantRef::Model(model) => {
+                let rot = model.first_rot();
+                self.variant_index(model.index(), model.first_rot())
+                    .ok_or(NodeSetError::InvalidModelRef(model.index(), rot))
+            }
+        }
+    }
+
     #[cfg(feature = "debug-traces")]
     #[inline]
     pub(crate) fn name(&self, model_index: ModelVariantIndex) -> &'static str {
@@ -323,5 +344,28 @@ impl<T: CoordinateSystem> Rules<T> {
             None => "None",
             Some(name) => name,
         }
+    }
+}
+
+pub enum ModelVariantRef<C: CoordinateSystem> {
+    VariantIndex(ModelVariantIndex),
+    Index(ModelIndex, ModelRotation),
+    ModelRot(Model<C>, ModelRotation),
+    Model(Model<C>),
+}
+
+impl<C: CoordinateSystem> Into<ModelVariantRef<C>> for ModelVariantIndex {
+    fn into(self) -> ModelVariantRef<C> {
+        ModelVariantRef::VariantIndex(self)
+    }
+}
+impl<C: CoordinateSystem> Into<ModelVariantRef<C>> for Model<C> {
+    fn into(self) -> ModelVariantRef<C> {
+        ModelVariantRef::Model(self)
+    }
+}
+impl<C: CoordinateSystem> Into<ModelVariantRef<C>> for (ModelIndex, ModelRotation) {
+    fn into(self) -> ModelVariantRef<C> {
+        ModelVariantRef::Index(self.0, self.1)
     }
 }

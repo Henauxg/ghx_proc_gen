@@ -20,11 +20,11 @@ use crate::{
 };
 
 use self::{
-    builder::{GeneratorBuilder, ModelVariantRef, Unset},
+    builder::{GeneratorBuilder, Unset},
     model::{ModelInstance, ModelVariantIndex},
     node_heuristic::{InternalNodeSelectionHeuristic, NodeSelectionHeuristic},
     observer::GenerationUpdate,
-    rules::Rules,
+    rules::{ModelVariantRef, Rules},
 };
 
 /// Defines a [`GeneratorBuilder`] used to create a generator
@@ -283,10 +283,8 @@ impl<T: CoordinateSystem> Generator<T> {
         model_variant_ref: M,
     ) -> Result<(GenerationStatus, Vec<GridNode>), NodeSetError> {
         let mut generated_nodes = Vec::new();
-        let (node_index, model_variant_index) = (
-            NodeRef::from(node_ref.into()).to_index(&self.grid),
-            ModelVariantRef::from(model_variant_ref.into()).to_index_err(&self.rules)?,
-        );
+        let node_index = self.grid.index_from_ref(node_ref);
+        let model_variant_index = self.rules.var_index_from_ref(model_variant_ref)?;
         let res = self.internal_set_and_propagate(
             node_index,
             model_variant_index,
@@ -300,10 +298,8 @@ impl<T: CoordinateSystem> Generator<T> {
         node_ref: N,
         model_variant_ref: M,
     ) -> Result<GenerationStatus, NodeSetError> {
-        let (node_index, model_variant_index) = (
-            NodeRef::from(node_ref.into()).to_index(&self.grid),
-            ModelVariantRef::from(model_variant_ref.into()).to_index_err(&self.rules)?,
-        );
+        let node_index = self.grid.index_from_ref(node_ref);
+        let model_variant_index = self.rules.var_index_from_ref(model_variant_ref)?;
         self.internal_set_and_propagate(node_index, model_variant_index, &mut None)
     }
 

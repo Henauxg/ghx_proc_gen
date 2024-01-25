@@ -170,15 +170,22 @@ impl<T: CoordinateSystem> GridDefinition<T> {
     ///
     /// NO CHECK is done to verify that the given position is a valid position for this grid.
     #[inline]
-    pub fn get_index(&self, x: u32, y: u32, z: u32) -> NodeIndex {
+    pub fn index_from_coords(&self, x: u32, y: u32, z: u32) -> NodeIndex {
         (x + y * self.size_x + z * self.size_xy).try_into().unwrap()
     }
 
     /// Returns the index from a grid position.
     ///
     /// NO CHECK is done to verify that the given position is a valid position for this grid.
-    pub fn get_index_from_pos(&self, grid_position: &GridPosition) -> NodeIndex {
-        self.get_index(grid_position.x, grid_position.y, grid_position.z)
+    pub fn index_from_pos(&self, grid_position: &GridPosition) -> NodeIndex {
+        self.index_from_coords(grid_position.x, grid_position.y, grid_position.z)
+    }
+
+    pub fn index_from_ref<N: Into<NodeRef>>(&self, node_ref: N) -> NodeIndex {
+        match node_ref.into() {
+            NodeRef::Index(index) => index,
+            NodeRef::Pos(pos) => self.index_from_pos(&pos),
+        }
     }
 
     /// Returns a [`GridPosition`] from the index of a node in this [`GridDefinition`].
@@ -244,13 +251,13 @@ impl<T: CoordinateSystem> GridDefinition<T> {
     ) -> Option<NodeIndex> {
         let delta = &self.coord_system.deltas()[direction as usize];
         match self.get_next_pos(grid_position, &delta) {
-            Some(next_pos) => Some(self.get_index_from_pos(&next_pos)),
+            Some(next_pos) => Some(self.index_from_pos(&next_pos)),
             None => None,
         }
     }
 
     #[inline]
-    pub(crate) fn directions(&self) -> &'static [Direction] {
+    pub fn directions(&self) -> &'static [Direction] {
         self.coord_system.directions()
     }
 
@@ -356,29 +363,20 @@ impl<D> GridData<Cartesian3D, D> {
     ///
     /// NO CHECK is done to verify that the given position is a valid position for this grid.
     pub fn get_3d(&self, x: u32, y: u32, z: u32) -> &D {
-        &self.data[self.grid.get_index(x, y, z)]
+        &self.data[self.grid.index_from_coords(x, y, z)]
     }
 
     /// Returns a mutable reference to the data at this position.
     ///
     /// NO CHECK is done to verify that the given position is a valid position for this grid.
     pub fn get_3d_mut(&mut self, x: u32, y: u32, z: u32) -> &mut D {
-        &mut self.data[self.grid.get_index(x, y, z)]
+        &mut self.data[self.grid.index_from_coords(x, y, z)]
     }
 }
 
 pub enum NodeRef {
     Index(NodeIndex),
     Pos(GridPosition),
-}
-
-impl NodeRef {
-    pub fn to_index<T: CoordinateSystem>(&self, grid: &GridDefinition<T>) -> NodeIndex {
-        match self {
-            NodeRef::Index(index) => *index,
-            NodeRef::Pos(pos) => grid.get_index_from_pos(pos),
-        }
-    }
 }
 
 impl Into<NodeRef> for NodeIndex {

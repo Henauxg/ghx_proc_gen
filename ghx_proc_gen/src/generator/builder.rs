@@ -1,4 +1,4 @@
-use std::{fmt, marker::PhantomData, sync::Arc};
+use std::{marker::PhantomData, sync::Arc};
 
 use crate::{
     grid::{direction::CoordinateSystem, GridDefinition, NodeRef},
@@ -6,10 +6,9 @@ use crate::{
 };
 
 use super::{
-    model::{Model, ModelIndex, ModelRotation, ModelVariantIndex},
     node_heuristic::NodeSelectionHeuristic,
     observer::{GenerationUpdate, QueuedObserver, QueuedStatefulObserver},
-    rules::Rules,
+    rules::{ModelVariantRef, Rules},
     Collector, Generator, GridNode, ModelSelectionHeuristic, RngMode,
 };
 
@@ -198,8 +197,8 @@ impl<T: CoordinateSystem> GeneratorBuilder<Set, Set, T> {
         // Generator will fully verify them during pre-gen.
         let mut initial_nodes = Vec::with_capacity(self.initial_nodes_refs.len());
         for (node_ref, model_variant_ref) in self.initial_nodes_refs {
-            let node_index = node_ref.to_index(&grid);
-            let model_variant_index = model_variant_ref.to_index_err(&rules)?;
+            let node_index = grid.index_from_ref(node_ref);
+            let model_variant_index = rules.var_index_from_ref(model_variant_ref)?;
             initial_nodes.push((node_index, model_variant_index));
         }
 
@@ -214,77 +213,5 @@ impl<T: CoordinateSystem> GeneratorBuilder<Set, Set, T> {
             self.observers,
             collector,
         )
-    }
-}
-
-pub enum ModelVariantRef<C: CoordinateSystem> {
-    VariantIndex(ModelVariantIndex),
-    Index(ModelIndex, ModelRotation),
-    ModelRot(Model<C>, ModelRotation),
-    Model(Model<C>),
-}
-
-impl<C: CoordinateSystem> fmt::Display for ModelVariantRef<C> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            ModelVariantRef::VariantIndex(index) => write!(f, "VariantIndex({})", index),
-            ModelVariantRef::Index(model_index, rot) => {
-                write!(f, "Index(model: {model_index}, rot: {:?})", rot)
-            }
-            ModelVariantRef::Model(model) => {
-                write!(
-                    f,
-                    "Model(model: {:?} with found rotation {:?})",
-                    model.index(),
-                    model.first_rot()
-                )
-            }
-            ModelVariantRef::ModelRot(model, rot) => {
-                write!(f, "ModelRot(model: {:?}, rot: {:?})", model.index(), rot)
-            }
-        }
-    }
-}
-
-impl<C: CoordinateSystem> ModelVariantRef<C> {
-    pub(crate) fn to_index(&self, rules: &Rules<C>) -> Option<ModelVariantIndex> {
-        match self {
-            ModelVariantRef::VariantIndex(index) => Some(*index),
-            ModelVariantRef::Index(model_index, rot) => rules.variant_index(*model_index, *rot),
-            ModelVariantRef::Model(model) => rules.variant_index(model.index(), model.first_rot()),
-            ModelVariantRef::ModelRot(model, rot) => rules.variant_index(model.index(), *rot),
-        }
-    }
-
-    pub(crate) fn to_index_err(&self, rules: &Rules<C>) -> Result<ModelVariantIndex, NodeSetError> {
-        self.to_index(rules).ok_or_else(|| match self {
-            ModelVariantRef::VariantIndex(index) => NodeSetError::InvalidModelIndex(*index),
-            ModelVariantRef::Index(model_index, rot) => {
-                NodeSetError::InvalidModelRef(*model_index, *rot)
-            }
-            ModelVariantRef::ModelRot(model, rot) => {
-                NodeSetError::InvalidModelRef(model.index(), *rot)
-            }
-            ModelVariantRef::Model(model) => {
-                let rot = model.first_rot();
-                NodeSetError::InvalidModelRef(model.index(), rot)
-            }
-        })
-    }
-}
-
-impl<C: CoordinateSystem> Into<ModelVariantRef<C>> for ModelVariantIndex {
-    fn into(self) -> ModelVariantRef<C> {
-        ModelVariantRef::VariantIndex(self)
-    }
-}
-impl<C: CoordinateSystem> Into<ModelVariantRef<C>> for Model<C> {
-    fn into(self) -> ModelVariantRef<C> {
-        ModelVariantRef::Model(self)
-    }
-}
-impl<C: CoordinateSystem> Into<ModelVariantRef<C>> for (ModelIndex, ModelRotation) {
-    fn into(self) -> ModelVariantRef<C> {
-        ModelVariantRef::Index(self.0, self.1)
     }
 }
