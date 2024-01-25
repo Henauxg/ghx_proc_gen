@@ -339,8 +339,11 @@ impl<C: CoordinateSystem> Rules<C> {
     }
 }
 
+/// Represents a reference to a [`super::model::ModelVariation`] of some [`Rules`]
 pub enum ModelVariantRef {
+    /// Direct index of the model variation
     VariantIndex(ModelVariantIndex),
+    /// Index of the original model and the rotation applied to it
     IndexRot(ModelIndex, ModelRotation),
 }
 

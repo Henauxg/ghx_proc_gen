@@ -1,7 +1,7 @@
 #![warn(missing_docs)]
 
 //! A library for 2D & 3D procedural generation with Model synthesis/Wave function Collapse.
-//! Also provide grid utilities to manipulate 23&3d grid data.
+//! Also provide grid utilities to manipulate 2d & 3d grid data.
 
 use generator::model::{ModelIndex, ModelRotation, ModelVariantIndex};
 use grid::NodeIndex;
@@ -30,18 +30,24 @@ pub enum RulesError {
 /// Error returned by a [`generator::Generator`] or a [`generator::builder::GeneratorBuilder`] when a node set operation fails
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum NodeSetError {
+    /// An invalid [`ModelVariantIndex`] was given
     #[error("Invalid model variant index `{0}`, does not exist in the rules")]
     InvalidModelIndex(ModelVariantIndex),
+    /// An invalid [`generator::rules::ModelVariantRef`] was given
     #[error("Invalid model variant reference: model index `{0}` with rotation `{1:?}`, does not exist in the rules")]
     InvalidModelRef(ModelIndex, ModelRotation),
+    /// An invalid node index was given
     #[error("Invalid node index `{0}`, does not exist in the grid")]
     InvalidNodeIndex(NodeIndex),
+    /// An operation requested to set a model on a node that does not allow it
     #[error("Model variant `{0}` not allowed by the Rules on node {1}")]
     IllegalModel(ModelVariantIndex, NodeIndex),
+    /// Wraps a [`GenerationError`]
     #[error("Generation error: {0}")]
     GenerationError(#[from] GenerationError),
 }
 
+/// Error returned by a [`generator::builder::GeneratorBuilder`] when a given grid does not match the size of the builder's grid.
 #[derive(thiserror::Error, Debug, Clone)]
 #[error("Given grid size {0:?} does not match the expected size {1:?}")]
 pub struct InvalidGridSize((u32, u32, u32), (u32, u32, u32));

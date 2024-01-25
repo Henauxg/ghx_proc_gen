@@ -30,16 +30,18 @@ impl GridPosition {
         )
     }
 
+    /// Utility constructor
     pub fn new(x: u32, y: u32, z: u32) -> GridPosition {
         Self { x, y, z }
     }
 
+    /// Utility constructor for a 2D (x,y) position. z will be set to 0
     pub fn new_xy(x: u32, y: u32) -> GridPosition {
         Self { x, y, z: 0 }
     }
 }
 
-///
+/// Definition of a grid
 #[derive(Clone)]
 #[cfg_attr(feature = "bevy", derive(Component))]
 pub struct GridDefinition<C: CoordinateSystem> {
@@ -156,6 +158,7 @@ impl<C: CoordinateSystem> GridDefinition<C> {
         self.size_z
     }
 
+    /// Returns the size of this grid as a tuple
     pub fn size(&self) -> (u32, u32, u32) {
         (self.size_x, self.size_y, self.size_z)
     }
@@ -180,11 +183,14 @@ impl<C: CoordinateSystem> GridDefinition<C> {
 
     /// Returns the index from a grid position.
     ///
-    /// NO CHECK is done to verify that the given position is a valid position for this grid.
+    /// NO CHECK is done to verify that the given `grid_position` is a valid position for this grid.
     pub fn index_from_pos(&self, grid_position: &GridPosition) -> NodeIndex {
         self.index_from_coords(grid_position.x, grid_position.y, grid_position.z)
     }
 
+    /// Returns the index of a node from a [`NodeRef`]
+    ///
+    /// NO CHECK is done to verify that the given `node_ref` references a valid node for this grid.
     pub fn index_from_ref<N: Into<NodeRef>>(&self, node_ref: N) -> NodeIndex {
         match node_ref.into() {
             NodeRef::Index(index) => index,
@@ -260,6 +266,7 @@ impl<C: CoordinateSystem> GridDefinition<C> {
         }
     }
 
+    /// Returns all the [`Direction`] in the [`CoordinateSystem`] used by this [`GridDefinition`]
     #[inline]
     pub fn directions(&self) -> &'static [Direction] {
         self.coord_system.directions()
@@ -441,8 +448,11 @@ impl<D> GridData<Cartesian3D, D> {
     }
 }
 
+/// Represents a reference to a node of a [`GridDefinition`] or [`GridData`]
 pub enum NodeRef {
+    /// Direct index of the node
     Index(NodeIndex),
+    /// [`GridPosition`] of the node
     Pos(GridPosition),
 }
 

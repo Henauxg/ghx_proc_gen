@@ -7,7 +7,7 @@ use super::model::{ModelRotation, ModelTemplate, ALL_MODEL_ROTATIONS};
 /// Id of a possible connection type
 pub(crate) type SocketId = u64;
 
-/// Used to create one or more [`Socket`]. Created [`Socket`] can then be used to define [`Model`] and define connections between them.
+/// Used to create one or more [`Socket`]. Created sockets can then be used to define [`super::model::Model`] and define connections between them.
 #[derive(Clone)]
 pub struct SocketCollection {
     incremental_socket_index: u32,

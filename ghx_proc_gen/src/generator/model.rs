@@ -16,11 +16,8 @@ pub type ModelIndex = usize;
 /// Index of a model variation
 pub type ModelVariantIndex = usize;
 
+/// Default weight of [`Model`] and [`ModelTemplate`]
 pub const DEFAULT_MODEL_WEIGHT: f32 = 1.0;
-
-pub struct ModelCollection<C: CoordinateSystem> {
-    models: Vec<Model<C>>,
-}
 
 #[derive(Clone)]
 pub struct ModelTemplate<C> {
@@ -168,6 +165,11 @@ impl<C> ModelTemplate<C> {
         }
         rotated_sockets
     }
+}
+
+/// Used to create one or more [`Model`]. Created models can then be used in a [`super::rules::RulesBuilder`]
+pub struct ModelCollection<C: CoordinateSystem> {
+    models: Vec<Model<C>>,
 }
 
 impl<C: CoordinateSystem> ModelCollection<C> {
