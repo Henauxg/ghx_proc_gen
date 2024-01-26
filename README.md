@@ -77,7 +77,7 @@ Let's build a chessboard pattern:
       .with_rules(rules)
       .with_grid(grid)
       // Let's ensure that we make a chessboard, with a black square bottom-left
-      .with_initial_nodes(vec![(GridPosition::new_xy(0, 0), black_model)])
+      .with_initial_nodes(vec![(GridPosition::new_xy(0, 0), black_model)]).unwrap()
       .build()
       .unwrap();
 ```
@@ -191,7 +191,7 @@ https://github.com/Henauxg/ghx_proc_gen/assets/19689618/3cdab2d6-ef1a-4728-9685-
 
 # For Bevy users
 
-The [`bevy_ghx_proc_gen`](bevy_ghx_proc_gen/README.md) crate uses and exposes `ghx_proc_gen`, as well as additional plugins and utilities dedicated to Bevy.
+See the [`bevy_ghx_proc_gen`](bevy_ghx_proc_gen/README.md) which crate uses and exposes `ghx_proc_gen`, as well as additional plugins and utilities dedicated to Bevy.
 ```
 cargo add bevy_ghx_proc_gen
 ```
