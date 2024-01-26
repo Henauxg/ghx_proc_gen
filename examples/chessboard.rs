@@ -1,3 +1,5 @@
+use std::error::Error;
+
 use ghx_proc_gen::{
     generator::{
         model::ModelCollection,
@@ -9,7 +11,7 @@ use ghx_proc_gen::{
 
 use {ghx_proc_gen::generator::builder::GeneratorBuilder, ghx_proc_gen::grid::GridDefinition};
 
-fn main() {
+fn main() -> Result<(), Box<dyn Error>> {
     // A SocketCollection is what we use to create sockets and define their connections
     let mut sockets = SocketCollection::new();
     // For this example, we will only need two sockets
@@ -38,9 +40,8 @@ fn main() {
         .with_rules(rules)
         .with_grid(grid)
         // Let's ensure that we make a chessboard, with a black square bottom-left
-        .with_initial_nodes(vec![(GridPosition::new_xy(0, 0), black_model)])
-        .build()
-        .unwrap();
+        .with_initial_nodes(vec![(GridPosition::new_xy(0, 0), black_model)])?
+        .build()?;
 
     // Here we directly generate the whole grid, and ask for the result to be returned.
     // The generation could also be done iteratively via `generator.select_and_propagate()`, or the results could be obtained through an `Observer`
@@ -54,4 +55,6 @@ fn main() {
         }
         println!();
     }
+
+    Ok(())
 }
