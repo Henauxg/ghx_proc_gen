@@ -89,7 +89,9 @@ pub struct GridNode {
     pub model_instance: ModelInstance,
 }
 
+/// Information about a generation
 pub struct GenInfo {
+    /// How many tries the generation took before succeeding
     pub try_count: u32,
 }
 
@@ -138,15 +140,15 @@ pub struct Generator<T: CoordinateSystem> {
     supports_count: Array<usize, Ix3>,
 }
 
-impl<T: CoordinateSystem> Generator<T> {
+impl<C: CoordinateSystem> Generator<C> {
     /// Returns a new `GeneratorBuilder`
     pub fn builder() -> GeneratorBuilder<Unset, Unset, Cartesian2D> {
         GeneratorBuilder::new()
     }
 
     fn create(
-        rules: Arc<Rules<T>>,
-        grid: GridDefinition<T>,
+        rules: Arc<Rules<C>>,
+        grid: GridDefinition<C>,
         initial_nodes: Vec<(NodeIndex, ModelVariantIndex)>,
         max_retry_count: u32,
         node_selection_heuristic: NodeSelectionHeuristic,
@@ -199,10 +201,12 @@ impl<T: CoordinateSystem> Generator<T> {
         }
     }
 
+    /// Returns the `max_retry_count`: how many time the [`Generator`] should retry to generate the [`GridDefinition`] when a contradiction is encountered
     pub fn max_retry_count(&self) -> u32 {
         self.max_retry_count
     }
 
+    /// Specifies how many time the [`Generator`] should retry to generate the [`GridDefinition`] when a contradiction is encountered
     pub fn set_max_retry_count(&mut self, max_retry_count: u32) {
         self.max_retry_count = max_retry_count;
     }
@@ -213,12 +217,12 @@ impl<T: CoordinateSystem> Generator<T> {
     }
 
     /// Returns the [`GridDefinition`] used by the generator
-    pub fn grid(&self) -> &GridDefinition<T> {
+    pub fn grid(&self) -> &GridDefinition<C> {
         &self.grid
     }
 
     /// Returns the [`Rules`] used by the generator
-    pub fn rules(&self) -> &Rules<T> {
+    pub fn rules(&self) -> &Rules<C> {
         &self.rules
     }
 
@@ -227,7 +231,10 @@ impl<T: CoordinateSystem> Generator<T> {
         self.nodes_left_to_generate
     }
 
-    pub fn to_grid_data(&self) -> Option<GridData<T, ModelInstance>> {
+    /// Returns `Some` [`GridData<C, ModelInstance>`] with all the nodes generated if the generation is done
+    ///
+    /// Returns `None` if the generation is still ongoing or currently failed
+    pub fn to_grid_data(&self) -> Option<GridData<C, ModelInstance>> {
         match self.status {
             InternalGeneratorStatus::Ongoing => None,
             InternalGeneratorStatus::Failed(_) => None,
@@ -237,11 +244,12 @@ impl<T: CoordinateSystem> Generator<T> {
 
     /// Tries to generate the whole grid. If the generation fails due to a contradiction, it will retry `max_retry_count` times before returning the last encountered [`GeneratorError`]
     ///
-    /// If the generation has ended (successful or not), calling `generate` will reinitialize the generator before starting the generation.
-    /// If the generation was already started by previous calls to `select_and_propagate`, this will simply continue the current generation.
+    /// If the generation is currently done or failed, calling this method will reinitialize the generator with the next seed before starting the generation.
+    ///
+    /// If the generation was already started by previous calls to [`Generator::set_and_propagate`] or [`Generator::select_and_propagate`], this will simply continue the current generation.
     pub fn generate_grid(
         &mut self,
-    ) -> Result<(GenInfo, GridData<T, ModelInstance>), GeneratorError> {
+    ) -> Result<(GenInfo, GridData<C, ModelInstance>), GeneratorError> {
         let gen_info = self.internal_generate(&mut None)?;
         Ok((gen_info, self.internal_to_grid_data()))
     }
@@ -252,23 +260,26 @@ impl<T: CoordinateSystem> Generator<T> {
         Ok((gen_info, generated_nodes))
     }
 
+    /// Same as [`Generator::generate_grid`] but does not return the generated [`ModelInstance`] when successful.
+    ///
+    /// [`Generator::to_grid_data`] can still be called to retrieve a [`GridData`] afterwards.
     pub fn generate(&mut self) -> Result<GenInfo, GeneratorError> {
         let gen_info = self.internal_generate(&mut None)?;
         Ok(gen_info)
     }
 
     /// Advances the generation by one "step": select a node and a model via the heuristics and propagate the changes.
+    /// - Returns the [`GenerationStatus`] if the step executed successfully
+    /// - Returns a [`GeneratorError`] if the generation fails due to a contradiction.
     ///
-    /// Returns the [`GenerationStatus`] if the step executed successfully and [`crate::GeneratorError`] if the generation fails due to a contradiction.
+    /// If the generation is currently done or failed, calling this method will reinitialize the generator with the next seed before starting the generation.
     ///
-    /// If the generation has ended (successfully or not), calling `select_and_propagate` again will reinitialize the [`Generator`] before starting a new generation.
-    ///
-    /// **Note**: One call to `select_and_propagate` **can** lead to more than one node generated if the propagation phase forces some other node(s) into a definite state (due to only one possible model remaining on a node)
+    /// **Note**: One call to this method **can** lead to more than one node generated if the propagation phase forces some other node(s) into a definite state (due to only one possible model remaining on a node)
     pub fn select_and_propagate(&mut self) -> Result<GenerationStatus, GeneratorError> {
         self.internal_select_and_propagate(&mut None)
     }
 
-    /// Same as `select_and_propagate` but collects and return the generated [`GridNode`] when successful.
+    /// Same as [`Generator::select_and_propagate`] but collects and return the generated [`GridNode`] when successful.
     pub fn select_and_propagate_collected(
         &mut self,
     ) -> Result<(GenerationStatus, Vec<GridNode>), GeneratorError> {
@@ -277,7 +288,25 @@ impl<T: CoordinateSystem> Generator<T> {
         Ok((res, generated_nodes))
     }
 
-    pub fn set_and_propagate_collected<N: NodeRef<T>, M: ModelVariantRef<T>>(
+    /// Tries to set the node referenced by `node_ref` to the model refrenced by `model_variant_ref`. Then tries to propagate the change.
+    /// - Returns `Ok` and the current [`GenerationStatus`] if successful.
+    /// - Returns a [`NodeSetError`] if it fails.
+    ///
+    /// If the generation is currently done or failed, calling this method will reinitialize the generator with the next seed before starting the generation.
+    ///
+    /// **Note**: One call to this method **can** lead to more than one node generated if the propagation phase forces some other node(s) into a definite state (due to only one possible model remaining on a node)
+    pub fn set_and_propagate<N: NodeRef<C>, M: ModelVariantRef<C>>(
+        &mut self,
+        node_ref: N,
+        model_variant_ref: M,
+    ) -> Result<GenerationStatus, NodeSetError> {
+        let node_index = node_ref.to_index(&self.grid);
+        let model_variant_index = model_variant_ref.to_index(&self.rules)?;
+        self.internal_set_and_propagate(node_index, model_variant_index, &mut None)
+    }
+
+    /// Same as [`Generator::set_and_propagate`] but also returns all the [`GridNode`] generated by this generation operation if successful.
+    pub fn set_and_propagate_collected<N: NodeRef<C>, M: ModelVariantRef<C>>(
         &mut self,
         node_ref: N,
         model_variant_ref: M,
@@ -293,20 +322,12 @@ impl<T: CoordinateSystem> Generator<T> {
         Ok((res, generated_nodes))
     }
 
-    pub fn set_and_propagate<N: NodeRef<T>, M: ModelVariantRef<T>>(
-        &mut self,
-        node_ref: N,
-        model_variant_ref: M,
-    ) -> Result<GenerationStatus, NodeSetError> {
-        let node_index = node_ref.to_index(&self.grid);
-        let model_variant_index = model_variant_ref.to_index(&self.rules)?;
-        self.internal_set_and_propagate(node_index, model_variant_index, &mut None)
-    }
-
+    /// Reinitalizes the generator with the next seed (a seed is generated from the current seed)
     pub fn reinitialize(&mut self) -> GenerationStatus {
         self.internal_reinitialize(&mut None)
     }
 
+    /// Same as [`Generator::reinitialize`] but also returns all the [`GridNode`] generated by this generation operation.
     pub fn reinitialize_collected(&mut self) -> (GenerationStatus, Vec<GridNode>) {
         let mut generated_nodes = Vec::new();
         let res = self.internal_reinitialize(&mut Some(&mut generated_nodes));
@@ -848,7 +869,7 @@ impl<T: CoordinateSystem> Generator<T> {
     }
 
     /// Should only be called when the nodes are fully generated
-    fn internal_to_grid_data(&self) -> GridData<T, ModelInstance> {
+    fn internal_to_grid_data(&self) -> GridData<C, ModelInstance> {
         let mut generated_nodes = Vec::with_capacity(self.nodes.len());
         for node_index in 0..self.grid.total_size() {
             let model_index = self.get_model_index(node_index);

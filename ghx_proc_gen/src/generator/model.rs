@@ -20,6 +20,9 @@ pub type ModelVariantIndex = usize;
 pub const DEFAULT_MODEL_WEIGHT: f32 = 1.0;
 
 #[derive(Clone)]
+/// Most of the information about a [`Model`] (but notably without any [`ModelIndex`]).
+///
+/// Can be used to create common shared templates before creating real models through a [`ModelCollection`]
 pub struct ModelTemplate<C> {
     /// Allowed connections for this [`ModelTemplate`] in the output.
     sockets: Vec<Vec<Socket>>,
@@ -178,12 +181,16 @@ impl<C: CoordinateSystem> ModelCollection<C> {
         Self { models: Vec::new() }
     }
 
+    /// Creates a new [`Model`] in this collection and returns a reference to it.
+    ///
+    /// It can create a model from any type that can be turned into a [`ModelTemplate`]: sockets, a model template, or even another model.
     pub fn create<T: Into<ModelTemplate<C>>>(&mut self, template: T) -> &mut Model<C> {
         let model = Model::<C>::from_template(template.into(), self.models.len());
         self.models.push(model);
         self.models.last_mut().unwrap()
     }
 
+    /// Returns how many [`Model`] are in this collection
     pub fn models_count(&self) -> usize {
         self.models.len()
     }
@@ -234,6 +241,7 @@ impl<C: CoordinateSystem> Model<C> {
         }
     }
 
+    /// Returns the [`ModelIndex`] of the model
     pub fn index(&self) -> ModelIndex {
         self.index
     }
@@ -318,6 +326,11 @@ impl<C: CoordinateSystem> Model<C> {
             }
         }
         ModelRotation::Rot0
+    }
+}
+impl<C: CoordinateSystem> Into<ModelTemplate<C>> for Model<C> {
+    fn into(self) -> ModelTemplate<C> {
+        self.template.clone()
     }
 }
 

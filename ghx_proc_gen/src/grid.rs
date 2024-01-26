@@ -438,7 +438,9 @@ impl<D> GridData<Cartesian3D, D> {
     }
 }
 
+/// Represents a reference to a node of a [`GridDefinition`] or [`GridData`]
 pub trait NodeRef<C: CoordinateSystem> {
+    /// Returns the [`NodeIndex`] that is referenced by this `NodeRef`.
     fn to_index(&self, grid: &GridDefinition<C>) -> NodeIndex;
 }
 impl<C: CoordinateSystem> NodeRef<C> for &GridPosition {

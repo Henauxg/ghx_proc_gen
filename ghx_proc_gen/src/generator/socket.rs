@@ -293,7 +293,6 @@ impl SocketsCartesian2D {
         ModelTemplate::<Cartesian2D>::new(self)
     }
 }
-
 impl Into<ModelTemplate<Cartesian2D>> for SocketsCartesian2D {
     fn into(self) -> ModelTemplate<Cartesian2D> {
         self.to_template()

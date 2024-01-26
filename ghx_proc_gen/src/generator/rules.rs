@@ -326,7 +326,11 @@ impl<C: CoordinateSystem> Rules<C> {
     }
 }
 
+/// Represents a reference to a [`super::model::ModelVariation`] of some [`Rules`]
 pub trait ModelVariantRef<C: CoordinateSystem> {
+    /// Returns the [`Ok(ModelVariantIndex)`] that is referenced by this `ModelVariantRef`.
+    ///
+    /// Returns a [`NodeSetError::InvalidModelRef`] if the reference is invalid in the [`Rules`].
     fn to_index(&self, rules: &Rules<C>) -> Result<ModelVariantIndex, NodeSetError>;
 }
 impl<C: CoordinateSystem> ModelVariantRef<C> for ModelVariantIndex {

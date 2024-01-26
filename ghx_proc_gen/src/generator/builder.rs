@@ -152,6 +152,9 @@ impl<G, R, C: CoordinateSystem> GeneratorBuilder<G, R, C> {
         self
     }
 
+    /// Registers some [`NodeIndex`] [`ModelVariantIndex`] pairs to be spawned initially by the [`Generator`]. These nodes will be spawned when the generator reinitializes too.
+    ///
+    /// See [`GeneratorBuilder::with_initial_nodes`] for a more versatile and easy to use method (at the price of a bit of performances during the method call).
     pub fn with_initial_nodes_raw(
         mut self,
         initial_nodes: Vec<(NodeIndex, ModelVariantIndex)>,
@@ -163,6 +166,9 @@ impl<G, R, C: CoordinateSystem> GeneratorBuilder<G, R, C> {
 
 // For functions in this impl, we know that self.grid is `Some` thanks to the typing.
 impl<C: CoordinateSystem, R> GeneratorBuilder<Set, R, C> {
+    /// Adds a [`QueuedStatefulObserver`] to the [`Generator`] that will be built, and returns it.
+    ///
+    /// Adding the observer before building the generator allows the observer to see the nodes than *can* be generated during a generator's initialization.
     pub fn add_queued_stateful_observer(&mut self) -> QueuedStatefulObserver<C> {
         let (sender, receiver) = crossbeam_channel::unbounded();
         self.observers.push(sender);
@@ -170,12 +176,18 @@ impl<C: CoordinateSystem, R> GeneratorBuilder<Set, R, C> {
         QueuedStatefulObserver::create(receiver, &grid)
     }
 
+    /// Adds a [`QueuedObserver`] to the [`Generator`] that will be built, and returns it.
+    ///
+    /// Adding the observer before building the generator allows the observer to see the nodes than *can* be generated during a generator's initialization.
     pub fn add_queued_observer(&mut self) -> QueuedObserver {
         let (sender, receiver) = crossbeam_channel::unbounded();
         self.observers.push(sender);
         QueuedObserver::create(receiver)
     }
 
+    /// Registers [`ModelVariantRef`] from a [`GridData`] to be spawned initially by the [`Generator`]. These nodes will be spawned when the generator reinitializes too.
+    ///
+    /// See [`GeneratorBuilder::with_initial_grid`] for a more versatile and easy to use method (at the price of a bit of performances during the method call).
     pub fn with_initial_grid_raw<M: ModelVariantRef<C>>(
         mut self,
         data: GridData<C, Option<ModelVariantIndex>>,
@@ -202,6 +214,9 @@ impl<C: CoordinateSystem, R> GeneratorBuilder<Set, R, C> {
 
 // For functions in this impl, we know that self.rules and self.grid are `Some` thanks to the typing.
 impl<C: CoordinateSystem> GeneratorBuilder<Set, Set, C> {
+    /// Registers some [`NodeRef`] [`ModelVariantRef`] pairs to be spawned initially by the [`Generator`]. These nodes will be spawned when the generator reinitializes too.
+    ///
+    /// See [`GeneratorBuilder::with_initial_nodes_raw`] for a bit more performant but more constrained method. The performance difference only matters during this method call in the `GeneratorBuilder`, during generation all the initial nodes are already converted to their raw format.
     pub fn with_initial_nodes<N: NodeRef<C>, M: ModelVariantRef<C>>(
         mut self,
         initial_nodes: Vec<(N, M)>,
@@ -215,6 +230,9 @@ impl<C: CoordinateSystem> GeneratorBuilder<Set, Set, C> {
         Ok(self)
     }
 
+    /// Registers [`ModelVariantRef`] from a [`GridData`] to be spawned initially by the [`Generator`]. These nodes will be spawned when the generator reinitializes too.
+    ///
+    /// See [`GeneratorBuilder::with_initial_grid_raw`] for a bit more performant but more constrained method. The performance difference only matters during this method call in the `GeneratorBuilder`, during generation all the initial nodes are already converted to their raw format.
     pub fn with_initial_grid<M: ModelVariantRef<C>>(
         mut self,
         data: GridData<C, Option<M>>,
