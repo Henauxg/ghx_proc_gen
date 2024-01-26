@@ -24,7 +24,7 @@ use self::{
     model::{ModelInstance, ModelVariantIndex},
     node_heuristic::{InternalNodeSelectionHeuristic, NodeSelectionHeuristic},
     observer::GenerationUpdate,
-    rules::{ModelVariantRefTrait, Rules},
+    rules::{ModelVariantRef, Rules},
 };
 
 /// Defines a [`GeneratorBuilder`] used to create a generator
@@ -277,7 +277,7 @@ impl<T: CoordinateSystem> Generator<T> {
         Ok((res, generated_nodes))
     }
 
-    pub fn set_and_propagate_collected<N: NodeRef<T>, M: ModelVariantRefTrait<T>>(
+    pub fn set_and_propagate_collected<N: NodeRef<T>, M: ModelVariantRef<T>>(
         &mut self,
         node_ref: N,
         model_variant_ref: M,
@@ -293,7 +293,7 @@ impl<T: CoordinateSystem> Generator<T> {
         Ok((res, generated_nodes))
     }
 
-    pub fn set_and_propagate<N: NodeRef<T>, M: ModelVariantRefTrait<T>>(
+    pub fn set_and_propagate<N: NodeRef<T>, M: ModelVariantRef<T>>(
         &mut self,
         node_ref: N,
         model_variant_ref: M,

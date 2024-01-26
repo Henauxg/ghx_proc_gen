@@ -326,15 +326,15 @@ impl<C: CoordinateSystem> Rules<C> {
     }
 }
 
-pub trait ModelVariantRefTrait<C: CoordinateSystem> {
+pub trait ModelVariantRef<C: CoordinateSystem> {
     fn to_index(&self, rules: &Rules<C>) -> Result<ModelVariantIndex, NodeSetError>;
 }
-impl<C: CoordinateSystem> ModelVariantRefTrait<C> for ModelVariantIndex {
+impl<C: CoordinateSystem> ModelVariantRef<C> for ModelVariantIndex {
     fn to_index(&self, _rules: &Rules<C>) -> Result<ModelVariantIndex, NodeSetError> {
         Ok(*self)
     }
 }
-impl<C: CoordinateSystem> ModelVariantRefTrait<C> for Model<C> {
+impl<C: CoordinateSystem> ModelVariantRef<C> for Model<C> {
     fn to_index(&self, rules: &Rules<C>) -> Result<ModelVariantIndex, NodeSetError> {
         let rot = self.first_rot();
         rules
@@ -342,7 +342,7 @@ impl<C: CoordinateSystem> ModelVariantRefTrait<C> for Model<C> {
             .ok_or(NodeSetError::InvalidModelRef(self.index(), rot))
     }
 }
-impl<C: CoordinateSystem> ModelVariantRefTrait<C> for &Model<C> {
+impl<C: CoordinateSystem> ModelVariantRef<C> for &Model<C> {
     fn to_index(&self, rules: &Rules<C>) -> Result<ModelVariantIndex, NodeSetError> {
         let rot = self.first_rot();
         rules
@@ -350,28 +350,28 @@ impl<C: CoordinateSystem> ModelVariantRefTrait<C> for &Model<C> {
             .ok_or(NodeSetError::InvalidModelRef(self.index(), rot))
     }
 }
-impl<C: CoordinateSystem> ModelVariantRefTrait<C> for (ModelIndex, ModelRotation) {
+impl<C: CoordinateSystem> ModelVariantRef<C> for (ModelIndex, ModelRotation) {
     fn to_index(&self, rules: &Rules<C>) -> Result<ModelVariantIndex, NodeSetError> {
         rules
             .variant_index(self.0, self.1)
             .ok_or(NodeSetError::InvalidModelRef(self.0, self.1))
     }
 }
-impl<C: CoordinateSystem> ModelVariantRefTrait<C> for (Model<C>, ModelRotation) {
+impl<C: CoordinateSystem> ModelVariantRef<C> for (Model<C>, ModelRotation) {
     fn to_index(&self, rules: &Rules<C>) -> Result<ModelVariantIndex, NodeSetError> {
         rules
             .variant_index(self.0.index(), self.1)
             .ok_or(NodeSetError::InvalidModelRef(self.0.index(), self.1))
     }
 }
-impl<C: CoordinateSystem> ModelVariantRefTrait<C> for (&Model<C>, ModelRotation) {
+impl<C: CoordinateSystem> ModelVariantRef<C> for (&Model<C>, ModelRotation) {
     fn to_index(&self, rules: &Rules<C>) -> Result<ModelVariantIndex, NodeSetError> {
         rules
             .variant_index(self.0.index(), self.1)
             .ok_or(NodeSetError::InvalidModelRef(self.0.index(), self.1))
     }
 }
-impl<C: CoordinateSystem> ModelVariantRefTrait<C> for ModelInstance {
+impl<C: CoordinateSystem> ModelVariantRef<C> for ModelInstance {
     fn to_index(&self, rules: &Rules<C>) -> Result<ModelVariantIndex, NodeSetError> {
         rules
             .variant_index(self.model_index, self.rotation)
@@ -381,7 +381,7 @@ impl<C: CoordinateSystem> ModelVariantRefTrait<C> for ModelInstance {
             ))
     }
 }
-impl<C: CoordinateSystem> ModelVariantRefTrait<C> for &ModelInstance {
+impl<C: CoordinateSystem> ModelVariantRef<C> for &ModelInstance {
     fn to_index(&self, rules: &Rules<C>) -> Result<ModelVariantIndex, NodeSetError> {
         rules
             .variant_index(self.model_index, self.rotation)

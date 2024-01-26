@@ -9,7 +9,7 @@ use super::{
     model::ModelVariantIndex,
     node_heuristic::NodeSelectionHeuristic,
     observer::{GenerationUpdate, QueuedObserver, QueuedStatefulObserver},
-    rules::{ModelVariantRefTrait, Rules},
+    rules::{ModelVariantRef, Rules},
     Collector, Generator, GridNode, ModelSelectionHeuristic, RngMode,
 };
 
@@ -176,7 +176,7 @@ impl<C: CoordinateSystem, R> GeneratorBuilder<Set, R, C> {
         QueuedObserver::create(receiver)
     }
 
-    pub fn with_initial_grid_raw<M: ModelVariantRefTrait<C>>(
+    pub fn with_initial_grid_raw<M: ModelVariantRef<C>>(
         mut self,
         data: GridData<C, Option<ModelVariantIndex>>,
     ) -> Result<Self, GeneratorBuilderError> {
@@ -202,7 +202,7 @@ impl<C: CoordinateSystem, R> GeneratorBuilder<Set, R, C> {
 
 // For functions in this impl, we know that self.rules and self.grid are `Some` thanks to the typing.
 impl<C: CoordinateSystem> GeneratorBuilder<Set, Set, C> {
-    pub fn with_initial_nodes<N: NodeRef<C>, M: ModelVariantRefTrait<C>>(
+    pub fn with_initial_nodes<N: NodeRef<C>, M: ModelVariantRef<C>>(
         mut self,
         initial_nodes: Vec<(N, M)>,
     ) -> Result<Self, GeneratorBuilderError> {
@@ -215,7 +215,7 @@ impl<C: CoordinateSystem> GeneratorBuilder<Set, Set, C> {
         Ok(self)
     }
 
-    pub fn with_initial_grid<M: ModelVariantRefTrait<C>>(
+    pub fn with_initial_grid<M: ModelVariantRef<C>>(
         mut self,
         data: GridData<C, Option<M>>,
     ) -> Result<Self, GeneratorBuilderError> {
