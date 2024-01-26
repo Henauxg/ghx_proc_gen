@@ -254,12 +254,6 @@ impl<C: CoordinateSystem> Generator<C> {
         Ok((gen_info, self.internal_to_grid_data()))
     }
 
-    pub fn generate_collected(&mut self) -> Result<(GenInfo, Vec<GridNode>), GeneratorError> {
-        let mut generated_nodes = Vec::new();
-        let gen_info = self.internal_generate(&mut Some(&mut generated_nodes))?;
-        Ok((gen_info, generated_nodes))
-    }
-
     /// Same as [`Generator::generate_grid`] but does not return the generated [`ModelInstance`] when successful.
     ///
     /// [`Generator::to_grid_data`] can still be called to retrieve a [`GridData`] afterwards.
