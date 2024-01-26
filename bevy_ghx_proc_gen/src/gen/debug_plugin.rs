@@ -24,7 +24,7 @@ use ghx_proc_gen::{
         GenerationStatus, Generator,
     },
     grid::{direction::CoordinateSystem, GridDefinition},
-    GenerationError,
+    GeneratorError,
 };
 
 use crate::grid::markers::MarkerEvent;
@@ -262,7 +262,7 @@ pub fn generate_all<C: CoordinateSystem>(
                         generation.grid()
                     );
                 }
-                Err(GenerationError { node_index }) => {
+                Err(GeneratorError { node_index }) => {
                     warn!(
                         "Generation Failed at node {}, seed: {}; grid: {}",
                         node_index,
@@ -400,7 +400,7 @@ fn step_generation<C: CoordinateSystem>(
                     }
                 }
             }
-            Err(GenerationError { node_index }) => {
+            Err(GeneratorError { node_index }) => {
                 warn!(
                     "Generation Failed at node {}, seed: {}; grid: {}",
                     node_index,

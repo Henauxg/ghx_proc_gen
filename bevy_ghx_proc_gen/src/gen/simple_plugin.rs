@@ -11,7 +11,7 @@ use bevy::{
     log::{info, warn},
     utils::HashSet,
 };
-use ghx_proc_gen::{generator::Generator, grid::direction::CoordinateSystem, GenerationError};
+use ghx_proc_gen::{generator::Generator, grid::direction::CoordinateSystem, GeneratorError};
 
 use crate::gen::spawn_node;
 
@@ -105,7 +105,7 @@ pub fn generate_and_spawn<C: CoordinateSystem, A: AssetsBundleSpawner, T: Compon
                     }
                     generations_done.push(gen_entity);
                 }
-                Err(GenerationError { node_index }) => {
+                Err(GeneratorError { node_index }) => {
                     warn!(
                         "Generation {:?} failed at node {}, seed: {}; grid: {}",
                         gen_entity,

@@ -17,7 +17,7 @@ use super::{
 };
 use crate::{
     grid::direction::{Cartesian2D, Cartesian3D, CoordinateSystem, Direction},
-    NodeSetError, RulesError,
+    NodeSetError, RulesBuilderError,
 };
 
 /// Rotation axis in a 2D cartesian coordinate system
@@ -134,8 +134,8 @@ impl RulesBuilder<Cartesian3D> {
 impl<C: CoordinateSystem> RulesBuilder<C> {
     /// Builds the [`Rules`] from the current configuration of the [`RulesBuilder`]
     ///
-    /// May return [`crate::RulesError::NoModelsOrSockets`] if `models` or `socket_collection` are empty.
-    pub fn build(self) -> Result<Rules<C>, RulesError> {
+    /// May return [`crate::RulesBuilderError::NoModelsOrSockets`] if `models` or `socket_collection` are empty.
+    pub fn build(self) -> Result<Rules<C>, RulesBuilderError> {
         Rules::new(
             self.models,
             self.socket_collection,
@@ -178,12 +178,12 @@ impl<C: CoordinateSystem> Rules<C> {
         socket_collection: SocketCollection,
         rotation_axis: Direction,
         coord_system: C,
-    ) -> Result<Rules<C>, RulesError> {
+    ) -> Result<Rules<C>, RulesBuilderError> {
         let original_models_count = models.models_count();
         let model_variations = models.create_variations(rotation_axis);
         // We test the expanded models because a model may have no rotations allowed.
         if model_variations.len() == 0 || socket_collection.is_empty() {
-            return Err(RulesError::NoModelsOrSockets);
+            return Err(RulesBuilderError::NoModelsOrSockets);
         }
 
         // Temporary collection to reverse the relation: sockets_to_models.get(socket)[direction] will hold all the models that have 'socket' from 'direction'
@@ -316,19 +316,6 @@ impl<C: CoordinateSystem> Rules<C> {
         }
     }
 
-    pub(crate) fn var_index_from_ref<M: Into<ModelVariantRef>>(
-        &self,
-        model_ref: M,
-    ) -> Result<ModelVariantIndex, NodeSetError> {
-        let model_ref = model_ref.into();
-        match model_ref {
-            ModelVariantRef::VariantIndex(index) => Ok(index),
-            ModelVariantRef::IndexRot(model_index, rot) => self
-                .variant_index(model_index, rot)
-                .ok_or(NodeSetError::InvalidModelRef(model_index, rot)),
-        }
-    }
-
     #[cfg(feature = "debug-traces")]
     #[inline]
     pub(crate) fn name(&self, model_index: ModelVariantIndex) -> &'static str {
@@ -339,46 +326,68 @@ impl<C: CoordinateSystem> Rules<C> {
     }
 }
 
-/// Represents a reference to a [`super::model::ModelVariation`] of some [`Rules`]
-pub enum ModelVariantRef {
-    /// Direct index of the model variation
-    VariantIndex(ModelVariantIndex),
-    /// Index of the original model and the rotation applied to it
-    IndexRot(ModelIndex, ModelRotation),
+pub trait ModelVariantRefTrait<C: CoordinateSystem> {
+    fn to_index(&self, rules: &Rules<C>) -> Result<ModelVariantIndex, NodeSetError>;
 }
-
-impl Into<ModelVariantRef> for ModelVariantIndex {
-    fn into(self) -> ModelVariantRef {
-        ModelVariantRef::VariantIndex(self)
+impl<C: CoordinateSystem> ModelVariantRefTrait<C> for ModelVariantIndex {
+    fn to_index(&self, _rules: &Rules<C>) -> Result<ModelVariantIndex, NodeSetError> {
+        Ok(*self)
     }
 }
-impl<C: CoordinateSystem> Into<ModelVariantRef> for Model<C> {
-    fn into(self) -> ModelVariantRef {
-        ModelVariantRef::IndexRot(self.index(), self.first_rot())
+impl<C: CoordinateSystem> ModelVariantRefTrait<C> for Model<C> {
+    fn to_index(&self, rules: &Rules<C>) -> Result<ModelVariantIndex, NodeSetError> {
+        let rot = self.first_rot();
+        rules
+            .variant_index(self.index(), rot)
+            .ok_or(NodeSetError::InvalidModelRef(self.index(), rot))
     }
 }
-impl Into<ModelVariantRef> for (ModelIndex, ModelRotation) {
-    fn into(self) -> ModelVariantRef {
-        ModelVariantRef::IndexRot(self.0, self.1)
+impl<C: CoordinateSystem> ModelVariantRefTrait<C> for &Model<C> {
+    fn to_index(&self, rules: &Rules<C>) -> Result<ModelVariantIndex, NodeSetError> {
+        let rot = self.first_rot();
+        rules
+            .variant_index(self.index(), rot)
+            .ok_or(NodeSetError::InvalidModelRef(self.index(), rot))
     }
 }
-impl<C: CoordinateSystem> Into<ModelVariantRef> for (Model<C>, ModelRotation) {
-    fn into(self) -> ModelVariantRef {
-        ModelVariantRef::IndexRot(self.0.index(), self.1)
+impl<C: CoordinateSystem> ModelVariantRefTrait<C> for (ModelIndex, ModelRotation) {
+    fn to_index(&self, rules: &Rules<C>) -> Result<ModelVariantIndex, NodeSetError> {
+        rules
+            .variant_index(self.0, self.1)
+            .ok_or(NodeSetError::InvalidModelRef(self.0, self.1))
     }
 }
-impl<C: CoordinateSystem> Into<ModelVariantRef> for (&Model<C>, ModelRotation) {
-    fn into(self) -> ModelVariantRef {
-        ModelVariantRef::IndexRot(self.0.index(), self.1)
+impl<C: CoordinateSystem> ModelVariantRefTrait<C> for (Model<C>, ModelRotation) {
+    fn to_index(&self, rules: &Rules<C>) -> Result<ModelVariantIndex, NodeSetError> {
+        rules
+            .variant_index(self.0.index(), self.1)
+            .ok_or(NodeSetError::InvalidModelRef(self.0.index(), self.1))
     }
 }
-impl Into<ModelVariantRef> for ModelInstance {
-    fn into(self) -> ModelVariantRef {
-        ModelVariantRef::IndexRot(self.model_index, self.rotation)
+impl<C: CoordinateSystem> ModelVariantRefTrait<C> for (&Model<C>, ModelRotation) {
+    fn to_index(&self, rules: &Rules<C>) -> Result<ModelVariantIndex, NodeSetError> {
+        rules
+            .variant_index(self.0.index(), self.1)
+            .ok_or(NodeSetError::InvalidModelRef(self.0.index(), self.1))
     }
 }
-impl Into<ModelVariantRef> for &ModelInstance {
-    fn into(self) -> ModelVariantRef {
-        ModelVariantRef::IndexRot(self.model_index, self.rotation)
+impl<C: CoordinateSystem> ModelVariantRefTrait<C> for ModelInstance {
+    fn to_index(&self, rules: &Rules<C>) -> Result<ModelVariantIndex, NodeSetError> {
+        rules
+            .variant_index(self.model_index, self.rotation)
+            .ok_or(NodeSetError::InvalidModelRef(
+                self.model_index,
+                self.rotation,
+            ))
+    }
+}
+impl<C: CoordinateSystem> ModelVariantRefTrait<C> for &ModelInstance {
+    fn to_index(&self, rules: &Rules<C>) -> Result<ModelVariantIndex, NodeSetError> {
+        rules
+            .variant_index(self.model_index, self.rotation)
+            .ok_or(NodeSetError::InvalidModelRef(
+                self.model_index,
+                self.rotation,
+            ))
     }
 }

@@ -1,14 +1,15 @@
 use std::{marker::PhantomData, sync::Arc};
 
 use crate::{
-    grid::{direction::CoordinateSystem, GridData, GridDefinition, NodeRef},
-    InvalidGridSize, NodeSetError,
+    grid::{direction::CoordinateSystem, GridData, GridDefinition, NodeIndex, NodeRef},
+    GeneratorBuilderError,
 };
 
 use super::{
+    model::ModelVariantIndex,
     node_heuristic::NodeSelectionHeuristic,
     observer::{GenerationUpdate, QueuedObserver, QueuedStatefulObserver},
-    rules::{ModelVariantRef, Rules},
+    rules::{ModelVariantRefTrait, Rules},
     Collector, Generator, GridNode, ModelSelectionHeuristic, RngMode,
 };
 
@@ -53,7 +54,7 @@ pub struct GeneratorBuilder<G, R, C: CoordinateSystem> {
     model_selection_heuristic: ModelSelectionHeuristic,
     rng_mode: RngMode,
     observers: Vec<crossbeam_channel::Sender<GenerationUpdate>>,
-    initial_nodes_refs: Vec<(NodeRef, ModelVariantRef)>,
+    initial_nodes: Vec<(NodeIndex, ModelVariantIndex)>,
     typestate: PhantomData<(G, R)>,
 }
 
@@ -68,7 +69,7 @@ impl<C: CoordinateSystem> GeneratorBuilder<Unset, Unset, C> {
             model_selection_heuristic: ModelSelectionHeuristic::WeightedProbability,
             rng_mode: RngMode::RandomSeed,
             observers: Vec::new(),
-            initial_nodes_refs: Vec::new(),
+            initial_nodes: Vec::new(),
             typestate: PhantomData,
         }
     }
@@ -86,7 +87,7 @@ impl<C: CoordinateSystem> GeneratorBuilder<Unset, Unset, C> {
             model_selection_heuristic: self.model_selection_heuristic,
             rng_mode: self.rng_mode,
             observers: self.observers,
-            initial_nodes_refs: self.initial_nodes_refs,
+            initial_nodes: self.initial_nodes,
 
             typestate: PhantomData,
         }
@@ -103,7 +104,7 @@ impl<C: CoordinateSystem> GeneratorBuilder<Unset, Unset, C> {
             model_selection_heuristic: self.model_selection_heuristic,
             rng_mode: self.rng_mode,
             observers: self.observers,
-            initial_nodes_refs: self.initial_nodes_refs,
+            initial_nodes: self.initial_nodes,
 
             typestate: PhantomData,
         }
@@ -122,7 +123,7 @@ impl<C: CoordinateSystem> GeneratorBuilder<Unset, Set, C> {
             model_selection_heuristic: self.model_selection_heuristic,
             rng_mode: self.rng_mode,
             observers: self.observers,
-            initial_nodes_refs: self.initial_nodes_refs,
+            initial_nodes: self.initial_nodes,
 
             typestate: PhantomData,
         }
@@ -151,14 +152,11 @@ impl<G, R, C: CoordinateSystem> GeneratorBuilder<G, R, C> {
         self
     }
 
-    pub fn with_initial_nodes<N: Into<NodeRef>, M: Into<ModelVariantRef>>(
+    pub fn with_initial_nodes_raw(
         mut self,
-        initial_nodes: Vec<(N, M)>,
+        initial_nodes: Vec<(NodeIndex, ModelVariantIndex)>,
     ) -> Self {
-        for (node_ref, model_ref) in initial_nodes {
-            self.initial_nodes_refs
-                .push((node_ref.into(), model_ref.into()));
-        }
+        self.initial_nodes.extend(initial_nodes);
         self
     }
 }
@@ -178,22 +176,22 @@ impl<C: CoordinateSystem, R> GeneratorBuilder<Set, R, C> {
         QueuedObserver::create(receiver)
     }
 
-    pub fn with_initial_grid<M>(
+    pub fn with_initial_grid_raw<M: ModelVariantRefTrait<C>>(
         mut self,
-        data: GridData<C, Option<M>>,
-    ) -> Result<Self, InvalidGridSize>
-    where
-        for<'a> &'a M: Into<ModelVariantRef>,
-    {
+        data: GridData<C, Option<ModelVariantIndex>>,
+    ) -> Result<Self, GeneratorBuilderError> {
         let grid = self.grid.as_ref().unwrap();
         if grid.size() != data.grid().size() {
-            return Err(InvalidGridSize(data.grid().size(), grid.size()));
+            return Err(GeneratorBuilderError::InvalidGridSize(
+                data.grid().size(),
+                grid.size(),
+            ));
         } else {
             for (node_index, node) in data.nodes().iter().enumerate() {
                 match node {
-                    Some(model_ref) => self
-                        .initial_nodes_refs
-                        .push((node_index.into(), model_ref.into())),
+                    Some(model_var_index) => {
+                        self.initial_nodes.push((node_index, *model_var_index))
+                    }
                     None => (),
                 }
             }
@@ -202,43 +200,74 @@ impl<C: CoordinateSystem, R> GeneratorBuilder<Set, R, C> {
     }
 }
 
+// For functions in this impl, we know that self.rules and self.grid are `Some` thanks to the typing.
 impl<C: CoordinateSystem> GeneratorBuilder<Set, Set, C> {
+    pub fn with_initial_nodes<N: NodeRef<C>, M: ModelVariantRefTrait<C>>(
+        mut self,
+        initial_nodes: Vec<(N, M)>,
+    ) -> Result<Self, GeneratorBuilderError> {
+        let grid = self.grid.as_ref().unwrap();
+        let rules = self.rules.as_ref().unwrap();
+        for (node_ref, model_ref) in initial_nodes {
+            self.initial_nodes
+                .push((node_ref.to_index(grid), model_ref.to_index(rules)?));
+        }
+        Ok(self)
+    }
+
+    pub fn with_initial_grid<M: ModelVariantRefTrait<C>>(
+        mut self,
+        data: GridData<C, Option<M>>,
+    ) -> Result<Self, GeneratorBuilderError> {
+        let grid = self.grid.as_ref().unwrap();
+        let rules = self.rules.as_ref().unwrap();
+        if grid.size() != data.grid().size() {
+            return Err(GeneratorBuilderError::InvalidGridSize(
+                data.grid().size(),
+                grid.size(),
+            ));
+        } else {
+            for (node_index, node) in data.nodes().iter().enumerate() {
+                match node {
+                    Some(model_ref) => self
+                        .initial_nodes
+                        .push((node_index, model_ref.to_index(rules)?)),
+                    None => (),
+                }
+            }
+            Ok(self)
+        }
+    }
+
     /// Instantiates a [`Generator`] as specified by the various builder parameters.
-    pub fn build(self) -> Result<Generator<C>, NodeSetError> {
+    pub fn build(self) -> Result<Generator<C>, GeneratorBuilderError> {
         self.internal_build(&mut None)
     }
 
     /// Instantiates a [`Generator`] as specified by the various builder parameters and return the initially generated nodes if any
-    pub fn build_collected(self) -> Result<(Generator<C>, Vec<GridNode>), NodeSetError> {
+    pub fn build_collected(self) -> Result<(Generator<C>, Vec<GridNode>), GeneratorBuilderError> {
         let mut generated_nodes = Vec::new();
         let res = self.internal_build(&mut Some(&mut generated_nodes))?;
         Ok((res, generated_nodes))
     }
 
-    fn internal_build(self, collector: &mut Collector) -> Result<Generator<C>, NodeSetError> {
+    fn internal_build(
+        self,
+        collector: &mut Collector,
+    ) -> Result<Generator<C>, GeneratorBuilderError> {
         // We know that self.rules and self.grid are `Some` thanks to the typing.
         let rules = self.rules.unwrap();
         let grid = self.grid.unwrap();
-
-        // We don't fully check them here, simply dereference to obtain (NodeIndex, ModelVariantIndex) pairs.
-        // Generator will fully verify them during pre-gen.
-        let mut initial_nodes = Vec::with_capacity(self.initial_nodes_refs.len());
-        for (node_ref, model_variant_ref) in self.initial_nodes_refs {
-            let node_index = grid.index_from_ref(node_ref);
-            let model_variant_index = rules.var_index_from_ref(model_variant_ref)?;
-            initial_nodes.push((node_index, model_variant_index));
-        }
-
-        Generator::create(
+        Ok(Generator::create(
             rules,
             grid,
-            initial_nodes,
+            self.initial_nodes,
             self.max_retry_count,
             self.node_selection_heuristic,
             self.model_selection_heuristic,
             self.rng_mode,
             self.observers,
             collector,
-        )
+        )?)
     }
 }

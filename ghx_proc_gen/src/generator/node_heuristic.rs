@@ -1,6 +1,6 @@
 use rand::{rngs::StdRng, Rng};
 
-use crate::grid::direction::CoordinateSystem;
+use crate::grid::{direction::CoordinateSystem, NodeIndex};
 
 use super::rules::Rules;
 
@@ -121,7 +121,7 @@ impl InternalNodeSelectionHeuristic {
         }
     }
 
-    pub(crate) fn handle_ban(&mut self, node_index: usize, model_index: usize, weight: f32) {
+    pub(crate) fn handle_ban(&mut self, node_index: NodeIndex, model_index: usize, weight: f32) {
         match self {
             InternalNodeSelectionHeuristic::MinimumEntropy {
                 initial_node_entropy_data: _,
@@ -143,7 +143,7 @@ impl InternalNodeSelectionHeuristic {
         &self,
         possible_models_counts: &Vec<usize>,
         rng: &mut StdRng,
-    ) -> Option<usize> {
+    ) -> Option<NodeIndex> {
         match self {
             InternalNodeSelectionHeuristic::MinimumRemainingValue => {
                 let mut min = f32::MAX;

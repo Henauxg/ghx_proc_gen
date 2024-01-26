@@ -188,16 +188,6 @@ impl<C: CoordinateSystem> GridDefinition<C> {
         self.index_from_coords(grid_position.x, grid_position.y, grid_position.z)
     }
 
-    /// Returns the index of a node from a [`NodeRef`]
-    ///
-    /// NO CHECK is done to verify that the given `node_ref` references a valid node for this grid.
-    pub fn index_from_ref<N: Into<NodeRef>>(&self, node_ref: N) -> NodeIndex {
-        match node_ref.into() {
-            NodeRef::Index(index) => index,
-            NodeRef::Pos(pos) => self.index_from_pos(&pos),
-        }
-    }
-
     /// Returns a [`GridPosition`] from the index of a node in this [`GridDefinition`].
     ///
     /// Panics if the index is not a valid index.
@@ -448,21 +438,21 @@ impl<D> GridData<Cartesian3D, D> {
     }
 }
 
-/// Represents a reference to a node of a [`GridDefinition`] or [`GridData`]
-pub enum NodeRef {
-    /// Direct index of the node
-    Index(NodeIndex),
-    /// [`GridPosition`] of the node
-    Pos(GridPosition),
+pub trait NodeRef<C: CoordinateSystem> {
+    fn to_index(&self, grid: &GridDefinition<C>) -> NodeIndex;
 }
-
-impl Into<NodeRef> for NodeIndex {
-    fn into(self) -> NodeRef {
-        NodeRef::Index(self)
+impl<C: CoordinateSystem> NodeRef<C> for &GridPosition {
+    fn to_index(&self, grid: &GridDefinition<C>) -> NodeIndex {
+        grid.index_from_pos(self)
     }
 }
-impl Into<NodeRef> for GridPosition {
-    fn into(self) -> NodeRef {
-        NodeRef::Pos(self)
+impl<C: CoordinateSystem> NodeRef<C> for GridPosition {
+    fn to_index(&self, grid: &GridDefinition<C>) -> NodeIndex {
+        grid.index_from_pos(self)
+    }
+}
+impl<C: CoordinateSystem> NodeRef<C> for NodeIndex {
+    fn to_index(&self, _grid: &GridDefinition<C>) -> NodeIndex {
+        *self
     }
 }

@@ -16,7 +16,7 @@ use crate::{
         direction::{Cartesian2D, CoordinateSystem},
         GridData, GridDefinition, NodeIndex, NodeRef,
     },
-    GenerationError, NodeSetError,
+    GeneratorError, NodeSetError,
 };
 
 use self::{
@@ -24,7 +24,7 @@ use self::{
     model::{ModelInstance, ModelVariantIndex},
     node_heuristic::{InternalNodeSelectionHeuristic, NodeSelectionHeuristic},
     observer::GenerationUpdate,
-    rules::{ModelVariantRef, Rules},
+    rules::{ModelVariantRefTrait, Rules},
 };
 
 /// Defines a [`GeneratorBuilder`] used to create a generator
@@ -77,14 +77,14 @@ enum InternalGeneratorStatus {
     /// Generation ended succesfully.
     Done,
     /// Generation failed due to a contradiction.
-    Failed(GenerationError),
+    Failed(GeneratorError),
 }
 
 /// Output of a [`Generator`] in the context of its [`crate::grid::GridDefinition`].
 #[derive(Clone, Copy, Debug)]
 pub struct GridNode {
     /// Index of the node in the [`crate::grid::GridDefinition`]
-    pub node_index: usize,
+    pub node_index: NodeIndex,
     /// Generated node data
     pub model_instance: ModelInstance,
 }
@@ -94,7 +94,7 @@ pub struct GenInfo {
 }
 
 struct PropagationEntry {
-    node_index: usize,
+    node_index: NodeIndex,
     model_index: ModelVariantIndex,
 }
 
@@ -235,56 +235,56 @@ impl<T: CoordinateSystem> Generator<T> {
         }
     }
 
-    /// Tries to generate the whole grid. If the generation fails due to a contradiction, it will retry `max_retry_count` times before returning the last encountered [`GenerationError`]
+    /// Tries to generate the whole grid. If the generation fails due to a contradiction, it will retry `max_retry_count` times before returning the last encountered [`GeneratorError`]
     ///
     /// If the generation has ended (successful or not), calling `generate` will reinitialize the generator before starting the generation.
     /// If the generation was already started by previous calls to `select_and_propagate`, this will simply continue the current generation.
     pub fn generate_grid(
         &mut self,
-    ) -> Result<(GenInfo, GridData<T, ModelInstance>), GenerationError> {
+    ) -> Result<(GenInfo, GridData<T, ModelInstance>), GeneratorError> {
         let gen_info = self.internal_generate(&mut None)?;
         Ok((gen_info, self.internal_to_grid_data()))
     }
 
-    pub fn generate_collected(&mut self) -> Result<(GenInfo, Vec<GridNode>), GenerationError> {
+    pub fn generate_collected(&mut self) -> Result<(GenInfo, Vec<GridNode>), GeneratorError> {
         let mut generated_nodes = Vec::new();
         let gen_info = self.internal_generate(&mut Some(&mut generated_nodes))?;
         Ok((gen_info, generated_nodes))
     }
 
-    pub fn generate(&mut self) -> Result<GenInfo, GenerationError> {
+    pub fn generate(&mut self) -> Result<GenInfo, GeneratorError> {
         let gen_info = self.internal_generate(&mut None)?;
         Ok(gen_info)
     }
 
     /// Advances the generation by one "step": select a node and a model via the heuristics and propagate the changes.
     ///
-    /// Returns the [`GenerationStatus`] if the step executed successfully and [`crate::GenerationError`] if the generation fails due to a contradiction.
+    /// Returns the [`GenerationStatus`] if the step executed successfully and [`crate::GeneratorError`] if the generation fails due to a contradiction.
     ///
     /// If the generation has ended (successfully or not), calling `select_and_propagate` again will reinitialize the [`Generator`] before starting a new generation.
     ///
     /// **Note**: One call to `select_and_propagate` **can** lead to more than one node generated if the propagation phase forces some other node(s) into a definite state (due to only one possible model remaining on a node)
-    pub fn select_and_propagate(&mut self) -> Result<GenerationStatus, GenerationError> {
+    pub fn select_and_propagate(&mut self) -> Result<GenerationStatus, GeneratorError> {
         self.internal_select_and_propagate(&mut None)
     }
 
     /// Same as `select_and_propagate` but collects and return the generated [`GridNode`] when successful.
     pub fn select_and_propagate_collected(
         &mut self,
-    ) -> Result<(GenerationStatus, Vec<GridNode>), GenerationError> {
+    ) -> Result<(GenerationStatus, Vec<GridNode>), GeneratorError> {
         let mut generated_nodes = Vec::new();
         let res = self.internal_select_and_propagate(&mut Some(&mut generated_nodes))?;
         Ok((res, generated_nodes))
     }
 
-    pub fn set_and_propagate_collected<N: Into<NodeRef>, M: Into<ModelVariantRef>>(
+    pub fn set_and_propagate_collected<N: NodeRef<T>, M: ModelVariantRefTrait<T>>(
         &mut self,
         node_ref: N,
         model_variant_ref: M,
     ) -> Result<(GenerationStatus, Vec<GridNode>), NodeSetError> {
         let mut generated_nodes = Vec::new();
-        let node_index = self.grid.index_from_ref(node_ref);
-        let model_variant_index = self.rules.var_index_from_ref(model_variant_ref)?;
+        let node_index = node_ref.to_index(&self.grid);
+        let model_variant_index = model_variant_ref.to_index(&self.rules)?;
         let res = self.internal_set_and_propagate(
             node_index,
             model_variant_index,
@@ -293,13 +293,13 @@ impl<T: CoordinateSystem> Generator<T> {
         Ok((res, generated_nodes))
     }
 
-    pub fn set_and_propagate<N: Into<NodeRef>, M: Into<ModelVariantRef>>(
+    pub fn set_and_propagate<N: NodeRef<T>, M: ModelVariantRefTrait<T>>(
         &mut self,
         node_ref: N,
         model_variant_ref: M,
     ) -> Result<GenerationStatus, NodeSetError> {
-        let node_index = self.grid.index_from_ref(node_ref);
-        let model_variant_index = self.rules.var_index_from_ref(model_variant_ref)?;
+        let node_index = node_ref.to_index(&self.grid);
+        let model_variant_index = model_variant_ref.to_index(&self.rules)?;
         self.internal_set_and_propagate(node_index, model_variant_index, &mut None)
     }
 
@@ -313,7 +313,7 @@ impl<T: CoordinateSystem> Generator<T> {
         (res, generated_nodes)
     }
 
-    fn internal_generate(&mut self, collector: &mut Collector) -> Result<GenInfo, GenerationError> {
+    fn internal_generate(&mut self, collector: &mut Collector) -> Result<GenInfo, GeneratorError> {
         let mut last_error = None;
         for try_index in 0..=self.max_retry_count {
             #[cfg(feature = "debug-traces")]
@@ -402,7 +402,7 @@ impl<T: CoordinateSystem> Generator<T> {
     fn internal_select_and_propagate(
         &mut self,
         collector: &mut Collector,
-    ) -> Result<GenerationStatus, GenerationError> {
+    ) -> Result<GenerationStatus, GeneratorError> {
         if !self.auto_reinitialize_and_continue(collector) {
             return Ok(GenerationStatus::Done);
         };
@@ -414,7 +414,7 @@ impl<T: CoordinateSystem> Generator<T> {
     fn generate_remaining_nodes(
         &mut self,
         collector: &mut Collector,
-    ) -> Result<(), GenerationError> {
+    ) -> Result<(), GeneratorError> {
         if !self.auto_reinitialize_and_continue(collector) {
             return Ok(());
         };
@@ -433,7 +433,7 @@ impl<T: CoordinateSystem> Generator<T> {
     fn unchecked_select_and_propagate(
         &mut self,
         collector: &mut Collector,
-    ) -> Result<GenerationStatus, GenerationError> {
+    ) -> Result<GenerationStatus, GeneratorError> {
         let node_index = match self
             .node_selection_heuristic
             .select_node(&self.possible_models_counts, &mut self.rng)
@@ -474,7 +474,7 @@ impl<T: CoordinateSystem> Generator<T> {
     fn generate_initial_nodes(
         &mut self,
         collector: &mut Collector,
-    ) -> Result<GenerationStatus, GenerationError> {
+    ) -> Result<GenerationStatus, GeneratorError> {
         let initial_nodes = Arc::clone(&self.initial_nodes);
         for (node_index, model_variant_index) in initial_nodes.iter() {
             if self.possible_models_counts[*node_index] <= 1 {
@@ -500,7 +500,7 @@ impl<T: CoordinateSystem> Generator<T> {
         node_index: NodeIndex,
         model_variant_index: ModelVariantIndex,
         collector: &mut Collector,
-    ) -> Result<GenerationStatus, GenerationError> {
+    ) -> Result<GenerationStatus, GeneratorError> {
         #[cfg(feature = "debug-traces")]
         debug!(
             "Set model {:?} named '{}' for node {} at position {:?}",
@@ -586,11 +586,11 @@ impl<T: CoordinateSystem> Generator<T> {
 
     /// Initialize the supports counts array. This may already start to generate/ban/... some nodes according to the given constraints.
     ///
-    /// Returns `Ok` if the initialization went well and sets the internal status to [`InternalGeneratorStatus::Ongoing`] or [`InternalGeneratorStatus::Done`]. Else, sets the internal status to [`InternalGeneratorStatus::Failed`] and returns [`GenerationError`]
+    /// Returns `Ok` if the initialization went well and sets the internal status to [`InternalGeneratorStatus::Ongoing`] or [`InternalGeneratorStatus::Done`]. Else, sets the internal status to [`InternalGeneratorStatus::Failed`] and returns [`GeneratorError`]
     fn initialize_supports_count(
         &mut self,
         collector: &mut Collector,
-    ) -> Result<GenerationStatus, GenerationError> {
+    ) -> Result<GenerationStatus, GeneratorError> {
         #[cfg(feature = "debug-traces")]
         debug!("Initializing support counts");
 
@@ -685,7 +685,7 @@ impl<T: CoordinateSystem> Generator<T> {
     fn signal_selection(
         &mut self,
         collector: &mut Collector,
-        node_index: usize,
+        node_index: NodeIndex,
         model_index: ModelVariantIndex,
     ) {
         let grid_node = GridNode {
@@ -702,10 +702,10 @@ impl<T: CoordinateSystem> Generator<T> {
         self.nodes_left_to_generate = self.nodes_left_to_generate.saturating_sub(1);
     }
 
-    /// Returns [`GenerationError`] if a node has no possible models left. Else, returns `Ok`.
+    /// Returns [`GeneratorError`] if a node has no possible models left. Else, returns `Ok`.
     ///
     /// Does not modify the generator internal status.
-    fn propagate(&mut self, collector: &mut Collector) -> Result<(), GenerationError> {
+    fn propagate(&mut self, collector: &mut Collector) -> Result<(), GeneratorError> {
         // Clone the ref to allow for mutability of other members in the interior loops
         let rules = Arc::clone(&self.rules);
 
@@ -757,7 +757,7 @@ impl<T: CoordinateSystem> Generator<T> {
         });
     }
 
-    /// Returns [`GenerationError`] if the node has no possible models left. Else, returns `Ok`.
+    /// Returns [`GeneratorError`] if the node has no possible models left. Else, returns `Ok`.
     ///
     /// Does not modify the generator internal status.
     ///
@@ -767,7 +767,7 @@ impl<T: CoordinateSystem> Generator<T> {
         node_index: usize,
         model: usize,
         collector: &mut Collector,
-    ) -> Result<(), GenerationError> {
+    ) -> Result<(), GeneratorError> {
         // Update the supports
         for dir in self.grid.directions() {
             let supports_count = &mut self.supports_count[(node_index, model, *dir as usize)];
@@ -794,7 +794,7 @@ impl<T: CoordinateSystem> Generator<T> {
         );
 
         match *number_of_models_left {
-            0 => return Err(GenerationError { node_index }),
+            0 => return Err(GeneratorError { node_index }),
             1 => {
                 #[cfg(feature = "debug-traces")]
                 {
@@ -823,7 +823,7 @@ impl<T: CoordinateSystem> Generator<T> {
     }
 
     /// There should at least be one possible model for this node index. May panic otherwise.
-    fn select_model(&mut self, node_index: usize) -> usize {
+    fn select_model(&mut self, node_index: NodeIndex) -> usize {
         match self.model_selection_heuristic {
             ModelSelectionHeuristic::WeightedProbability => {
                 let possible_models: Vec<ModelVariantIndex> = (0..self.rules.models_count())
@@ -843,7 +843,7 @@ impl<T: CoordinateSystem> Generator<T> {
     }
 
     #[inline]
-    fn is_model_possible(&self, node: usize, model: usize) -> bool {
+    fn is_model_possible(&self, node: NodeIndex, model: usize) -> bool {
         self.nodes[node * self.rules.models_count() + model] == true
     }
 
@@ -858,7 +858,7 @@ impl<T: CoordinateSystem> Generator<T> {
         GridData::new(self.grid.clone(), generated_nodes)
     }
 
-    fn get_model_index(&self, node_index: usize) -> usize {
+    fn get_model_index(&self, node_index: NodeIndex) -> usize {
         self.nodes[node_index * self.rules.models_count()
             ..node_index * self.rules.models_count() + self.rules.models_count()]
             .first_one()
@@ -876,7 +876,7 @@ impl<T: CoordinateSystem> Generator<T> {
         #[cfg(feature = "debug-traces")]
         debug!("Generation failed due to a contradiction");
 
-        self.status = InternalGeneratorStatus::Failed(GenerationError { node_index });
+        self.status = InternalGeneratorStatus::Failed(GeneratorError { node_index });
         for obs in &mut self.observers {
             let _ = obs.send(GenerationUpdate::Failed(node_index));
         }
