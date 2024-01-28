@@ -858,7 +858,7 @@ impl<C: CoordinateSystem> Generator<C> {
     }
 
     #[inline]
-    fn is_model_possible(&self, node: NodeIndex, model: usize) -> bool {
+    fn is_model_possible(&self, node: NodeIndex, model: ModelVariantIndex) -> bool {
         self.nodes[node * self.rules.models_count() + model] == true
     }
 
