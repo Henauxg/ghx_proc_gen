@@ -262,6 +262,11 @@ impl<C: CoordinateSystem> GridDefinition<C> {
         self.coord_system.directions()
     }
 
+    /// Returns all the the [`CoordinateSystem`] used by this [`GridDefinition`]
+    pub fn coord_system(&self) -> &C {
+        &self.coord_system
+    }
+
     /// Creates a default [`GridData`] with the size of the [`GridDefinition`] with each element value set to its default one.
     pub fn default_grid_data<D: Default + Clone>(&self) -> GridData<C, D> {
         GridData {
