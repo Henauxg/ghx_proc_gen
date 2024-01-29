@@ -11,7 +11,7 @@ use bevy::{
 };
 use ghx_proc_gen::{
     generator::model::ModelInstance,
-    grid::{direction::CoordinateSystem, GridDefinition},
+    grid::{direction::CoordinateSystem, GridDefinition, NodeIndex},
 };
 
 use self::assets::{AssetSpawner, AssetsBundleSpawner, ComponentSpawner};
@@ -34,7 +34,7 @@ pub mod default_bundles;
 
 /// Marker for nodes spawned by a [`ghx_proc_gen::generator::Generator`]
 #[derive(Component)]
-pub struct SpawnedNode;
+pub struct SpawnedNode(NodeIndex);
 
 /// Utility system. Adds a [`Bundle`] (or a [`Component`]) to every [`Entity`] that has [`SpawnedNode`] Component (this is the case of nodes spawned by the `spawn_node` system). The `Bundle` will have its default value.
 ///
@@ -120,7 +120,7 @@ pub fn spawn_node<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawn
     grid: &GridDefinition<C>,
     asset_spawner: &AssetSpawner<A, T>,
     instance: &ModelInstance,
-    node_index: usize,
+    node_index: NodeIndex,
 ) {
     let node_assets = match asset_spawner.assets.get(&instance.model_index) {
         Some(node_assets) => node_assets,
@@ -142,7 +142,7 @@ pub fn spawn_node<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawn
             translation.z += asset_spawner.node_size.z * (1. - pos.y as f32 / grid.size_y() as f32);
         }
 
-        let node_entity = commands.spawn(SpawnedNode).id();
+        let node_entity = commands.spawn(SpawnedNode(node_index)).id();
 
         let node_entity_commands = &mut commands.entity(node_entity);
         node_asset.assets_bundle.insert_bundle(
@@ -152,7 +152,7 @@ pub fn spawn_node<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawn
             instance.rotation,
         );
         for component in node_asset.components.iter() {
-            component.insert(&mut commands.entity(node_entity));
+            component.insert(node_entity_commands);
         }
         commands.entity(gen_entity).add_child(node_entity);
     }
