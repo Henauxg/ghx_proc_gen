@@ -876,7 +876,7 @@ impl<C: CoordinateSystem> Generator<C> {
         GridData::new(self.grid.clone(), generated_nodes)
     }
 
-    fn get_model_index(&self, node_index: NodeIndex) -> usize {
+    fn get_model_index(&self, node_index: NodeIndex) -> ModelVariantIndex {
         self.nodes[node_index * self.rules.models_count()
             ..node_index * self.rules.models_count() + self.rules.models_count()]
             .first_one()
@@ -898,5 +898,25 @@ impl<C: CoordinateSystem> Generator<C> {
         for obs in &mut self.observers {
             let _ = obs.send(GenerationUpdate::Failed(node_index));
         }
+    }
+
+    #[inline]
+    fn is_valid_node_index(&self, node_index: NodeIndex) -> bool {
+        node_index < self.possible_models_counts.len()
+    }
+
+    pub fn get_models_on(&self, node_index: NodeIndex) -> Vec<ModelInstance> {
+        let mut models = Vec::new();
+        if !self.is_valid_node_index(node_index) {
+            return models;
+        }
+        for model_variant_index in self.nodes[node_index * self.rules.models_count()
+            ..node_index * self.rules.models_count() + self.rules.models_count()]
+            .iter_ones()
+        {
+            models.push(self.rules.model(model_variant_index).clone());
+        }
+
+        models
     }
 }
