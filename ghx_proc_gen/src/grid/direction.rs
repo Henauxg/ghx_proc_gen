@@ -96,6 +96,17 @@ impl GridDelta {
     }
 }
 
+impl std::ops::Mul<i32> for GridDelta {
+    type Output = GridDelta;
+    fn mul(self, rhs: i32) -> GridDelta {
+        GridDelta {
+            dx: self.dx * rhs,
+            dy: self.dy * rhs,
+            dz: self.dz * rhs,
+        }
+    }
+}
+
 /// Represents a coordinate system
 pub trait CoordinateSystem: Clone + Sync + Send + 'static {
     /// Returns the [`Direction`] in this coordinate system
