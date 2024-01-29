@@ -244,12 +244,30 @@ impl<C: CoordinateSystem> GridDefinition<C> {
     /// Returns `None` if the destination is not in the grid.
     ///
     /// NO CHECK is done to verify that the given `grid_position` is a valid position for this grid.
-    pub fn get_next_index(
+    pub fn get_next_index_in_direction(
         &self,
         grid_position: &GridPosition,
         direction: Direction,
     ) -> Option<NodeIndex> {
         let delta = &self.coord_system.deltas()[direction as usize];
+        match self.get_next_pos(grid_position, &delta) {
+            Some(next_pos) => Some(self.index_from_pos(&next_pos)),
+            None => None,
+        }
+    }
+
+    /// Returns the index of the next position in the grid when moving `units` in `direction` from `grid_position`.
+    ///
+    /// Returns `None` if the destination is not in the grid.
+    ///
+    /// NO CHECK is done to verify that the given `grid_position` is a valid position for this grid.
+    pub fn get_index_in_direction(
+        &self,
+        grid_position: &GridPosition,
+        direction: Direction,
+        units: i32,
+    ) -> Option<NodeIndex> {
+        let delta = self.coord_system.deltas()[direction as usize].clone() * units;
         match self.get_next_pos(grid_position, &delta) {
             Some(next_pos) => Some(self.index_from_pos(&next_pos)),
             None => None,

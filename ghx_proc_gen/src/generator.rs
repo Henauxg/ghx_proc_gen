@@ -614,7 +614,8 @@ impl<C: CoordinateSystem> Generator<C> {
             // For a given `node`, `neighbours[direction]` will hold the optionnal index of the neighbour node in `direction`
             for direction in self.grid.directions() {
                 let grid_pos = self.grid.pos_from_index(node);
-                neighbours[*direction as usize] = self.grid.get_next_index(&grid_pos, *direction);
+                neighbours[*direction as usize] =
+                    self.grid.get_next_index_in_direction(&grid_pos, *direction);
             }
 
             for model in 0..self.rules.models_count() {
@@ -738,7 +739,9 @@ impl<C: CoordinateSystem> Generator<C> {
             // We want to update all the adjacent nodes (= in all directions)
             for dir in self.grid.directions() {
                 // Get the adjacent node in this direction, it may not exist.
-                if let Some(to_node_index) = self.grid.get_next_index(&from_position, *dir) {
+                if let Some(to_node_index) =
+                    self.grid.get_next_index_in_direction(&from_position, *dir)
+                {
                     // Decrease the support count of all models previously supported by "from"
                     for &model in rules.allowed_models(from.model_index, *dir) {
                         let supports_count =
