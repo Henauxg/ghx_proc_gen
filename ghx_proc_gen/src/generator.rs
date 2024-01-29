@@ -587,7 +587,7 @@ impl<C: CoordinateSystem> Generator<C> {
         if model_variant_index > self.rules.models_count() {
             return Err(NodeSetError::InvalidModelIndex(model_variant_index));
         }
-        if node_index > self.possible_models_counts.len() {
+        if !self.is_valid_node_index(node_index) {
             return Err(NodeSetError::InvalidNodeIndex(node_index));
         }
         if !self.is_model_possible(node_index, model_variant_index) {
