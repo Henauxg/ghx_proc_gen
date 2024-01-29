@@ -3,7 +3,8 @@ use std::marker::PhantomData;
 use bevy::{
     app::{App, Plugin, Startup, Update},
     diagnostic::FrameTimeDiagnosticsPlugin,
-    ecs::system::{Commands, Res},
+    ecs::system::{Commands, Res, ResMut},
+    gizmos::GizmoConfig,
     math::Vec3,
     text::TextStyle,
     ui::node_bundles::TextBundle,
@@ -61,7 +62,7 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
             self.assets_scale,
             ease_in_cubic,
         ));
-        app.add_systems(Startup, setup_ui);
+        app.add_systems(Startup, (setup_gizmos_config, setup_ui));
         app.add_systems(
             Update,
             (
@@ -72,6 +73,10 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
             ),
         );
     }
+}
+
+pub fn setup_gizmos_config(mut config: ResMut<GizmoConfig>) {
+    config.depth_bias = -1.0;
 }
 
 pub fn setup_ui(mut commands: Commands, view_mode: Res<GenerationViewMode>) {
