@@ -11,6 +11,9 @@ pub mod grid;
 
 pub use ghx_proc_gen as proc_gen;
 
+#[cfg(feature = "picking")]
+pub use bevy_mod_picking;
+
 use bevy::{ecs::bundle::Bundle, prelude::SpatialBundle};
 use gen::assets::{AssetSpawner, AssetsBundleSpawner, ComponentSpawner};
 use proc_gen::{

@@ -1,19 +1,24 @@
-use std::{collections::HashSet, marker::PhantomData, time::Duration};
+use std::{
+    collections::HashSet,
+    marker::PhantomData,
+    ops::{Deref, DerefMut},
+    time::Duration,
+};
 
 use bevy::{
-    app::{App, Plugin, Update},
+    app::{App, Plugin, PreUpdate, Update},
     ecs::{
         component::Component,
         entity::Entity,
         event::EventWriter,
-        query::{With, Without},
+        query::{Added, Changed, With, Without},
         schedule::IntoSystemConfigs,
         system::{Commands, Query, Res, ResMut, Resource},
     },
-    hierarchy::DespawnRecursiveExt,
+    hierarchy::{BuildChildren, DespawnRecursiveExt, Parent},
     input::{keyboard::KeyCode, Input},
     log::{info, warn},
-    prelude::Deref,
+    reflect::Reflect,
     render::color::Color,
     time::{Time, Timer, TimerMode},
 };
@@ -21,18 +26,32 @@ use ghx_proc_gen::{
     generator::{
         model::ModelIndex,
         observer::{GenerationUpdate, QueuedObserver},
+        rules::ModelInfo,
         GenerationStatus, Generator,
     },
-    grid::{direction::CoordinateSystem, GridDefinition},
+    grid::{
+        direction::{CoordinateSystem, Direction},
+        GridDefinition, GridPosition, NodeIndex,
+    },
     GeneratorError,
 };
 
-use crate::grid::markers::MarkerEvent;
+#[cfg(feature = "picking")]
+use bevy_mod_picking::{
+    events::{Click, Over, Pointer},
+    prelude::{Listener, On},
+    PickableBundle,
+};
+
+use crate::grid::markers::{spawn_marker, Marker, MarkerDespawnEvent};
 
 use super::{
     assets::NoComponents, spawn_node, AssetSpawner, AssetsBundleSpawner, ComponentSpawner,
     SpawnedNode,
 };
+
+#[cfg(feature = "picking")]
+use super::insert_default_bundle_to_spawned_nodes;
 
 /// A [`Plugin`] useful for debug/analysis/demo. It mainly run [`Generator`] components and spawn the generated model's [`crate::gen::assets::ModelAsset`]
 ///
@@ -68,7 +87,38 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
         app.init_resource::<ProcGenKeyBindings>();
         app.init_resource::<GenerationControl>();
 
-        app.add_systems(Update, update_generation_control);
+        app.add_systems(
+            Update,
+            (
+                update_generation_control,
+                insert_selection_cursor_to_new_generations::<C>,
+            ),
+        );
+
+        #[cfg(feature = "picking")]
+        app.add_systems(
+            Update,
+            (
+                insert_over_cursor_to_new_generations::<C>,
+                insert_grid_cursor_picking_handlers_to_spawned_nodes::<C>,
+                insert_default_bundle_to_spawned_nodes::<PickableBundle>,
+            ),
+        );
+        // Keybinds and picking events handlers run in PreUpdate
+        app.add_systems(
+            PreUpdate,
+            keybinds_update_grid_selection_cursor_position::<C>,
+        );
+        app.add_systems(
+            Update,
+            (
+                #[cfg(feature = "picking")]
+                update_grid_cursor_info::<C, GridOverCursor, GridOverCursorInfo>,
+                update_grid_cursor_info::<C, GridSelectionCursor, GridSelectionCursorInfo>,
+                display_selection_grid_cursor_info_ui,
+            )
+                .chain(),
+        );
 
         match self.generation_view_mode {
             GenerationViewMode::StepByStepTimed {
@@ -78,7 +128,7 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
                 app.add_systems(
                     Update,
                     (
-                        register_void_nodes_for_new_generations::<C, A, T>,
+                        insert_void_nodes_to_new_generations::<C, A, T>,
                         step_by_step_timed_update::<C>,
                         update_generation_view::<C, A, T>,
                     )
@@ -93,7 +143,7 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
                 app.add_systems(
                     Update,
                     (
-                        register_void_nodes_for_new_generations::<C, A, T>,
+                        insert_void_nodes_to_new_generations::<C, A, T>,
                         step_by_step_input_update::<C>,
                         update_generation_view::<C, A, T>,
                     )
@@ -183,6 +233,13 @@ pub struct StepByStepTimed {
 /// Resource available to override the default keybindings used by the [`ProcGenDebugPlugin`]
 #[derive(Resource)]
 pub struct ProcGenKeyBindings {
+    pub prev_node: KeyCode,
+    pub next_node: KeyCode,
+    pub cursor_x_axis: KeyCode,
+    pub cursor_y_axis: KeyCode,
+    pub cursor_z_axis: KeyCode,
+    pub enable_grid_cursor: KeyCode,
+
     /// Key to unpause the current [`GenerationControlStatus`]
     pub unpause: KeyCode,
     /// Key used only with [`GenerationViewMode::StepByStepPaused`] to step once per press
@@ -194,19 +251,68 @@ pub struct ProcGenKeyBindings {
 impl Default for ProcGenKeyBindings {
     fn default() -> Self {
         Self {
+            prev_node: KeyCode::Left,
+            next_node: KeyCode::Right,
+            cursor_x_axis: KeyCode::X,
+            cursor_y_axis: KeyCode::Y,
+            cursor_z_axis: KeyCode::Z,
+            enable_grid_cursor: KeyCode::G,
             unpause: KeyCode::Space,
-            step: KeyCode::Right,
+            step: KeyCode::Down,
             continuous_step: KeyCode::Up,
         }
     }
 }
 
 /// Component used to store model indexes of models with no assets, just to be able to skip their generation when stepping
-#[derive(Component, Deref)]
+#[derive(Component, bevy::prelude::Deref)]
 pub struct VoidNodes(HashSet<ModelIndex>);
 
+#[cfg(feature = "picking")]
+pub fn insert_over_cursor_to_new_generations<C: CoordinateSystem>(
+    mut commands: Commands,
+    mut new_generations: Query<
+        (Entity, &GridDefinition<C>, &Generator<C>),
+        Without<GridOverCursor>,
+    >,
+) {
+    for (gen_entity, _grid, _generation) in new_generations.iter_mut() {
+        commands.entity(gen_entity).insert((
+            ActiveGridCursor,
+            GridOverCursor(GridCursor {
+                color: Color::BLUE,
+                node_index: 0,
+                position: GridPosition::new(0, 0, 0),
+                marker: None,
+            }),
+            GridOverCursorInfo(GridCursorInfo::new()),
+        ));
+    }
+}
+
+pub fn insert_selection_cursor_to_new_generations<C: CoordinateSystem>(
+    mut commands: Commands,
+    mut new_generations: Query<
+        (Entity, &GridDefinition<C>, &Generator<C>),
+        Without<GridSelectionCursor>,
+    >,
+) {
+    for (gen_entity, _grid, _generation) in new_generations.iter_mut() {
+        commands.entity(gen_entity).insert((
+            ActiveGridCursor,
+            GridSelectionCursor(GridCursor {
+                color: Color::GREEN,
+                node_index: 0,
+                position: GridPosition::new(0, 0, 0),
+                marker: None,
+            }),
+            GridSelectionCursorInfo(GridCursorInfo::new()),
+        ));
+    }
+}
+
 /// Simple system that calculates and add a [`VoidNodes`] component for generator entites which don't have one yet.
-pub fn register_void_nodes_for_new_generations<
+pub fn insert_void_nodes_to_new_generations<
     C: CoordinateSystem,
     A: AssetsBundleSpawner,
     T: ComponentSpawner,
@@ -319,7 +425,7 @@ pub fn step_by_step_timed_update<C: CoordinateSystem>(
 
 fn update_generation_view<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner>(
     mut commands: Commands,
-    mut marker_events: EventWriter<MarkerEvent>,
+    mut marker_events: EventWriter<MarkerDespawnEvent>,
     mut generators: Query<(
         Entity,
         &GridDefinition<C>,
@@ -341,11 +447,7 @@ fn update_generation_view<C: CoordinateSystem, A: AssetsBundleSpawner, T: Compon
                     nodes_to_spawn.clear();
                 }
                 GenerationUpdate::Failed(node_index) => {
-                    marker_events.send(MarkerEvent::Add {
-                        color: Color::RED,
-                        grid_entity: gen_entity,
-                        node_index,
-                    });
+                    spawn_marker(&mut commands, grid, gen_entity, Color::RED, node_index);
                 }
             }
         }
@@ -354,7 +456,7 @@ fn update_generation_view<C: CoordinateSystem, A: AssetsBundleSpawner, T: Compon
             for existing_node in existing_nodes.iter() {
                 commands.entity(existing_node).despawn_recursive();
             }
-            marker_events.send(MarkerEvent::ClearAll);
+            marker_events.send(MarkerDespawnEvent::ClearAll);
         }
 
         for grid_node in nodes_to_spawn {
@@ -417,6 +519,169 @@ fn step_generation<C: CoordinateSystem>(
         // If we want to skip over void nodes, we eep looping until we spawn a non-void
         if non_void_spawned | !generation_control.skip_void_nodes {
             break;
+        }
+    }
+}
+
+#[derive(Component)]
+pub struct ActiveGridCursor;
+
+#[derive(Debug)]
+pub struct GridCursor {
+    pub color: Color,
+    pub node_index: NodeIndex,
+    pub position: GridPosition,
+    pub marker: Option<Entity>,
+    // active: bool,
+}
+
+#[derive(Component, Debug, bevy::prelude::Deref, bevy::prelude::DerefMut)]
+pub struct GridOverCursor(GridCursor);
+
+#[derive(Component, Debug, bevy::prelude::Deref, bevy::prelude::DerefMut)]
+pub struct GridSelectionCursor(GridCursor);
+
+#[derive(Debug)]
+pub struct GridCursorInfo {
+    models: Vec<ModelInfo>,
+}
+impl GridCursorInfo {
+    fn new() -> Self {
+        Self { models: Vec::new() }
+    }
+}
+
+#[derive(Component, Debug, bevy::prelude::Deref, bevy::prelude::DerefMut)]
+pub struct GridOverCursorInfo(GridCursorInfo);
+
+#[derive(Component, Debug, bevy::prelude::Deref, bevy::prelude::DerefMut)]
+pub struct GridSelectionCursorInfo(GridCursorInfo);
+
+#[cfg(feature = "picking")]
+pub fn insert_grid_cursor_picking_handlers_to_spawned_nodes<C: CoordinateSystem>(
+    mut commands: Commands,
+    spawned_nodes: Query<Entity, Added<SpawnedNode>>,
+) {
+    for node in spawned_nodes.iter() {
+        commands.entity(node).try_insert(On::<Pointer<Over>>::run(
+            picking_update_grid_cursor_position::<C, GridOverCursor, Over>,
+        ));
+        commands.entity(node).try_insert(On::<Pointer<Click>>::run(
+            picking_update_grid_cursor_position::<C, GridSelectionCursor, Click>,
+        ));
+    }
+}
+
+#[cfg(feature = "picking")]
+pub fn picking_update_grid_cursor_position<
+    C: CoordinateSystem,
+    W: Component + DerefMut<Target = GridCursor>,
+    E: core::fmt::Debug + Clone + Reflect,
+>(
+    event: Listener<Pointer<E>>,
+    mut commands: Commands,
+    mut marker_events: EventWriter<MarkerDespawnEvent>,
+    mut nodes: Query<(&Parent, &SpawnedNode)>,
+    mut over_cursor: Query<&mut W>,
+    grids: Query<&GridDefinition<C>>,
+) {
+    if let Ok((node_parent, node)) = nodes.get_mut(event.listener()) {
+        let grid_entity = node_parent.get();
+        if let Ok(mut cursor) = over_cursor.get_mut(grid_entity) {
+            if cursor.node_index != node.0 {
+                if let Ok(grid) = grids.get(grid_entity) {
+                    cursor.node_index = node.0;
+                    cursor.position = grid.pos_from_index(node.0);
+
+                    if let Some(previous_cursor_entity) = cursor.marker {
+                        marker_events.send(MarkerDespawnEvent::Remove {
+                            marker_entity: previous_cursor_entity,
+                        });
+                    }
+                    let marker_entity = commands
+                        .spawn(Marker::new(cursor.color, cursor.position.clone()))
+                        .id();
+                    commands.entity(grid_entity).add_child(marker_entity);
+                    cursor.marker = Some(marker_entity);
+                }
+            }
+        }
+    }
+}
+
+pub fn update_grid_cursor_info<
+    C: CoordinateSystem,
+    GC: Component + Deref<Target = GridCursor>,
+    GCI: Component + DerefMut<Target = GridCursorInfo>,
+>(
+    mut moved_cursors: Query<(&Generator<C>, &mut GCI, &GC), Changed<GC>>,
+) {
+    for (generator, mut cursor_info, cursor) in moved_cursors.iter_mut() {
+        cursor_info.models = generator.get_models_info_on(cursor.node_index);
+    }
+}
+
+pub fn display_selection_grid_cursor_info_ui(
+    mut moved_selection_cursors: Query<
+        (&GridSelectionCursorInfo, &GridSelectionCursor),
+        Changed<GridSelectionCursorInfo>,
+    >,
+) {
+    for (mut cursor_info, cursor) in moved_selection_cursors.iter_mut() {
+        // info!("New grid cursor info: {:?}", cursor_info);
+        // TODO
+    }
+}
+
+pub fn keybinds_update_grid_selection_cursor_position<C: CoordinateSystem>(
+    mut commands: Commands,
+    keys: Res<Input<KeyCode>>,
+    proc_gen_key_bindings: Res<ProcGenKeyBindings>,
+    mut marker_events: EventWriter<MarkerDespawnEvent>,
+    mut active_grid_cursors: Query<
+        (Entity, &GridDefinition<C>, &mut GridSelectionCursor),
+        With<ActiveGridCursor>,
+    >,
+) {
+    let axis_selection = if keys.pressed(proc_gen_key_bindings.cursor_x_axis) {
+        Some(Direction::XForward)
+    } else if keys.pressed(proc_gen_key_bindings.cursor_y_axis) {
+        Some(Direction::YForward)
+    } else if keys.pressed(proc_gen_key_bindings.cursor_z_axis) {
+        Some(Direction::ZForward)
+    } else {
+        None
+    };
+
+    if let Some(axis) = axis_selection {
+        let cursor_movement = if keys.just_pressed(proc_gen_key_bindings.prev_node) {
+            Some(-1)
+        } else if keys.just_pressed(proc_gen_key_bindings.next_node) {
+            Some(1)
+        } else {
+            None
+        };
+        if let Some(movement) = cursor_movement {
+            for (grid_entity, grid, mut cursor) in active_grid_cursors.iter_mut() {
+                match grid.get_index_in_direction(&cursor.position, axis, movement) {
+                    Some(node_index) => {
+                        if let Some(previous_cursor_entity) = cursor.marker {
+                            marker_events.send(MarkerDespawnEvent::Remove {
+                                marker_entity: previous_cursor_entity,
+                            });
+                        }
+
+                        cursor.node_index = node_index;
+                        cursor.position = grid.pos_from_index(node_index);
+                        let marker_entity = commands
+                            .spawn(Marker::new(cursor.color, cursor.position.clone()))
+                            .id();
+                        commands.entity(grid_entity).add_child(marker_entity);
+                        cursor.marker = Some(marker_entity);
+                    }
+                    None => (),
+                }
+            }
         }
     }
 }
