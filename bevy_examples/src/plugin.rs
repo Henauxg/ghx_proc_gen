@@ -10,6 +10,7 @@ use bevy::{
     ui::node_bundles::TextBundle,
 };
 use bevy_ghx_proc_gen::{
+    bevy_mod_picking::DefaultPickingPlugins,
     gen::{
         assets::{AssetsBundleSpawner, ComponentSpawner, NoComponents},
         debug_plugin::{GenerationViewMode, ProcGenDebugPlugin},
@@ -55,6 +56,7 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
             FrameTimeDiagnosticsPlugin::default(),
             FpsDisplayPlugin,
             GridDebugPlugin::<C>::new(),
+            DefaultPickingPlugins,
             ProcGenDebugPlugin::<C, A, T>::new(self.generation_view_mode),
         ));
         app.insert_resource(SpawningScaleAnimation::new(
