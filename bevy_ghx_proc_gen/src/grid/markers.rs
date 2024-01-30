@@ -1,15 +1,18 @@
 use bevy::{
     ecs::{
+        component::Component,
         entity::Entity,
         event::{Event, EventReader},
-        system::Query,
+        query::With,
+        system::{Commands, Query},
     },
     gizmos::gizmos::Gizmos,
+    hierarchy::{BuildChildren, Parent},
     math::Vec3Swizzles,
     render::color::Color,
     transform::components::Transform,
 };
-use ghx_proc_gen::grid::{GridDefinition, GridPosition};
+use ghx_proc_gen::grid::{GridDefinition, GridPosition, NodeIndex};
 
 use super::{
     get_translation_from_grid_pos_2d, get_translation_from_grid_pos_3d,
@@ -17,24 +20,13 @@ use super::{
     CoordinateSystem,
 };
 
-/// Event used to update markers on a [`DebugGridView`]
+/// Event used to despawn markers on a [`DebugGridView`]
 #[derive(Event)]
-pub enum MarkerEvent {
-    /// Send this event to create a new marker on a grid node
-    Add {
-        /// Color of the debug marker
-        color: Color,
-        /// Grid entity where the marker should be added
-        grid_entity: Entity,
-        /// Index of the grid node to mark
-        node_index: usize,
-    },
+pub enum MarkerDespawnEvent {
     /// Send this event to delete a marker on a grid node
     Remove {
-        /// Grid entity from which the marker should be removed
-        grid_entity: Entity,
-        /// Index of the grid node to unmark
-        node_index: usize,
+        /// Marker `Entity`
+        marker_entity: Entity,
     },
     /// Send this event to clear all markers on a grid
     Clear {
@@ -45,54 +37,67 @@ pub enum MarkerEvent {
     ClearAll,
 }
 
-#[derive(Clone)]
-pub(crate) struct Marker {
+/// Marker to be displayed on a grid
+#[derive(Component)]
+pub struct Marker {
+    /// Color of the marker gizmo
     pub color: Color,
+    /// Grid position of the marker
     pub pos: GridPosition,
 }
+impl Marker {
+    /// Helper to construct a marker
+    pub fn new(color: Color, pos: GridPosition) -> Self {
+        Self { color, pos }
+    }
+}
 
-/// This system reads [`MarkerEvent`] and update the [`DebugGridView`] components accordingly
+/// Helper to spwan a [`Marker`] `Entity` that will be displayed by the [`super::GridDebugPlugin`]
+pub fn spawn_marker<C: CoordinateSystem>(
+    commands: &mut Commands,
+    grid: &GridDefinition<C>,
+    grid_entity: Entity,
+    color: Color,
+    node_index: NodeIndex,
+) -> Entity {
+    let marker_entity = commands
+        .spawn(Marker::new(color, grid.pos_from_index(node_index)))
+        .id();
+    commands.entity(grid_entity).add_child(marker_entity);
+    marker_entity
+}
+
+/// This system reads [`MarkerDespawnEvent`] and despawn markers entities accordingly. Tries to check for existence before despawning them.
 ///
-/// Should be called after the systems that generate [`MarkerEvent`]
+/// Should be called after the systems that generate [`MarkerDespawnEvent`]
 ///
 /// Called in the [`bevy::app::PostUpdate`] schedule by default, by the [`crate::grid::GridDebugPlugin`]
-pub fn update_debug_markers<T: CoordinateSystem>(
-    mut marker_events: EventReader<MarkerEvent>,
-    mut debug_grids: Query<(&GridDefinition<T>, &mut DebugGridView)>,
+pub fn update_debug_markers(
+    mut commands: Commands,
+    mut marker_events: EventReader<MarkerDespawnEvent>,
+    markers: Query<(&Parent, Entity), With<Marker>>,
 ) {
     for marker_event in marker_events.read() {
         match marker_event {
-            MarkerEvent::Add {
-                color,
-                grid_entity,
-                node_index,
-            } => {
-                if let Ok((grid, mut debug_grid)) = debug_grids.get_mut(*grid_entity) {
-                    debug_grid.markers.insert(
-                        *node_index,
-                        Marker {
-                            color: *color,
-                            pos: grid.pos_from_index(*node_index),
-                        },
-                    );
+            MarkerDespawnEvent::Remove { marker_entity } => {
+                if let Ok(_) = markers.get(*marker_entity) {
+                    commands.entity(*marker_entity).despawn();
                 }
             }
-            MarkerEvent::Remove {
-                grid_entity,
-                node_index,
-            } => {
-                if let Ok((_grid, mut debug_grid)) = debug_grids.get_mut(*grid_entity) {
-                    debug_grid.markers.remove(node_index);
+            MarkerDespawnEvent::Clear { grid_entity } => {
+                for (parent_grid, marker_entity) in markers.iter() {
+                    if parent_grid.get() == *grid_entity {
+                        if let Ok(_) = markers.get(marker_entity) {
+                            commands.entity(marker_entity).despawn();
+                        }
+                    }
                 }
             }
-            MarkerEvent::Clear { grid_entity } => {
-                if let Ok((_grid, mut debug_grid)) = debug_grids.get_mut(*grid_entity) {
-                    debug_grid.markers.clear();
-                }
-            }
-            MarkerEvent::ClearAll => {
-                for (_grid, mut debug_grid) in debug_grids.iter_mut() {
-                    debug_grid.markers.clear();
+            MarkerDespawnEvent::ClearAll => {
+                for (_parent_grid, marker_entity) in markers.iter() {
+                    if let Ok(_) = markers.get(marker_entity) {
+                        commands.entity(marker_entity).despawn();
+                    }
                 }
             }
         }
@@ -105,12 +110,13 @@ pub fn update_debug_markers<T: CoordinateSystem>(
 pub fn draw_debug_markers_3d(
     mut gizmos: Gizmos,
     debug_grids: Query<(&Transform, &DebugGridView, &DebugGridViewConfig3d)>,
+    markers: Query<(&Parent, &Marker)>,
 ) {
-    for (transform, view, view_config) in debug_grids.iter() {
-        if !view.display_markers {
-            continue;
-        }
-        for (_, marker) in view.markers.iter() {
+    for (parent_grid, marker) in markers.iter() {
+        if let Ok((transform, view, view_config)) = debug_grids.get(parent_grid.get()) {
+            if !view.display_markers {
+                continue;
+            }
             let giz_pos = transform.translation
                 + get_translation_from_grid_pos_3d(&marker.pos, &view_config.node_size);
             gizmos.cuboid(
@@ -128,12 +134,13 @@ pub fn draw_debug_markers_3d(
 pub fn draw_debug_markers_2d(
     mut gizmos: Gizmos,
     debug_grids: Query<(&Transform, &DebugGridView, &DebugGridViewConfig2d)>,
+    markers: Query<(&Parent, &Marker)>,
 ) {
-    for (transform, view, view_config) in debug_grids.iter() {
-        if !view.display_markers {
-            continue;
-        }
-        for (_, marker) in view.markers.iter() {
+    for (parent_grid, marker) in markers.iter() {
+        if let Ok((transform, view, view_config)) = debug_grids.get(parent_grid.get()) {
+            if !view.display_markers {
+                continue;
+            }
             let giz_pos = transform.translation.xy()
                 + get_translation_from_grid_pos_2d(&marker.pos, &view_config.node_size);
             gizmos.rect_2d(

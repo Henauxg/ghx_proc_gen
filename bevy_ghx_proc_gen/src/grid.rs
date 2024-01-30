@@ -10,7 +10,9 @@ use ghx_proc_gen::grid::{direction::CoordinateSystem, GridPosition};
 
 use self::{
     lines::LineMaterial,
-    markers::{draw_debug_markers_2d, draw_debug_markers_3d, update_debug_markers, MarkerEvent},
+    markers::{
+        draw_debug_markers_2d, draw_debug_markers_3d, update_debug_markers, MarkerDespawnEvent,
+    },
     view::{
         draw_debug_grids_2d, spawn_debug_grids_3d, update_debug_grid_mesh_visibility_3d,
         DebugGridView, DebugGridViewConfig2d, DebugGridViewConfig3d,
@@ -24,7 +26,7 @@ pub mod markers;
 /// Components and systems to visualize 2d & 3d grids
 pub mod view;
 
-/// Bevy plugin used to visualize [`ghx_proc_gen::grid::GridDefinition`] and additional debug markers created with [`markers::MarkerEvent`].
+/// Bevy plugin used to visualize [`ghx_proc_gen::grid::GridDefinition`] and additional debug markers created with [`markers::MarkerDespawnEvent`].
 pub struct GridDebugPlugin<C: CoordinateSystem> {
     typestate: PhantomData<C>,
 }
@@ -52,12 +54,12 @@ impl<C: CoordinateSystem> Plugin for GridDebugPlugin<C> {
         .add_systems(
             PostUpdate,
             (
-                update_debug_markers::<C>,
+                update_debug_markers,
                 draw_debug_markers_3d,
                 draw_debug_markers_2d,
             ),
         )
-        .add_event::<MarkerEvent>();
+        .add_event::<MarkerDespawnEvent>();
     }
 }
 

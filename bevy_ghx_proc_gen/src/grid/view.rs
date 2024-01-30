@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use bevy::{
     asset::{Assets, Handle},
     core::Name,
@@ -21,7 +19,6 @@ use ghx_proc_gen::grid::GridDefinition;
 
 use super::{
     lines::{LineList, LineMaterial},
-    markers::Marker,
     CoordinateSystem,
 };
 
@@ -65,12 +62,11 @@ pub struct DebugGridMesh;
 #[derive(Component)]
 pub struct DebugGridMeshParent(Entity);
 
-/// Component used on all debug grid to store markers and configuration.
+/// Component used on all debug grid to store configuration.
 ///
 /// Updating the component members will update the grid debug view directly
 #[derive(Component)]
 pub struct DebugGridView {
-    pub(crate) markers: HashMap<usize, Marker>,
     /// Whether or not to display the grid
     pub display_grid: bool,
     /// Whether or not to display the grid markers
@@ -81,7 +77,6 @@ pub struct DebugGridView {
 impl Default for DebugGridView {
     fn default() -> Self {
         Self {
-            markers: Default::default(),
             display_grid: true,
             display_markers: true,
             color: Default::default(),
@@ -92,7 +87,6 @@ impl DebugGridView {
     /// Creates a new [`DebugGridView`]
     pub fn new(display_grid: bool, display_markers: bool, color: Color) -> Self {
         Self {
-            markers: Default::default(),
             display_grid,
             display_markers,
             color,
@@ -100,7 +94,7 @@ impl DebugGridView {
     }
 }
 
-/// This system works on entities that have a [`ghx_proc_gen::grid::GridDefinition`] component and a [`crate::grid::DebugGridView3d`] bundle just added to them, it creates a child entity with its grid mesh and its own [`Visibility`]
+/// This system works on entities that have a [`ghx_proc_gen::grid::GridDefinition`] component and a [`crate::grid::DebugGridView3dBundle`] bundle just added to them, it creates a child entity with its grid mesh and its own [`Visibility`]
 ///
 /// To be used with a [`bevy::prelude::Camera3d`]
 pub fn spawn_debug_grids_3d<T: CoordinateSystem>(
