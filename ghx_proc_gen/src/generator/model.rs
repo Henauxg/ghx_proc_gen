@@ -1,4 +1,4 @@
-use std::{collections::HashSet, marker::PhantomData};
+use std::{borrow::Cow, collections::HashSet, marker::PhantomData};
 
 #[cfg(feature = "debug-traces")]
 use {core::fmt, tracing::warn};
@@ -210,8 +210,8 @@ impl<C: CoordinateSystem> ModelCollection<C> {
                         weight: model.template.weight,
                         original_index: model.index,
                         rotation: *rotation,
-                        #[cfg(feature = "debug-traces")]
-                        name: model.name,
+                        #[cfg(feature = "models-names")]
+                        name: model.name.clone(),
                     });
                 }
             }
@@ -227,8 +227,8 @@ pub struct Model<C: CoordinateSystem> {
     template: ModelTemplate<C>,
 
     /// Name given to this model for debug purposes.
-    #[cfg(feature = "debug-traces")]
-    name: Option<&'static str>,
+    #[cfg(feature = "models-names")]
+    name: Option<Cow<'static, str>>,
 }
 
 impl<C: CoordinateSystem> Model<C> {
@@ -236,7 +236,7 @@ impl<C: CoordinateSystem> Model<C> {
         Self {
             index,
             template,
-            #[cfg(feature = "debug-traces")]
+            #[cfg(feature = "models-names")]
             name: None,
         }
     }
@@ -309,11 +309,11 @@ impl<C: CoordinateSystem> Model<C> {
     #[allow(unused_mut)]
     /// Register the given name for this model.
     ///
-    /// Does nothing if the `debug-traces` feature is not enabled.
-    pub fn with_name(&mut self, _name: &'static str) -> &mut Self {
-        #[cfg(feature = "debug-traces")]
+    /// Does nothing if the `models-names` feature is not enabled.
+    pub fn with_name(&mut self, _name: impl Into<Cow<'static, str>>) -> &mut Self {
+        #[cfg(feature = "models-names")]
         {
-            self.name = Some(_name);
+            self.name = Some(_name.into());
         }
 
         self
@@ -347,8 +347,8 @@ pub struct ModelVariation {
     rotation: ModelRotation,
 
     /// Debug name for this model
-    #[cfg(feature = "debug-traces")]
-    pub name: Option<&'static str>,
+    #[cfg(feature = "models-names")]
+    pub name: Option<Cow<'static, str>>,
 }
 
 impl ModelVariation {

@@ -89,7 +89,7 @@ impl InternalNodeSelectionHeuristic {
         let mut all_models_weight_sum = 0.;
         let mut all_models_weight_log_weight_sum = 0.;
         for model_index in 0..rules.models_count() {
-            let weight = rules.weight(model_index);
+            let weight = rules.weight_unchecked(model_index);
             let weight_log_weight = weight * f32::ln(weight);
             models_weight_log_weights.push(weight_log_weight);
             all_models_weight_sum += weight;

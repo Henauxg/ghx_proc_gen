@@ -1,4 +1,5 @@
 use std::{
+    borrow::{Borrow, Cow},
     collections::{BTreeSet, HashMap, HashSet},
     marker::PhantomData,
 };
@@ -145,6 +146,16 @@ impl<C: CoordinateSystem> RulesBuilder<C> {
     }
 }
 
+/// Information about a Model
+#[derive(Debug)]
+pub struct ModelInfo {
+    model: ModelInstance,
+    weight: f32,
+
+    #[cfg(feature = "models-names")]
+    name: Cow<'static, str>,
+}
+
 /// Defines the rules of a generation: the coordinate system, the models, the way they can be rotated, the sockets and their connections.
 ///
 /// A same set of [`Rules`] can be shared by multiple generators.
@@ -159,8 +170,8 @@ pub struct Rules<C: CoordinateSystem> {
     /// This is expanded from a given collection of base models, with added variations of rotations around an axis.
     models: Vec<ModelInstance>,
     weights: Vec<f32>,
-    #[cfg(feature = "debug-traces")]
-    names: Vec<Option<&'static str>>,
+    #[cfg(feature = "models-names")]
+    names: Vec<Option<Cow<'static, str>>>,
 
     /// The vector `allowed_neighbours[model_index][direction]` holds all the allowed adjacent models (indexes) to `model_index` in `direction`.
     ///
@@ -180,7 +191,7 @@ impl<C: CoordinateSystem> Rules<C> {
         coord_system: C,
     ) -> Result<Rules<C>, RulesBuilderError> {
         let original_models_count = models.models_count();
-        let model_variations = models.create_variations(rotation_axis);
+        let mut model_variations = models.create_variations(rotation_axis);
         // We test the expanded models because a model may have no rotations allowed.
         if model_variations.len() == 0 || socket_collection.is_empty() {
             return Err(RulesBuilderError::NoModelsOrSockets);
@@ -235,16 +246,16 @@ impl<C: CoordinateSystem> Rules<C> {
         // Discard socket information, build linear buffers containing the info needed during the generation
         let mut weights = Vec::with_capacity(model_variations.len());
         let mut model_instances = Vec::with_capacity(model_variations.len());
-        #[cfg(feature = "debug-traces")]
+        #[cfg(feature = "models-names")]
         let mut names = Vec::with_capacity(model_variations.len());
 
         let mut models_mapping =
             Array::from_elem((original_models_count, ALL_MODEL_ROTATIONS.len()), None);
-        for (index, model_variation) in model_variations.iter().enumerate() {
+        for (index, model_variation) in model_variations.iter_mut().enumerate() {
             weights.push(model_variation.weight());
             model_instances.push(model_variation.to_instance());
-            #[cfg(feature = "debug-traces")]
-            names.push(model_variation.name);
+            #[cfg(feature = "models-names")]
+            names.push(model_variation.name.take());
 
             models_mapping[(
                 model_variation.original_index(),
@@ -265,7 +276,7 @@ impl<C: CoordinateSystem> Rules<C> {
             models_mapping,
             models: model_instances,
             weights,
-            #[cfg(feature = "debug-traces")]
+            #[cfg(feature = "models-names")]
             names,
             allowed_neighbours,
             typestate: PhantomData,
@@ -298,12 +309,35 @@ impl<C: CoordinateSystem> Rules<C> {
         &self.models[index]
     }
 
+    pub(crate) fn model_info(&self, model_index: ModelVariantIndex) -> ModelInfo {
+        ModelInfo {
+            model: self.models[model_index].clone(),
+            weight: self.weights[model_index],
+
+            #[cfg(feature = "models-names")]
+            name: self.name_unchecked(model_index),
+        }
+    }
+
     #[inline]
-    pub(crate) fn weight(&self, model_index: ModelVariantIndex) -> f32 {
+    pub(crate) fn weight_unchecked(&self, model_index: ModelVariantIndex) -> f32 {
         self.weights[model_index]
     }
 
-    /// Returns [`Some(ModelVariantIndex)`] corresponding to the original model with index `model_index` rotated by `rot`. Returns [`None`] if this variation does not exist.
+    /// Returns the weight of a model variant as an [`Option`]. Returns [`None`] if this model variant index is not valid.
+    pub fn weight(&self, model_index: ModelVariantIndex) -> Option<f32> {
+        match self.is_valid_model_variant_index(model_index) {
+            true => Some(self.weights[model_index]),
+            false => None,
+        }
+    }
+
+    #[inline]
+    fn is_valid_model_variant_index(&self, model_index: ModelVariantIndex) -> bool {
+        model_index < self.models.len()
+    }
+
+    /// Returns `Some` [`ModelVariantIndex`] corresponding to the original model with index `model_index` rotated by `rot`. Returns [`None`] if this variation does not exist.
     pub fn variant_index(
         &self,
         model_index: ModelIndex,
@@ -316,12 +350,32 @@ impl<C: CoordinateSystem> Rules<C> {
         }
     }
 
-    #[cfg(feature = "debug-traces")]
+    #[cfg(feature = "models-names")]
     #[inline]
-    pub(crate) fn name(&self, model_index: ModelVariantIndex) -> &'static str {
-        match self.names[model_index] {
+    pub(crate) fn name_unchecked(&self, model_index: ModelVariantIndex) -> Cow<'static, str> {
+        match self.names[model_index].as_ref() {
+            None => "None".into(),
+            Some(name) => name.clone(),
+        }
+    }
+
+    #[cfg(feature = "models-names")]
+    #[inline]
+    pub(crate) fn name_unchecked_str(&self, model_index: ModelVariantIndex) -> &str {
+        match self.names[model_index].as_ref() {
             None => "None",
             Some(name) => name,
+        }
+    }
+
+    /// Returns the name of a model variant as an [`Option`].
+    ///
+    /// Returns [`None`]  if this model variant index is not valid or if it does not have a name.
+    #[cfg(feature = "models-names")]
+    pub fn name_str(&self, model_index: ModelVariantIndex) -> Option<&str> {
+        match self.is_valid_model_variant_index(model_index) {
+            true => Some(self.name_unchecked_str(model_index)),
+            false => None,
         }
     }
 }

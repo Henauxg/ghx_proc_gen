@@ -24,7 +24,7 @@ use self::{
     model::{ModelInstance, ModelVariantIndex},
     node_heuristic::{InternalNodeSelectionHeuristic, NodeSelectionHeuristic},
     observer::GenerationUpdate,
-    rules::{ModelVariantRef, Rules},
+    rules::{ModelInfo, ModelVariantRef, Rules},
 };
 
 /// Defines a [`GeneratorBuilder`] used to create a generator
@@ -467,7 +467,7 @@ impl<C: CoordinateSystem> Generator<C> {
         debug!(
             "Heuristics selected model {:?} named '{}' for node {} at position {:?}",
             self.rules.model(selected_model_index),
-            self.rules.name(selected_model_index),
+            self.rules.name_unchecked_str(selected_model_index),
             node_index,
             self.grid.get_position(node_index)
         );
@@ -520,7 +520,7 @@ impl<C: CoordinateSystem> Generator<C> {
         debug!(
             "Set model {:?} named '{}' for node {} at position {:?}",
             self.rules.model(model_variant_index),
-            self.rules.name(model_variant_index),
+            self.rules.name_unchecked_str(model_variant_index),
             node_index,
             self.grid.get_position(node_index)
         );
@@ -732,7 +732,7 @@ impl<C: CoordinateSystem> Generator<C> {
             trace!(
                 "Propagate removal of model {:?} named '{}' for node {}",
                 self.rules.model(from.model_index),
-                self.rules.name(from.model_index),
+                self.rules.name_unchecked_str(from.model_index),
                 from.node_index
             );
 
@@ -766,7 +766,7 @@ impl<C: CoordinateSystem> Generator<C> {
         trace!(
             "Enqueue removal for propagation: model {:?} named '{}' from node {}",
             self.rules.model(model_index),
-            self.rules.name(model_index),
+            self.rules.name_unchecked_str(model_index),
             node_index
         );
         self.propagation_stack.push(PropagationEntry {
@@ -798,14 +798,17 @@ impl<C: CoordinateSystem> Generator<C> {
         let number_of_models_left = &mut self.possible_models_counts[node_index];
         *number_of_models_left = number_of_models_left.saturating_sub(1);
 
-        self.node_selection_heuristic
-            .handle_ban(node_index, model, self.rules.weight(model));
+        self.node_selection_heuristic.handle_ban(
+            node_index,
+            model,
+            self.rules.weight_unchecked(model),
+        );
 
         #[cfg(feature = "debug-traces")]
         trace!(
             "Ban model {:?} named '{}' from node {} at position {:?}, {} models left",
             self.rules.model(model),
-            self.rules.name(model),
+            self.rules.name_unchecked_str(model),
             node_index,
             self.grid.get_position(node_index),
             number_of_models_left
@@ -820,7 +823,7 @@ impl<C: CoordinateSystem> Generator<C> {
                     debug!(
                         "Previous bans force model {:?} named '{}' for node {} at position {:?}",
                         self.rules.model(forced_model),
-                        self.rules.name(model),
+                        self.rules.name_unchecked_str(model),
                         node_index,
                         self.grid.get_position(node_index)
                     );
@@ -852,7 +855,7 @@ impl<C: CoordinateSystem> Generator<C> {
                 let weighted_distribution = WeightedIndex::new(
                     possible_models
                         .iter()
-                        .map(|&model_index| self.rules.weight(model_index)),
+                        .map(|&model_index| self.rules.weight_unchecked(model_index)),
                 )
                 .unwrap();
                 possible_models[weighted_distribution.sample(&mut self.rng)]
@@ -915,6 +918,21 @@ impl<C: CoordinateSystem> Generator<C> {
             .iter_ones()
         {
             models.push(self.rules.model(model_variant_index).clone());
+        }
+
+        models
+    }
+
+    pub fn get_models_info_on(&self, node_index: NodeIndex) -> Vec<ModelInfo> {
+        let mut models = Vec::new();
+        if !self.is_valid_node_index(node_index) {
+            return models;
+        }
+        for model_variant_index in self.nodes[node_index * self.rules.models_count()
+            ..node_index * self.rules.models_count() + self.rules.models_count()]
+            .iter_ones()
+        {
+            models.push(self.rules.model_info(model_variant_index));
         }
 
         models
