@@ -12,9 +12,10 @@ categories = ["game-development", "algorithms"]
 [features]
 default = [
     "default-assets-bundle-spawners",
+    "grid-debug-plugin",
     "simple-plugin",
     "debug-plugin",
-    "grid-debug-plugin",
+    "picking",
 ]
 # Adds some default assets bundle spawners for basic types: Handle<Image>, Handle<Scene>, MaterialMesh and PbrMesh
 default-assets-bundle-spawners = [
@@ -28,7 +29,8 @@ grid-debug-plugin = [
 # Compiles the simple plugin and its systems
 simple-plugin = []
 # Compiles the debug plugin and its systems
-debug-plugin = ["grid-debug-plugin"]
+debug-plugin = ["grid-debug-plugin", "ghx_proc_gen/models-names"]
+picking = ["dep:bevy_mod_picking"]
 
 
 [dependencies]
@@ -40,3 +42,8 @@ bevy = { version = "0.12.0", default-features = false, features = [
     "bevy_pbr",    # 3D (physically-based) rendering
     "bevy_render", # Rendering framework core
 ] }
+
+# Optional dependencies
+
+# Only enabled when the "picking" feature is enabled
+bevy_mod_picking = { version = "0.17.0", optional = true }
