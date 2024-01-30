@@ -1,11 +1,12 @@
 use std::{
-    borrow::{Borrow, Cow},
     collections::{BTreeSet, HashMap, HashSet},
     marker::PhantomData,
 };
 
 use ndarray::{Array, Ix1, Ix2};
 
+#[cfg(feature = "models-names")]
+use std::borrow::Cow;
 #[cfg(feature = "debug-traces")]
 use tracing::trace;
 
@@ -149,11 +150,14 @@ impl<C: CoordinateSystem> RulesBuilder<C> {
 /// Information about a Model
 #[derive(Debug)]
 pub struct ModelInfo {
-    model: ModelInstance,
-    weight: f32,
+    /// Original [`Model`] instance
+    pub model: ModelInstance,
+    /// Weight of the original [`Model`]
+    pub weight: f32,
 
+    /// Name given to the original [`Model`]
     #[cfg(feature = "models-names")]
-    name: Cow<'static, str>,
+    pub name: Cow<'static, str>,
 }
 
 /// Defines the rules of a generation: the coordinate system, the models, the way they can be rotated, the sockets and their connections.
