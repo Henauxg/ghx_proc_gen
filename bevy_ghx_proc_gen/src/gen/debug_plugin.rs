@@ -18,6 +18,7 @@ use bevy::{
     hierarchy::{BuildChildren, DespawnRecursiveExt, Parent},
     input::{keyboard::KeyCode, Input},
     log::{info, warn},
+    prelude::{Deref, DerefMut},
     reflect::Reflect,
     render::color::Color,
     time::{Time, Timer, TimerMode},
@@ -53,6 +54,8 @@ use super::{
 #[cfg(feature = "picking")]
 use super::insert_default_bundle_to_spawned_nodes;
 
+const CURSOR_KEYS_MOVEMENT_COOLDOWN_MS: u64 = 55;
+
 /// A [`Plugin`] useful for debug/analysis/demo. It mainly run [`Generator`] components and spawn the generated model's [`crate::gen::assets::ModelAsset`]
 ///
 /// It takes in a [`GenerationViewMode`] to control how the generators components will be run.
@@ -86,6 +89,11 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
         // If the resources already exists, nothing happens, else, add them with default values.
         app.init_resource::<ProcGenKeyBindings>();
         app.init_resource::<GenerationControl>();
+
+        app.insert_resource(CursorMoveCooldown(Timer::new(
+            Duration::from_millis(CURSOR_KEYS_MOVEMENT_COOLDOWN_MS),
+            TimerMode::Once,
+        )));
 
         app.add_systems(
             Update,
@@ -633,11 +641,16 @@ pub fn display_selection_grid_cursor_info_ui(
     }
 }
 
+#[derive(Resource, Deref, DerefMut)]
+pub struct CursorMoveCooldown(Timer);
+
 pub fn keybinds_update_grid_selection_cursor_position<C: CoordinateSystem>(
     mut commands: Commands,
     keys: Res<Input<KeyCode>>,
+    time: Res<Time>,
     proc_gen_key_bindings: Res<ProcGenKeyBindings>,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
+    mut move_cooldown: ResMut<CursorMoveCooldown>,
     mut active_grid_cursors: Query<
         (Entity, &GridDefinition<C>, &mut GridSelectionCursor),
         With<ActiveGridCursor>,
@@ -654,14 +667,23 @@ pub fn keybinds_update_grid_selection_cursor_position<C: CoordinateSystem>(
     };
 
     if let Some(axis) = axis_selection {
-        let cursor_movement = if keys.just_pressed(proc_gen_key_bindings.prev_node) {
-            Some(-1)
-        } else if keys.just_pressed(proc_gen_key_bindings.next_node) {
-            Some(1)
-        } else {
-            None
+        move_cooldown.tick(time.delta());
+        let cursor_movement = match move_cooldown.finished() {
+            true => {
+                if keys.pressed(proc_gen_key_bindings.prev_node) {
+                    Some(-1)
+                } else if keys.pressed(proc_gen_key_bindings.next_node) {
+                    Some(1)
+                } else {
+                    None
+                }
+            }
+            false => None,
         };
+
         if let Some(movement) = cursor_movement {
+            move_cooldown.reset();
+
             for (grid_entity, grid, mut cursor) in active_grid_cursors.iter_mut() {
                 match grid.get_index_in_direction(&cursor.position, axis, movement) {
                     Some(node_index) => {
@@ -670,7 +692,6 @@ pub fn keybinds_update_grid_selection_cursor_position<C: CoordinateSystem>(
                                 marker_entity: previous_cursor_entity,
                             });
                         }
-
                         cursor.node_index = node_index;
                         cursor.position = grid.pos_from_index(node_index);
                         let marker_entity = commands
