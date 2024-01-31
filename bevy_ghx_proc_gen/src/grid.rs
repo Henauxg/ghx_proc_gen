@@ -126,3 +126,21 @@ pub fn toggle_debug_grids_visibilities(mut grid_views: Query<&mut DebugGridView>
         view.display_grid = !view.display_grid;
     }
 }
+
+/// Toggles the debug grids visibility
+///
+/// ### Example
+///
+/// Toggles On/Off debug grids by pressing F1
+///
+/// ```rust,ignore
+///  app.add_systems(
+///    Update,
+///    toggle_grid_markers_visibilities.run_if(input_just_pressed(KeyCode::F1)),
+///  );
+/// ```
+pub fn toggle_grid_markers_visibilities(mut grid_views: Query<&mut DebugGridView>) {
+    for mut view in grid_views.iter_mut() {
+        view.display_markers = !view.display_markers;
+    }
+}
