@@ -3,6 +3,11 @@ use std::{borrow::Cow, collections::HashSet, marker::PhantomData};
 #[cfg(feature = "debug-traces")]
 use {core::fmt, tracing::warn};
 
+#[cfg(feature = "bevy")]
+use bevy::ecs::component::Component;
+#[cfg(feature = "reflect")]
+use bevy::{ecs::reflect::ReflectComponent, reflect::Reflect};
+
 use crate::grid::direction::{Cartesian2D, Cartesian3D, CoordinateSystem, Direction};
 
 use super::{
@@ -379,6 +384,8 @@ impl ModelVariation {
 
 /// Used to identify a specific variation of an input model.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "bevy", derive(Component, Default))]
+#[cfg_attr(feature = "reflect", derive(Reflect), reflect(Component))]
 pub struct ModelInstance {
     /// Index of the original [`Model`]
     pub model_index: ModelIndex,
@@ -387,9 +394,12 @@ pub struct ModelInstance {
 }
 
 /// Represents a rotation around an Axis, in the trigonometric(counterclockwise) direction
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Default, Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "bevy", derive(Component))]
+#[cfg_attr(feature = "reflect", derive(Reflect), reflect(Component))]
 pub enum ModelRotation {
     /// Rotation of 0°
+    #[default]
     Rot0,
     /// Rotation of 90°
     Rot90,

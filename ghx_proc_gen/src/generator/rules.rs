@@ -7,8 +7,14 @@ use ndarray::{Array, Ix1, Ix2};
 
 #[cfg(feature = "models-names")]
 use std::borrow::Cow;
+
 #[cfg(feature = "debug-traces")]
 use tracing::trace;
+
+#[cfg(feature = "bevy")]
+use bevy::ecs::component::Component;
+#[cfg(feature = "reflect")]
+use bevy::{ecs::reflect::ReflectComponent, reflect::Reflect};
 
 use super::{
     model::{
@@ -148,7 +154,9 @@ impl<C: CoordinateSystem> RulesBuilder<C> {
 }
 
 /// Information about a Model
-#[derive(Debug)]
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "bevy", derive(Component, Default))]
+#[cfg_attr(feature = "reflect", derive(Reflect), reflect(Component))]
 pub struct ModelInfo {
     /// Original [`Model`] instance
     pub model: ModelInstance,
@@ -163,6 +171,7 @@ pub struct ModelInfo {
 /// Defines the rules of a generation: the coordinate system, the models, the way they can be rotated, the sockets and their connections.
 ///
 /// A same set of [`Rules`] can be shared by multiple generators.
+#[cfg_attr(feature = "bevy", derive(Component))]
 pub struct Rules<C: CoordinateSystem> {
     /// Number of original input models used to build these rules.
     original_models_count: usize,

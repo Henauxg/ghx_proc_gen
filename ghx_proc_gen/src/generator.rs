@@ -41,8 +41,11 @@ pub mod rules;
 pub mod socket;
 
 /// Defines a heuristic for the choice of a model among the possible ones when a node has been selected for generation.
+
+#[derive(Default, Clone, Copy)]
 pub enum ModelSelectionHeuristic {
     /// Choses a random model among the possible ones, weighted by each model weight.
+    #[default]
     WeightedProbability,
 }
 
@@ -51,6 +54,7 @@ pub enum ModelSelectionHeuristic {
 /// Note: No matter the selected mode, on each failed generation/reset, the generator will generate and use a new `u64` seed using the previous `u64` seed.
 ///
 /// As an example: if a generation with 50 retries is requested with a seed `s1`, but the generations fails 14 times before finally succeeding with seed `s15`, requesting the generation with any of the seeds `s1`, `s2`, ... to `s15` will give the exact same final successful result. However, while `s1` will need to redo the 14 failed generations before succeeding,`s15` will directly generate the successfull result.
+#[derive(Default, Clone, Copy)]
 pub enum RngMode {
     /// The generator will use the given seed for its random source.
     ///
@@ -58,21 +62,24 @@ pub enum RngMode {
     /// The generator will use a random seed for its random source.
     ///
     /// The randomly generated seed can still be retrieved on the generator once created.
+    #[default]
     RandomSeed,
 }
 
 /// Represents the current generation state, if not failed.
-#[derive(Clone, Copy, Eq, PartialEq, Debug)]
+#[derive(Default, Clone, Copy, Eq, PartialEq, Debug)]
 pub enum GenerationStatus {
     /// The generation has not ended yet.
+    #[default]
     Ongoing,
     /// The generation ended succesfully. The whole grid is generated.
     Done,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy)]
 enum InternalGeneratorStatus {
     /// Generation has not finished.
+    #[default]
     Ongoing,
     /// Generation ended succesfully.
     Done,
@@ -89,7 +96,8 @@ pub struct GridNode {
     pub model_instance: ModelInstance,
 }
 
-/// Information about a generation
+/// Information about a generation*
+#[derive(Clone, Copy, Debug)]
 pub struct GenInfo {
     /// How many tries the generation took before succeeding
     pub try_count: u32,
@@ -231,7 +239,7 @@ impl<C: CoordinateSystem> Generator<C> {
         self.nodes_left_to_generate
     }
 
-    /// Returns `Some` [`GridData<C, ModelInstance>`] with all the nodes generated if the generation is done
+    /// Returns a [`GridData`] of [`ModelInstance`] with all the nodes generated if the generation is done
     ///
     /// Returns `None` if the generation is still ongoing or currently failed
     pub fn to_grid_data(&self) -> Option<GridData<C, ModelInstance>> {

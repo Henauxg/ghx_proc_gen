@@ -4,6 +4,8 @@ use self::direction::{Cartesian2D, Cartesian3D, CoordinateSystem, Direction, Gri
 
 #[cfg(feature = "bevy")]
 use bevy::ecs::component::Component;
+#[cfg(feature = "reflect")]
+use bevy::{ecs::reflect::ReflectComponent, reflect::Reflect};
 
 /// Defines directions and coordinate systems
 pub mod direction;
@@ -12,7 +14,9 @@ pub mod direction;
 pub type NodeIndex = usize;
 
 /// Represents a position in a grid in a practical format
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "bevy", derive(Component))]
+#[cfg_attr(feature = "reflect", derive(Reflect), reflect(Component))]
 pub struct GridPosition {
     /// Position on the x axis
     pub x: u32,
@@ -43,7 +47,8 @@ impl GridPosition {
 
 /// Definition of a grid
 #[derive(Clone)]
-#[cfg_attr(feature = "bevy", derive(Component))]
+#[cfg_attr(feature = "bevy", derive(Component, Default))]
+#[cfg_attr(feature = "reflect", derive(Reflect), reflect(Component))]
 pub struct GridDefinition<C: CoordinateSystem> {
     size_x: u32,
     size_y: u32,
@@ -313,7 +318,8 @@ impl<C: CoordinateSystem> GridDefinition<C> {
 /// let grid_data = grid.default_grid_data::<u64>();
 /// ```
 /// You can also retrieve a pre-created existing `GridData` from a [`crate::generator::Generator`], or from an observer like a [`crate::generator::observer::QueuedStatefulObserver`]
-#[cfg_attr(feature = "bevy", derive(Component))]
+#[derive(Clone)]
+#[cfg_attr(feature = "bevy", derive(Component, Default))]
 pub struct GridData<C: CoordinateSystem, D> {
     grid: GridDefinition<C>,
     data: Vec<D>,

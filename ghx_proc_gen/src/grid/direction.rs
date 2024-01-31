@@ -1,9 +1,17 @@
 // TODO See if std::ops::index can be used here
 
+#[cfg(feature = "bevy")]
+use bevy::ecs::component::Component;
+#[cfg(feature = "reflect")]
+use bevy::{ecs::reflect::ReflectComponent, reflect::Reflect};
+
 /// Represents an oriented axis of a coordinate system
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
+#[cfg_attr(feature = "bevy", derive(Component))]
+#[cfg_attr(feature = "reflect", derive(Reflect), reflect(Component))]
 pub enum Direction {
     /// X+ axis
+    #[default]
     XForward = 0,
     /// Y+ axis
     YForward = 1,
@@ -79,7 +87,9 @@ pub(crate) const Z_NEG_AXIS: &'static [Direction] = &[
 ];
 
 /// Represents a displacement on a grid
-#[derive(Clone, Default, Eq, PartialEq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "bevy", derive(Component))]
+#[cfg_attr(feature = "reflect", derive(Reflect), reflect(Component))]
 pub struct GridDelta {
     /// Amount of movement on the X axis
     pub dx: i32,
@@ -108,7 +118,7 @@ impl std::ops::Mul<i32> for GridDelta {
 }
 
 /// Represents a coordinate system
-pub trait CoordinateSystem: Clone + Sync + Send + 'static {
+pub trait CoordinateSystem: Default + Clone + Sync + Send + 'static {
     /// Returns the [`Direction`] in this coordinate system
     fn directions(&self) -> &'static [Direction];
     /// Returns the [`GridDelta`] for each direction in this coordinate system
@@ -116,7 +126,9 @@ pub trait CoordinateSystem: Clone + Sync + Send + 'static {
 }
 
 /// Right-handed 2d Cartesian coordinate system: 4 directions
-#[derive(Clone)]
+#[derive(Default, Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(Component))]
+#[cfg_attr(feature = "reflect", derive(Reflect), reflect(Component))]
 pub struct Cartesian2D;
 impl CoordinateSystem for Cartesian2D {
     fn directions(&self) -> &'static [Direction] {
@@ -129,7 +141,9 @@ impl CoordinateSystem for Cartesian2D {
 }
 
 /// Right-handed 3d Cartesian coordinate system: 6 directions
-#[derive(Clone)]
+#[derive(Default, Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(Component))]
+#[cfg_attr(feature = "reflect", derive(Reflect), reflect(Component))]
 pub struct Cartesian3D;
 impl CoordinateSystem for Cartesian3D {
     fn directions(&self) -> &'static [Direction] {
