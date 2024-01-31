@@ -568,12 +568,14 @@ pub fn insert_grid_cursor_picking_handlers_to_spawned_nodes<C: CoordinateSystem>
     mut commands: Commands,
     spawned_nodes: Query<Entity, Added<SpawnedNode>>,
 ) {
+    use bevy_mod_picking::events::Down;
+
     for node in spawned_nodes.iter() {
         commands.entity(node).try_insert(On::<Pointer<Over>>::run(
             picking_update_grid_cursor_position::<C, GridOverCursor, Over>,
         ));
-        commands.entity(node).try_insert(On::<Pointer<Click>>::run(
-            picking_update_grid_cursor_position::<C, GridSelectionCursor, Click>,
+        commands.entity(node).try_insert(On::<Pointer<Down>>::run(
+            picking_update_grid_cursor_position::<C, GridSelectionCursor, Down>,
         ));
     }
 }
