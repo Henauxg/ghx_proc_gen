@@ -36,10 +36,10 @@ pub struct FpsRoot;
 pub struct FpsText;
 
 /// Toggles the FPS counter
+///
 /// ### Example
 ///
 /// Toggles On/Off the fps counter UI by pressing F1
-///
 /// ```rust,ignore
 ///  app.add_systems(
 ///    Update,

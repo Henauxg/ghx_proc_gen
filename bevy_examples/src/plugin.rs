@@ -26,6 +26,7 @@ use bevy_ghx_proc_gen::{
 
 use crate::{
     anim::{animate_scale, ease_in_cubic, SpawningScaleAnimation},
+    camera::toggle_auto_orbit,
     fps::{toggle_fps_counter, FpsDisplayPlugin},
 };
 
@@ -75,11 +76,8 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
                 animate_scale,
                 toggle_debug_grids_visibilities.run_if(input_just_pressed(KeyCode::F1)),
                 toggle_fps_counter.run_if(input_just_pressed(KeyCode::F2)),
+                toggle_auto_orbit.run_if(input_just_pressed(KeyCode::F3)),
             ),
-        );
-        app.add_systems(
-            Update,
-            toggle_debug_grids_visibilities.run_if(input_just_pressed(KeyCode::F1)),
         );
     }
 }
@@ -89,7 +87,7 @@ pub fn setup_gizmos_config(mut config: ResMut<GizmoConfig>) {
 }
 
 pub fn setup_ui(mut commands: Commands, view_mode: Res<GenerationViewMode>) {
-    let mut controls_text = "`F1` toggle grid | `F2` toggle fps display\n\
+    let mut controls_text = "`F1` grid | `F2` fps display | `F3` camera rotation\n\
     `Space` new generation"
         .to_string();
     if *view_mode == GenerationViewMode::StepByStepPaused {

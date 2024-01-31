@@ -27,6 +27,22 @@ impl Default for PanOrbitCamera {
     }
 }
 
+/// Toggles the PanOrbitCamera auto orbit
+///
+/// ### Example
+///
+/// Toggles On/Off by pressing F1
+/// ```rust,ignore
+///  app.add_systems(
+///    Update,
+///    toggle_auto_orbit.run_if(input_just_pressed(KeyCode::F1)),
+///  );
+/// ```
+pub fn toggle_auto_orbit(mut pan_orbit_camera: Query<&mut PanOrbitCamera>) {
+    let mut cam = pan_orbit_camera.single_mut();
+    cam.auto_orbit = !cam.auto_orbit;
+}
+
 /// Pan the camera with middle mouse click, zoom with scroll wheel, orbit with right mouse click.
 pub fn pan_orbit_camera(
     window: Query<&Window>,
