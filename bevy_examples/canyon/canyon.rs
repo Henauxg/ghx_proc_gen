@@ -43,8 +43,6 @@ const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::StepByStepT
 /// Change to visualize void nodes with a transparent asset
 const SEE_VOID_NODES: bool = false;
 
-const AUTO_ORBIT_CAMERA: bool = true;
-
 /// Change this to change the map size.
 const GRID_HEIGHT: u32 = 5;
 const GRID_X: u32 = 40;
@@ -77,7 +75,6 @@ fn setup_scene(mut commands: Commands) {
         },
         PanOrbitCamera {
             radius,
-            auto_orbit: AUTO_ORBIT_CAMERA,
             ..Default::default()
         },
     ));
