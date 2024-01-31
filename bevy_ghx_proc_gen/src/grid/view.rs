@@ -1,26 +1,13 @@
 use bevy::{
-    asset::{Assets, Handle},
-    core::Name,
-    ecs::{
-        component::Component,
-        entity::Entity,
-        query::{Added, Changed, With},
-        system::{Commands, Query, ResMut},
-    },
+    ecs::{component::Component, system::Query},
     gizmos::gizmos::Gizmos,
-    hierarchy::BuildChildren,
     math::{Vec2, Vec3},
-    pbr::MaterialMeshBundle,
-    render::{color::Color, mesh::Mesh, view::Visibility},
+    render::color::Color,
     transform::components::Transform,
-    utils::default,
 };
 use ghx_proc_gen::grid::GridDefinition;
 
-use super::{
-    lines::{LineList, LineMaterial},
-    CoordinateSystem,
-};
+use super::CoordinateSystem;
 
 /// 3d-specific ([`bevy::prelude::Camera3d`]) configuration of a grid debug view
 #[derive(Component)]
@@ -49,18 +36,6 @@ impl Default for DebugGridViewConfig2d {
         }
     }
 }
-
-/// When an [`Entity`] with a [`GridDefinition`] component has a [`crate::grid::DebugGridView3d`] bundle added to it. The plugin creates a child `Entity` with a 3d mesh representing the 3d grid.
-///
-/// This component is used to used to mark this child `Entity` to make it easy to change its [`Visibility`]
-#[derive(Component, Default)]
-pub struct DebugGridMesh;
-
-/// When an [`Entity`] with a [`GridDefinition`] component has a [`crate::grid::DebugGridView3d`] bundle added to it. The plugin creates a child `Entity` with a 3d mesh representing the 3d grid.
-///
-/// This component is used to used to mark the parent `Entity`, and holds the child `Entity` id to make it easy to change its [`Visibility`]
-#[derive(Component)]
-pub struct DebugGridMeshParent(Entity);
 
 /// Component used on all debug grid to store configuration.
 ///
@@ -94,98 +69,57 @@ impl DebugGridView {
     }
 }
 
-/// This system works on entities that have a [`ghx_proc_gen::grid::GridDefinition`] component and a [`crate::grid::DebugGridView3dBundle`] bundle just added to them, it creates a child entity with its grid mesh and its own [`Visibility`]
+/// System that uses [`Gizmos`] to render the debug grid every frame.
 ///
 /// To be used with a [`bevy::prelude::Camera3d`]
-pub fn spawn_debug_grids_3d<T: CoordinateSystem>(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<LineMaterial>>,
-    debug_grids: Query<
-        (
-            Entity,
-            &GridDefinition<T>,
-            &DebugGridView,
-            &DebugGridViewConfig3d,
-        ),
-        Added<DebugGridViewConfig3d>,
-    >,
+pub fn draw_debug_grids_3d<T: CoordinateSystem>(
+    mut gizmos: Gizmos,
+    debug_grids: Query<(
+        &Transform,
+        &GridDefinition<T>,
+        &DebugGridView,
+        &DebugGridViewConfig3d,
+    )>,
 ) {
-    // TODO Gizmos ? Performances may be worse than this mesh built once
-    for (grid_entity, grid, view, view_config) in debug_grids.iter() {
-        let mut lines = Vec::new();
-        for y in 0..=grid.size_y() {
-            let mut from = Vec3::new(0., y as f32, 0.);
-            let mut to = Vec3::new(
-                0.,
-                y as f32,
-                (grid.size_z() as f32) * view_config.node_size.z,
-            );
-            for x in 0..=grid.size_x() {
-                from.x = view_config.node_size.x * x as f32;
-                to.x = from.x;
-                lines.push((from, to));
-            }
-            from = Vec3::new(0., y as f32, 0.);
-            to = Vec3::new(grid.size_x() as f32 * view_config.node_size.x, y as f32, 0.);
-            for z in 0..=grid.size_z() {
-                from.z = view_config.node_size.z * z as f32;
-                to.z = from.z;
-                lines.push((from, to));
-            }
+    for (transform, grid, view, view_config) in debug_grids.iter() {
+        if !view.display_grid {
+            continue;
         }
+        let start = &transform.translation;
+        let end = Vec3 {
+            x: start.x + (grid.size_x() as f32) * view_config.node_size.x,
+            y: start.y + (grid.size_y() as f32) * view_config.node_size.y,
+            z: start.z + (grid.size_z() as f32) * view_config.node_size.z,
+        };
         for x in 0..=grid.size_x() {
-            let mut from = Vec3::new(x as f32, 0., 0.);
-            let mut to = Vec3::new(x as f32, grid.size_y() as f32 * view_config.node_size.y, 0.);
-            for z in 0..=grid.size_z() {
-                from.z = view_config.node_size.z * z as f32;
-                to.z = from.z;
-                lines.push((from, to));
-            }
+            let mut points = Vec::with_capacity(4);
+            let current_x = start.x + x as f32 * view_config.node_size.x;
+            points.push(Vec3::new(current_x, start.y, start.z));
+            points.push(Vec3::new(current_x, end.y, start.z));
+            points.push(Vec3::new(current_x, end.y, end.z));
+            points.push(Vec3::new(current_x, start.y, end.z));
+            points.push(Vec3::new(current_x, start.y, start.z));
+            gizmos.linestrip(points, view.color);
         }
-
-        let debug_grid_mesh = commands
-            .spawn((
-                MaterialMeshBundle {
-                    mesh: meshes.add(Mesh::from(LineList { lines })),
-                    material: materials.add(LineMaterial { color: view.color }),
-                    visibility: match view.display_grid {
-                        true => Visibility::Visible,
-                        false => Visibility::Hidden,
-                    },
-                    ..default()
-                },
-                Name::new("DebugGridMesh"),
-                DebugGridMesh,
-            ))
-            .id();
-        commands.entity(grid_entity).add_child(debug_grid_mesh);
-        commands
-            .entity(grid_entity)
-            .insert(DebugGridMeshParent(debug_grid_mesh));
-    }
-}
-
-/// System that detect the changes on the [`DebugGridView`] components and apply those changes to the underlying grid mesh (if any)
-///
-/// To be used with a [`bevy::prelude::Camera3d`]
-pub fn update_debug_grid_mesh_visibility_3d(
-    mut debug_grids: Query<(&DebugGridMeshParent, &DebugGridView), Changed<DebugGridView>>,
-    mut grid_meshes: Query<(&mut Visibility, &Handle<LineMaterial>), With<DebugGridMesh>>,
-    mut materials: ResMut<Assets<LineMaterial>>,
-) {
-    for (grid_mesh_marker, view) in debug_grids.iter_mut() {
-        match grid_meshes.get_mut(grid_mesh_marker.0) {
-            Ok((mut mesh_visibility, line_mat_handle)) => {
-                *mesh_visibility = match view.display_grid {
-                    true => Visibility::Visible,
-                    false => Visibility::Hidden,
-                };
-                if let Some(line_mat) = materials.get_mut(line_mat_handle) {
-                    line_mat.color = view.color;
-                }
-            }
-            Err(_) => (),
+        for y in 0..=grid.size_y() {
+            let mut points = Vec::with_capacity(4);
+            let current_y = start.y + y as f32 * view_config.node_size.y;
+            points.push(Vec3::new(start.x, current_y, start.z));
+            points.push(Vec3::new(end.x, current_y, start.z));
+            points.push(Vec3::new(end.x, current_y, end.z));
+            points.push(Vec3::new(start.x, current_y, end.z));
+            points.push(Vec3::new(start.x, current_y, start.z));
+            gizmos.linestrip(points, view.color);
+        }
+        for z in 0..=grid.size_z() {
+            let mut points = Vec::with_capacity(4);
+            let current_z = start.z + z as f32 * view_config.node_size.z;
+            points.push(Vec3::new(start.x, start.y, current_z));
+            points.push(Vec3::new(end.x, start.y, current_z));
+            points.push(Vec3::new(end.x, end.y, current_z));
+            points.push(Vec3::new(start.x, end.y, current_z));
+            points.push(Vec3::new(start.x, start.y, current_z));
+            gizmos.linestrip(points, view.color);
         }
     }
 }
@@ -206,26 +140,21 @@ pub fn draw_debug_grids_2d<T: CoordinateSystem>(
         if !view.display_grid {
             continue;
         }
+        let start = &transform.translation;
+        let end = Vec2 {
+            x: start.x + (grid.size_x() as f32) * view_config.node_size.x,
+            y: start.y + (grid.size_y() as f32) * view_config.node_size.y,
+        };
         for y in 0..=grid.size_y() {
-            let from = Vec2::new(
-                transform.translation.x,
-                transform.translation.y + y as f32 * view_config.node_size.y,
-            );
-            let to = Vec2::new(
-                transform.translation.x + (grid.size_x() as f32) * view_config.node_size.x,
-                transform.translation.y + y as f32 * view_config.node_size.y,
-            );
+            let current_y = start.y + y as f32 * view_config.node_size.y;
+            let from = Vec2::new(start.x, current_y);
+            let to = Vec2::new(end.x, current_y);
             gizmos.line_2d(from, to, view.color);
         }
         for x in 0..=grid.size_x() {
-            let from = Vec2::new(
-                transform.translation.x + x as f32 * view_config.node_size.x,
-                transform.translation.y,
-            );
-            let to = Vec2::new(
-                transform.translation.x + x as f32 * view_config.node_size.x,
-                transform.translation.y + (grid.size_y() as f32) * view_config.node_size.y,
-            );
+            let current_x = start.x + x as f32 * view_config.node_size.x;
+            let from = Vec2::new(current_x, start.y);
+            let to = Vec2::new(current_x, end.y);
             gizmos.line_2d(from, to, view.color);
         }
     }

@@ -14,8 +14,8 @@ use self::{
         draw_debug_markers_2d, draw_debug_markers_3d, update_debug_markers, MarkerDespawnEvent,
     },
     view::{
-        draw_debug_grids_2d, spawn_debug_grids_3d, update_debug_grid_mesh_visibility_3d,
-        DebugGridView, DebugGridViewConfig2d, DebugGridViewConfig3d,
+        draw_debug_grids_2d, draw_debug_grids_3d, DebugGridView, DebugGridViewConfig2d,
+        DebugGridViewConfig3d,
     },
 };
 
@@ -43,23 +43,16 @@ impl<T: CoordinateSystem> GridDebugPlugin<T> {
 impl<C: CoordinateSystem> Plugin for GridDebugPlugin<C> {
     fn build(&self, app: &mut App) {
         app.add_plugins(MaterialPlugin::<LineMaterial>::default());
-        app.add_systems(
-            Update,
-            (
-                spawn_debug_grids_3d::<C>,
-                update_debug_grid_mesh_visibility_3d,
-                draw_debug_grids_2d::<C>,
-            ),
-        )
-        .add_systems(
-            PostUpdate,
-            (
-                update_debug_markers,
-                draw_debug_markers_3d,
-                draw_debug_markers_2d,
-            ),
-        )
-        .add_event::<MarkerDespawnEvent>();
+        app.add_systems(Update, (draw_debug_grids_3d::<C>, draw_debug_grids_2d::<C>))
+            .add_systems(
+                PostUpdate,
+                (
+                    update_debug_markers,
+                    draw_debug_markers_3d,
+                    draw_debug_markers_2d,
+                ),
+            )
+            .add_event::<MarkerDespawnEvent>();
     }
 }
 
