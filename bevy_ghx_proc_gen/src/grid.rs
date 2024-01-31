@@ -4,12 +4,10 @@ use bevy::{
     app::{App, Plugin, PostUpdate, Update},
     ecs::{bundle::Bundle, system::Query},
     math::{Vec2, Vec3},
-    pbr::MaterialPlugin,
 };
 use ghx_proc_gen::grid::{direction::CoordinateSystem, GridPosition};
 
 use self::{
-    lines::LineMaterial,
     markers::{
         draw_debug_markers_2d, draw_debug_markers_3d, update_debug_markers, MarkerDespawnEvent,
     },
@@ -19,8 +17,6 @@ use self::{
     },
 };
 
-/// Shaders and materials for 3d line rendering
-pub mod lines;
 /// Defines markers drawn as [bevy::prelude::Gizmos], useful for debugging & visualization
 pub mod markers;
 /// Components and systems to visualize 2d & 3d grids
@@ -42,7 +38,6 @@ impl<T: CoordinateSystem> GridDebugPlugin<T> {
 
 impl<C: CoordinateSystem> Plugin for GridDebugPlugin<C> {
     fn build(&self, app: &mut App) {
-        app.add_plugins(MaterialPlugin::<LineMaterial>::default());
         app.add_systems(Update, (draw_debug_grids_3d::<C>, draw_debug_grids_2d::<C>))
             .add_systems(
                 PostUpdate,
