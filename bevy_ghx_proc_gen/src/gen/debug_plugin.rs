@@ -246,7 +246,6 @@ pub struct ProcGenKeyBindings {
     pub cursor_x_axis: KeyCode,
     pub cursor_y_axis: KeyCode,
     pub cursor_z_axis: KeyCode,
-    pub enable_grid_cursor: KeyCode,
 
     /// Key to unpause the current [`GenerationControlStatus`]
     pub unpause: KeyCode,
@@ -264,7 +263,6 @@ impl Default for ProcGenKeyBindings {
             cursor_x_axis: KeyCode::X,
             cursor_y_axis: KeyCode::Y,
             cursor_z_axis: KeyCode::Z,
-            enable_grid_cursor: KeyCode::G,
             unpause: KeyCode::Space,
             step: KeyCode::Down,
             continuous_step: KeyCode::Up,
@@ -274,7 +272,7 @@ impl Default for ProcGenKeyBindings {
 
 /// Component used to store model indexes of models with no assets, just to be able to skip their generation when stepping
 #[derive(Component, bevy::prelude::Deref)]
-pub struct VoidNodes(HashSet<ModelIndex>);
+pub struct VoidNodes(pub HashSet<ModelIndex>);
 
 #[cfg(feature = "picking")]
 pub fn insert_over_cursor_to_new_generations<C: CoordinateSystem>(
@@ -544,10 +542,10 @@ pub struct GridCursor {
 }
 
 #[derive(Component, Debug, bevy::prelude::Deref, bevy::prelude::DerefMut)]
-pub struct GridOverCursor(GridCursor);
+pub struct GridOverCursor(pub GridCursor);
 
 #[derive(Component, Debug, bevy::prelude::Deref, bevy::prelude::DerefMut)]
-pub struct GridSelectionCursor(GridCursor);
+pub struct GridSelectionCursor(pub GridCursor);
 
 #[derive(Debug)]
 pub struct GridCursorInfo {
@@ -560,10 +558,10 @@ impl GridCursorInfo {
 }
 
 #[derive(Component, Debug, bevy::prelude::Deref, bevy::prelude::DerefMut)]
-pub struct GridOverCursorInfo(GridCursorInfo);
+pub struct GridOverCursorInfo(pub GridCursorInfo);
 
 #[derive(Component, Debug, bevy::prelude::Deref, bevy::prelude::DerefMut)]
-pub struct GridSelectionCursorInfo(GridCursorInfo);
+pub struct GridSelectionCursorInfo(pub GridCursorInfo);
 
 #[cfg(feature = "picking")]
 pub fn insert_grid_cursor_picking_handlers_to_spawned_nodes<C: CoordinateSystem>(
@@ -642,7 +640,7 @@ pub fn display_selection_grid_cursor_info_ui(
 }
 
 #[derive(Resource, Deref, DerefMut)]
-pub struct CursorMoveCooldown(Timer);
+pub struct CursorMoveCooldown(pub Timer);
 
 pub fn keybinds_update_grid_selection_cursor_position<C: CoordinateSystem>(
     mut commands: Commands,
