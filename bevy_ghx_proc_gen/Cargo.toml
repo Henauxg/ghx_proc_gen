@@ -11,17 +11,15 @@ categories = ["game-development", "algorithms"]
 
 [features]
 default = [
-    "default-assets-bundle-spawners",
+    "reflect",
     "grid-debug-plugin",
     "simple-plugin",
     "debug-plugin",
     "picking",
+    "default-assets-bundle-spawners",
 ]
-# Adds some default assets bundle spawners for basic types: Handle<Image>, Handle<Scene>, MaterialMesh and PbrMesh
-default-assets-bundle-spawners = [
-    "bevy/bevy_scene",  # Scenes management
-    "bevy/bevy_sprite", # 2D (sprites) rendering
-]
+# Enables some reflect derives in ghx_proc_gen
+reflect = ["ghx_proc_gen/reflect"]
 # Compiles the grid debug plugin and its systems
 grid-debug-plugin = [
     "bevy/bevy_gizmos", # Support drawing debug lines and shapes
@@ -30,16 +28,21 @@ grid-debug-plugin = [
 simple-plugin = []
 # Compiles the debug plugin and its systems
 debug-plugin = ["grid-debug-plugin", "ghx_proc_gen/models-names"]
+# Enables picking through bevy_mod_picking. Used by the debug-plugin if enabled.
 picking = ["dep:bevy_mod_picking"]
-
+# Adds some default assets bundle spawners for basic types: Handle<Image>, Handle<Scene>, MaterialMesh and PbrMesh
+default-assets-bundle-spawners = [
+    "bevy/bevy_scene",  # Scenes management
+    "bevy/bevy_sprite", # 2D (sprites) rendering
+    "bevy/bevy_pbr",    # 3D (physically-based) rendering
+    "bevy/bevy_asset",  # Assets management
+]
 
 [dependencies]
 ghx_proc_gen = { path = "../ghx_proc_gen", version = "0.2.0-dev", features = [
     "bevy",
 ] }
 bevy = { version = "0.12.0", default-features = false, features = [
-    "bevy_asset",  # Assets management
-    "bevy_pbr",    # 3D (physically-based) rendering
     "bevy_render", # Rendering framework core
 ] }
 
