@@ -99,10 +99,9 @@ pub fn setup_ui(mut commands: Commands, view_mode: Res<GenerationViewMode>) {
     let root = commands
         .spawn((KeybindingsUiRoot, NodeBundle::default()))
         .id();
-    let mut controls_text =
-        "`F1` ui | `F2` fps | `F3` grid | `F4` cursors | `F5` camera rotation\n\
-    `Space` new generation"
-            .to_string();
+    let mut controls_text = " `F1` ui | `F2` fps | `F3` grid | `F4` cursors | `F5` camera rotation\n `Space` unpause\n `Left click` or `x,y,z` + `Left,Right` move selection"
+        .to_string();
+
     if *view_mode == GenerationViewMode::StepByStepPaused {
         controls_text.push_str(
             "\n\
