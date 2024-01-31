@@ -22,7 +22,7 @@ use bevy_ghx_proc_gen::{
         debug_plugin::{GenerationViewMode, ProcGenDebugPlugin},
         insert_bundle_from_resource_to_spawned_nodes,
     },
-    grid::{toggle_debug_grids_visibilities, GridDebugPlugin},
+    grid::{toggle_debug_grids_visibilities, toggle_grid_markers_visibilities, GridDebugPlugin},
     proc_gen::grid::direction::CoordinateSystem,
 };
 
@@ -80,7 +80,8 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
                 toggle_visibility::<KeybindingsUiRoot>.run_if(input_just_pressed(KeyCode::F1)),
                 toggle_visibility::<FpsRoot>.run_if(input_just_pressed(KeyCode::F2)),
                 toggle_debug_grids_visibilities.run_if(input_just_pressed(KeyCode::F3)),
-                toggle_auto_orbit.run_if(input_just_pressed(KeyCode::F4)),
+                toggle_grid_markers_visibilities.run_if(input_just_pressed(KeyCode::F4)),
+                toggle_auto_orbit.run_if(input_just_pressed(KeyCode::F5)),
             ),
         );
     }
@@ -98,9 +99,10 @@ pub fn setup_ui(mut commands: Commands, view_mode: Res<GenerationViewMode>) {
     let root = commands
         .spawn((KeybindingsUiRoot, NodeBundle::default()))
         .id();
-    let mut controls_text = "`F1` ui | `F2` fps | `F3` grid | `F4` camera rotation\n\
+    let mut controls_text =
+        "`F1` ui | `F2` fps | `F3` grid | `F4` cursors | `F5` camera rotation\n\
     `Space` new generation"
-        .to_string();
+            .to_string();
     if *view_mode == GenerationViewMode::StepByStepPaused {
         controls_text.push_str(
             "\n\
