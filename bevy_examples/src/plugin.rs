@@ -3,8 +3,12 @@ use std::marker::PhantomData;
 use bevy::{
     app::{App, Plugin, Startup, Update},
     diagnostic::FrameTimeDiagnosticsPlugin,
-    ecs::system::{Commands, Res, ResMut},
+    ecs::{
+        schedule::IntoSystemConfigs,
+        system::{Commands, Res, ResMut},
+    },
     gizmos::GizmoConfig,
+    input::{common_conditions::input_just_pressed, keyboard::KeyCode},
     math::Vec3,
     text::TextStyle,
     ui::node_bundles::TextBundle,
@@ -16,14 +20,13 @@ use bevy_ghx_proc_gen::{
         debug_plugin::{GenerationViewMode, ProcGenDebugPlugin},
         insert_bundle_from_resource_to_spawned_nodes,
     },
-    grid::GridDebugPlugin,
+    grid::{toggle_debug_grids_visibilities, GridDebugPlugin},
     proc_gen::grid::direction::CoordinateSystem,
 };
 
 use crate::{
     anim::{animate_scale, ease_in_cubic, SpawningScaleAnimation},
-    fps::FpsDisplayPlugin,
-    utils::{toggle_debug_grids_visibilities, toggle_fps_counter},
+    fps::{toggle_fps_counter, FpsDisplayPlugin},
 };
 
 pub struct ProcGenExamplesPlugin<
@@ -70,9 +73,13 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
             (
                 insert_bundle_from_resource_to_spawned_nodes::<SpawningScaleAnimation>,
                 animate_scale,
-                toggle_debug_grids_visibilities,
-                toggle_fps_counter,
+                toggle_debug_grids_visibilities.run_if(input_just_pressed(KeyCode::F1)),
+                toggle_fps_counter.run_if(input_just_pressed(KeyCode::F2)),
             ),
+        );
+        app.add_systems(
+            Update,
+            toggle_debug_grids_visibilities.run_if(input_just_pressed(KeyCode::F1)),
         );
     }
 }

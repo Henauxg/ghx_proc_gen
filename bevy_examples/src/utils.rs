@@ -1,48 +1,14 @@
 use bevy::{
     asset::{Asset, AssetServer, Handle},
-    ecs::{
-        query::With,
-        system::{Query, Res},
-    },
-    input::{keyboard::KeyCode, Input},
+    ecs::system::Res,
     math::Vec3,
-    render::view::Visibility,
 };
 use bevy_ghx_proc_gen::{
     gen::assets::{
         AssetsBundleSpawner, ComponentSpawner, ModelAsset, NoComponents, RulesModelsAssets,
     },
-    grid::view::DebugGridView,
     proc_gen::grid::direction::GridDelta,
 };
-
-use crate::fps::FpsRoot;
-
-/// Toggles the debug grids visibility when pressing F1
-pub fn toggle_debug_grids_visibilities(
-    keys: Res<Input<KeyCode>>,
-    mut grid_views: Query<&mut DebugGridView>,
-) {
-    if keys.just_pressed(KeyCode::F1) {
-        for mut view in grid_views.iter_mut() {
-            view.display_grid = !view.display_grid;
-        }
-    }
-}
-
-/// Toggles the FPS counter when pressing F2
-pub fn toggle_fps_counter(
-    mut fps_ui: Query<&mut Visibility, With<FpsRoot>>,
-    keyboard: Res<Input<KeyCode>>,
-) {
-    if keyboard.just_pressed(KeyCode::F2) {
-        let mut vis = fps_ui.single_mut();
-        *vis = match *vis {
-            Visibility::Hidden => Visibility::Visible,
-            _ => Visibility::Hidden,
-        };
-    }
-}
 
 /// Used to define an asset (not yet loaded) for a model: via an asset path, and an optionnal grid offset when spawned in Bevy
 #[derive(Clone)]
