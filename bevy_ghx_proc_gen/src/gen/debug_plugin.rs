@@ -43,7 +43,7 @@ use bevy_mod_picking::{
     PickableBundle,
 };
 
-use crate::grid::markers::{spawn_marker, Marker, MarkerDespawnEvent};
+use crate::grid::markers::{spawn_marker, GridMarker, MarkerDespawnEvent};
 
 use super::{
     assets::NoComponents, spawn_node, AssetSpawner, AssetsBundleSpawner, ComponentSpawner,
@@ -599,7 +599,7 @@ pub fn picking_update_grid_cursor_position<
                         });
                     }
                     let marker_entity = commands
-                        .spawn(Marker::new(cursor.color, cursor.position.clone()))
+                        .spawn(GridMarker::new(cursor.color, cursor.position.clone()))
                         .id();
                     commands.entity(grid_entity).add_child(marker_entity);
                     cursor.marker = Some(marker_entity);
@@ -674,7 +674,7 @@ pub fn keybinds_update_grid_selection_cursor_position<C: CoordinateSystem>(
                         cursor.node_index = node_index;
                         cursor.position = grid.pos_from_index(node_index);
                         let marker_entity = commands
-                            .spawn(Marker::new(cursor.color, cursor.position.clone()))
+                            .spawn(GridMarker::new(cursor.color, cursor.position.clone()))
                             .id();
                         commands.entity(grid_entity).add_child(marker_entity);
                         cursor.marker = Some(marker_entity);

@@ -39,13 +39,13 @@ pub enum MarkerDespawnEvent {
 
 /// Marker to be displayed on a grid
 #[derive(Component)]
-pub struct Marker {
+pub struct GridMarker {
     /// Color of the marker gizmo
     pub color: Color,
     /// Grid position of the marker
     pub pos: GridPosition,
 }
-impl Marker {
+impl GridMarker {
     /// Helper to construct a marker
     pub fn new(color: Color, pos: GridPosition) -> Self {
         Self { color, pos }
@@ -61,7 +61,7 @@ pub fn spawn_marker<C: CoordinateSystem>(
     node_index: NodeIndex,
 ) -> Entity {
     let marker_entity = commands
-        .spawn(Marker::new(color, grid.pos_from_index(node_index)))
+        .spawn(GridMarker::new(color, grid.pos_from_index(node_index)))
         .id();
     commands.entity(grid_entity).add_child(marker_entity);
     marker_entity
@@ -75,7 +75,7 @@ pub fn spawn_marker<C: CoordinateSystem>(
 pub fn update_debug_markers(
     mut commands: Commands,
     mut marker_events: EventReader<MarkerDespawnEvent>,
-    markers: Query<(&Parent, Entity), With<Marker>>,
+    markers: Query<(&Parent, Entity), With<GridMarker>>,
 ) {
     for marker_event in marker_events.read() {
         match marker_event {
@@ -110,7 +110,7 @@ pub fn update_debug_markers(
 pub fn draw_debug_markers_3d(
     mut gizmos: Gizmos,
     debug_grids: Query<(&Transform, &DebugGridView, &DebugGridViewConfig3d)>,
-    markers: Query<(&Parent, &Marker)>,
+    markers: Query<(&Parent, &GridMarker)>,
 ) {
     for (parent_grid, marker) in markers.iter() {
         if let Ok((transform, view, view_config)) = debug_grids.get(parent_grid.get()) {
@@ -134,7 +134,7 @@ pub fn draw_debug_markers_3d(
 pub fn draw_debug_markers_2d(
     mut gizmos: Gizmos,
     debug_grids: Query<(&Transform, &DebugGridView, &DebugGridViewConfig2d)>,
-    markers: Query<(&Parent, &Marker)>,
+    markers: Query<(&Parent, &GridMarker)>,
 ) {
     for (parent_grid, marker) in markers.iter() {
         if let Ok((transform, view, view_config)) = debug_grids.get(parent_grid.get()) {
