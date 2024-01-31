@@ -166,7 +166,11 @@ This is what the `ProcGenDebugPlugin` does.
 
 Grids can be configured to loop on any axis, this is set on their `GridDefinition` [*[documentation](https://docs.rs/ghx_proc_gen/latest/ghx_proc_gen/grid/struct.GridDefinition.html)*].
 
-![grid_scroll](https://github.com/Henauxg/ghx_proc_gen/assets/19689618/a591384d-dcb8-4028-8955-9985344b5540)
+<div align="center">
+
+![grid_scroll-75](https://github.com/Henauxg/ghx_proc_gen/assets/19689618/98d32780-a4ea-4fe2-87e5-5406dcaa0abf)
+
+</div>
 
 # Cargo features
 
