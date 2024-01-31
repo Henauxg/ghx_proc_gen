@@ -9,10 +9,6 @@
 
 A Rust library for 2D & 3D procedural generation with **Model synthesis/Wave function Collapse**, also available for the [`Bevy`](https://github.com/bevyengine/bevy) engine.
 
-With Model synthesis/Wave function Collapse, you provide **adjacency constraints** as an input to the algorithm, and internally, a solver (AC-4 in this case), will try to generate a solution with satisfies those constraints, very much like a sudoku solver.
-
-Altough it can be applied to do texture synthesis (mainly with bitmaps), `ghx_proc_gen` focuses more on grid-based use-cases such as terrain or structures generation.
-
 <div align="center">
 
 https://github.com/Henauxg/ghx_proc_gen/assets/19689618/3f68c62e-ff0c-4d26-adf4-dbc25839dcf3
@@ -20,6 +16,11 @@ https://github.com/Henauxg/ghx_proc_gen/assets/19689618/3f68c62e-ff0c-4d26-adf4-
 *Examples in the video are slowed down in order to see the generation progress*
 
 </div>
+
+With Model synthesis/Wave function Collapse, **adjacency constraints** are provided as an input to the algorithm, and internally, a solver (AC-4 in this case), will try to generate a solution with satisfies those constraints, very much like a sudoku solver.
+
+Altough it can be applied to do texture synthesis (mainly with bitmaps), `ghx_proc_gen` focuses more on grid-based use-cases such as terrain or structures generation.
+
 
 # Quickstart
 
@@ -33,7 +34,7 @@ Connections are defined between sockets, and allows models with connected socket
 
 Let's build a chessboard pattern:
 
-1) Start by creating the `Rules` for the algorithm:
+1) Start by creating `Rules` for the algorithm:
 ```rust
   // A SocketCollection is what we use to create sockets and define their connections
   let mut sockets = SocketCollection::new();
@@ -95,13 +96,13 @@ By simply printing the results in a terminal we obtain:
 
 For more information, check out the main [crate documentation](https://docs.rs/ghx_proc_gen/latest/ghx_proc_gen) or all the [examples](#examples).
 
-# More API details
+# More details on the API
 
 ## Model variations
 
-In order to facilitate the rules-definition step, `ghx_proc_gen` can create some models variations for you automatically. This will take care of rotating all the model `sockets` properly.
+To facilitate the rules-definition step, some models variations can be created for you automatically. This will take care of rotating all the model `sockets` properly.
 
-We will take this rope-bridge model as an example: 
+Let's take this rope-bridge model as an example: 
 <p align="center"><img alt="bridge" src="docs/assets/bridge.png"></p>
 
 ```rust
@@ -130,7 +131,7 @@ You can also manually create rotated variations of a model: `bridge_model.rotate
 
 *For Bevy, see the [Unofficial bevy Cheatbook](https://bevy-cheatbook.github.io/fundamentals/coords.html).*
 
-## Connections
+## Socket connections
 
 As seen in the quickstart, socket connections are declared with a `SocketCollection` [*[documentation](https://docs.rs/ghx_proc_gen/latest/ghx_proc_gen/generator/socket/struct.SocketCollection.html)*].
 
@@ -138,12 +139,12 @@ Note that sockets connections situated **on** your rotation axis should be handl
 
 <p align="center"><img alt="socket_compatibility" src="docs/assets/socket_compatibility.png"></p>
 
-Rotating Model 2 in the above figure causes its top socket (here `B`) to be different. For this example, we could use:
+Rotating model **2** in the above figure causes its top socket (here `B`) to be different. For this example, we could use:
 ```rust
   // a socket `B` can only be connected to another `B` if their **relative** rotation is 0°
   sockets.add_constrained_rotated_connection(B, vec![ModelRotation::Rot0], vec![B]);
 ```
-Let's imagine that Model 1 and 2 had different sockets declarations on their top and bottom respectively, and that these sockets were only compatible when their relative rotation was 0° or 180°:
+Let's imagine that models **1** and **2** had different sockets declarations on their top and bottom respectively, and that these sockets were only compatible when their relative rotation was 0° or 180°:
 ```rust
   // a socket `model_2_top` can only be connected to another `model_1_bottom`
   // if their **relative** rotation is 0° or 180°
@@ -291,7 +292,9 @@ https://github.com/Henauxg/ghx_proc_gen/assets/19689618/25cbc758-3f1f-4e61-b6ed-
  - There are often more than one way to achieve a particular result, and WFC/Model Synthesis shines when combined with other tools & effects. In particular you might find it useful to do some post-processing on the generated results (adding supports, combining models, ...).
   
 #### Limitations:
-- Generation size can quickly become an issue. For now, when the generator encounters an error (a contradiction between the rules and the state of a node), the generation restarts from the beginning. There are some ways to lessen this problem, such as backtracking during the generation and/or modifying in parts (see [Model Synthesis and Modifying in Blocks](https://www.boristhebrave.com/2021/10/26/model-synthesis-and-modifying-in-blocks/) by BorisTheBrave or [Ph.D. Dissertation, University of North Carolina at Chapel Hill, 2009](https://paulmerrell.org/wp-content/uploads/2021/06/thesis.pdf) by P.Merell).
+- Generation size can quickly become an issue. For now, when the generator encounters an error (a contradiction between the rules and the state of a node), the generation restarts from the beginning. 
+  
+  There are some ways to lessen this problem, such as backtracking during the generation and/or modifying in parts. See [Model Synthesis and Modifying in Blocks](https://www.boristhebrave.com/2021/10/26/model-synthesis-and-modifying-in-blocks/) by BorisTheBrave or [Ph.D. Dissertation, University of North Carolina at Chapel Hill, 2009](https://paulmerrell.org/wp-content/uploads/2021/06/thesis.pdf) by P.Merell.
 
 #### Why "ghx" ?
 - It serves as a namespace to avoid picking cargo names such as `proc_gen` or `bevy_proc_gen`
