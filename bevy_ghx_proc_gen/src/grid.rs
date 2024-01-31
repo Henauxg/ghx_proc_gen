@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use bevy::{
     app::{App, Plugin, PostUpdate, Update},
-    ecs::bundle::Bundle,
+    ecs::{bundle::Bundle, system::Query},
     math::{Vec2, Vec3},
     pbr::MaterialPlugin,
 };
@@ -106,5 +106,23 @@ pub fn get_translation_from_grid_pos_2d(grid_pos: &GridPosition, node_size: &Vec
     Vec2 {
         x: (grid_pos.x as f32 + 0.5) * node_size.x,
         y: (grid_pos.y as f32 + 0.5) * node_size.y,
+    }
+}
+
+/// Toggles the debug grids visibility
+///
+/// ### Example
+///
+/// Toggles On/Off debug grids by pressing F1
+///
+/// ```rust,ignore
+///  app.add_systems(
+///    Update,
+///    toggle_debug_grids_visibilities.run_if(input_just_pressed(KeyCode::F1)),
+///  );
+/// ```
+pub fn toggle_debug_grids_visibilities(mut grid_views: Query<&mut DebugGridView>) {
+    for mut view in grid_views.iter_mut() {
+        view.display_grid = !view.display_grid;
     }
 }
