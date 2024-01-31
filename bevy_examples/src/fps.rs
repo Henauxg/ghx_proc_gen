@@ -35,25 +35,6 @@ pub struct FpsRoot;
 #[derive(Component)]
 pub struct FpsText;
 
-/// Toggles the FPS counter
-///
-/// ### Example
-///
-/// Toggles On/Off the fps counter UI by pressing F1
-/// ```rust,ignore
-///  app.add_systems(
-///    Update,
-///    toggle_fps_counter.run_if(input_just_pressed(KeyCode::F1)),
-///  );
-/// ```
-pub fn toggle_fps_counter(mut fps_ui: Query<&mut Visibility, With<FpsRoot>>) {
-    let mut vis = fps_ui.single_mut();
-    *vis = match *vis {
-        Visibility::Hidden => Visibility::Visible,
-        _ => Visibility::Hidden,
-    };
-}
-
 pub fn setup_fps_counter(mut commands: Commands) {
     // create our UI root node
     // this is the wrapper/container for the text

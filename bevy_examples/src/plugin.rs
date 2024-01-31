@@ -4,14 +4,16 @@ use bevy::{
     app::{App, Plugin, Startup, Update},
     diagnostic::FrameTimeDiagnosticsPlugin,
     ecs::{
+        component::Component,
         schedule::IntoSystemConfigs,
         system::{Commands, Res, ResMut},
     },
     gizmos::GizmoConfig,
+    hierarchy::BuildChildren,
     input::{common_conditions::input_just_pressed, keyboard::KeyCode},
     math::Vec3,
     text::TextStyle,
-    ui::node_bundles::TextBundle,
+    ui::node_bundles::{NodeBundle, TextBundle},
 };
 use bevy_ghx_proc_gen::{
     bevy_mod_picking::DefaultPickingPlugins,
@@ -27,7 +29,8 @@ use bevy_ghx_proc_gen::{
 use crate::{
     anim::{animate_scale, ease_in_cubic, SpawningScaleAnimation},
     camera::toggle_auto_orbit,
-    fps::{toggle_fps_counter, FpsDisplayPlugin},
+    fps::{FpsDisplayPlugin, FpsRoot},
+    utils::toggle_visibility,
 };
 
 pub struct ProcGenExamplesPlugin<
@@ -74,9 +77,10 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
             (
                 insert_bundle_from_resource_to_spawned_nodes::<SpawningScaleAnimation>,
                 animate_scale,
-                toggle_debug_grids_visibilities.run_if(input_just_pressed(KeyCode::F1)),
-                toggle_fps_counter.run_if(input_just_pressed(KeyCode::F2)),
-                toggle_auto_orbit.run_if(input_just_pressed(KeyCode::F3)),
+                toggle_visibility::<KeybindingsUiRoot>.run_if(input_just_pressed(KeyCode::F1)),
+                toggle_visibility::<FpsRoot>.run_if(input_just_pressed(KeyCode::F2)),
+                toggle_debug_grids_visibilities.run_if(input_just_pressed(KeyCode::F3)),
+                toggle_auto_orbit.run_if(input_just_pressed(KeyCode::F4)),
             ),
         );
     }
@@ -86,8 +90,15 @@ pub fn setup_gizmos_config(mut config: ResMut<GizmoConfig>) {
     config.depth_bias = -1.0;
 }
 
+/// Marker to find the container entity so we can show/hide the UI node
+#[derive(Component)]
+pub struct KeybindingsUiRoot;
+
 pub fn setup_ui(mut commands: Commands, view_mode: Res<GenerationViewMode>) {
-    let mut controls_text = "`F1` grid | `F2` fps display | `F3` camera rotation\n\
+    let root = commands
+        .spawn((KeybindingsUiRoot, NodeBundle::default()))
+        .id();
+    let mut controls_text = "`F1` ui | `F2` fps | `F3` grid | `F4` camera rotation\n\
     `Space` new generation"
         .to_string();
     if *view_mode == GenerationViewMode::StepByStepPaused {
@@ -96,11 +107,14 @@ pub fn setup_ui(mut commands: Commands, view_mode: Res<GenerationViewMode>) {
         'Up' or 'Right' advance the generation",
         );
     }
-    commands.spawn(TextBundle::from_section(
-        controls_text,
-        TextStyle {
-            font_size: 14.,
-            ..Default::default()
-        },
-    ));
+    let text_ui = commands
+        .spawn(TextBundle::from_section(
+            controls_text,
+            TextStyle {
+                font_size: 14.,
+                ..Default::default()
+            },
+        ))
+        .id();
+    commands.entity(root).add_child(text_ui);
 }
