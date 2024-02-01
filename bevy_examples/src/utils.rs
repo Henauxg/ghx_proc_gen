@@ -99,9 +99,10 @@ where
 ///  );
 /// ```
 pub fn toggle_visibility<T: Component>(mut vis: Query<&mut Visibility, With<T>>) {
-    let mut vis = vis.single_mut();
-    *vis = match *vis {
-        Visibility::Hidden => Visibility::Visible,
-        _ => Visibility::Hidden,
-    };
+    if let Ok(mut vis) = vis.get_single_mut() {
+        *vis = match *vis {
+            Visibility::Hidden => Visibility::Visible,
+            _ => Visibility::Hidden,
+        };
+    }
 }
