@@ -16,7 +16,6 @@ use bevy::{
     ui::node_bundles::{NodeBundle, TextBundle},
 };
 use bevy_ghx_proc_gen::{
-    bevy_mod_picking::DefaultPickingPlugins,
     gen::{
         assets::{AssetsBundleSpawner, ComponentSpawner, NoComponents},
         debug_plugin::{GenerationViewMode, ProcGenDebugPlugin},
@@ -25,6 +24,7 @@ use bevy_ghx_proc_gen::{
     grid::{toggle_debug_grids_visibilities, toggle_grid_markers_visibilities, GridDebugPlugin},
     proc_gen::grid::direction::CoordinateSystem,
 };
+use bevy_mod_picking::DefaultPickingPlugins;
 
 use crate::{
     anim::{animate_scale, ease_in_cubic, SpawningScaleAnimation},
@@ -99,20 +99,17 @@ pub fn setup_ui(mut commands: Commands, view_mode: Res<GenerationViewMode>) {
     let root = commands
         .spawn((KeybindingsUiRoot, NodeBundle::default()))
         .id();
-    let mut controls_text = " `F1` ui | `F2` fps | `F3` grid | `F4` cursors | `F5` camera rotation\n `Space` unpause\n `Left click` or `x,y,z` + `Left,Right` move selection"
+    let mut controls_text = " `F1` ui | `F2` fps | `F3` grid | `F4` cursors | `F5` camera rotation\n `Space` unpause\n `Click` or `x/y/z`+`Left/Right` move selection"
         .to_string();
 
     if *view_mode == GenerationViewMode::StepByStepPaused {
-        controls_text.push_str(
-            "\n\
-        'Up' or 'Right' advance the generation",
-        );
+        controls_text.push_str("\n 'Up' or 'Right' step the generation");
     }
     let text_ui = commands
         .spawn(TextBundle::from_section(
             controls_text,
             TextStyle {
-                font_size: 14.,
+                font_size: 16.,
                 ..Default::default()
             },
         ))
