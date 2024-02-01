@@ -1,12 +1,13 @@
 use std::{
     collections::HashSet,
+    fmt,
     marker::PhantomData,
     ops::{Deref, DerefMut},
     time::Duration,
 };
 
 use bevy::{
-    app::{App, Plugin, PreUpdate, Update},
+    app::{App, Plugin, PreUpdate, Startup, Update},
     ecs::{
         component::Component,
         entity::Entity,
@@ -21,7 +22,13 @@ use bevy::{
     prelude::{Deref, DerefMut},
     reflect::Reflect,
     render::color::Color,
+    text::{Text, TextSection, TextStyle},
     time::{Time, Timer, TimerMode},
+    ui::{
+        node_bundles::{NodeBundle, TextBundle},
+        BackgroundColor, PositionType, Style, UiRect, Val,
+    },
+    utils::default,
 };
 use ghx_proc_gen::{
     generator::{
@@ -95,6 +102,7 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
             TimerMode::Once,
         )));
 
+        app.add_systems(Startup, setup_selection_cursor_info_ui);
         app.add_systems(
             Update,
             (
@@ -123,7 +131,7 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
                 #[cfg(feature = "picking")]
                 update_grid_cursor_info::<C, GridOverCursor, GridOverCursorInfo>,
                 update_grid_cursor_info::<C, GridSelectionCursor, GridSelectionCursorInfo>,
-                display_selection_grid_cursor_info_ui,
+                display_selection_cursor_info_ui,
             )
                 .chain(),
         );
@@ -273,6 +281,50 @@ impl Default for ProcGenKeyBindings {
 /// Component used to store model indexes of models with no assets, just to be able to skip their generation when stepping
 #[derive(Component, bevy::prelude::Deref)]
 pub struct VoidNodes(pub HashSet<ModelIndex>);
+
+#[derive(Component)]
+pub struct SelectionCursorUiRoot;
+
+#[derive(Component)]
+pub struct SelectionCursorText;
+
+pub fn setup_selection_cursor_info_ui(mut commands: Commands) {
+    let root = commands
+        .spawn((
+            SelectionCursorUiRoot,
+            NodeBundle {
+                background_color: BackgroundColor(Color::BLACK.with_a(0.5)),
+                style: Style {
+                    position_type: PositionType::Absolute,
+                    right: Val::Percent(1.),
+                    bottom: Val::Percent(1.),
+                    top: Val::Auto,
+                    left: Val::Auto,
+                    padding: UiRect::all(Val::Px(4.0)),
+                    ..default()
+                },
+                ..default()
+            },
+        ))
+        .id();
+    let text = commands
+        .spawn((
+            SelectionCursorText,
+            TextBundle {
+                text: Text::from_sections([TextSection {
+                    value: " N/A".into(),
+                    style: TextStyle {
+                        font_size: 16.0,
+                        color: Color::WHITE,
+                        ..default()
+                    },
+                }]),
+                ..Default::default()
+            },
+        ))
+        .id();
+    commands.entity(root).add_child(text);
+}
 
 #[cfg(feature = "picking")]
 pub fn insert_over_cursor_to_new_generations<C: CoordinateSystem>(
@@ -538,7 +590,11 @@ pub struct GridCursor {
     pub node_index: NodeIndex,
     pub position: GridPosition,
     pub marker: Option<Entity>,
-    // active: bool,
+}
+impl fmt::Display for GridCursor {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}, index: {}", self.position, self.node_index)
+    }
 }
 
 #[derive(Component, Debug, bevy::prelude::Deref, bevy::prelude::DerefMut)]
@@ -629,15 +685,45 @@ pub fn update_grid_cursor_info<
     }
 }
 
-pub fn display_selection_grid_cursor_info_ui(
+pub fn display_selection_cursor_info_ui(
+    mut selection_cursor_text: Query<&mut Text, With<SelectionCursorText>>,
     mut moved_selection_cursors: Query<
-        (&GridSelectionCursorInfo, &GridSelectionCursor),
+        (
+            &GridSelectionCursorInfo,
+            &GridSelectionCursor,
+            &ActiveGridCursor,
+        ),
         Changed<GridSelectionCursorInfo>,
     >,
 ) {
-    for (mut cursor_info, cursor) in moved_selection_cursors.iter_mut() {
-        // info!("New grid cursor info: {:?}", cursor_info);
-        // TODO
+    if let Ok((cursor_info, cursor, _active)) = moved_selection_cursors.get_single() {
+        for mut text in &mut selection_cursor_text {
+            if cursor_info.models.len() > 1 {
+                text.sections[0].value = format!(
+                    "Grid: {{{}}}\n\
+                    {} possible models:\n\
+                    {{{}}}\n\
+                    {{{}}}\n\
+                    ...",
+                    cursor.0,
+                    cursor_info.models.len(),
+                    cursor_info.models[0],
+                    cursor_info.models[1],
+                );
+            } else if cursor_info.models.len() == 1 {
+                text.sections[0].value = format!(
+                    "Grid: {{{}}}\n\
+                    Model: {{{}}}",
+                    cursor.0, cursor_info.models[0],
+                );
+            } else {
+                text.sections[0].value = format!(
+                    "Grid: {{{}}}\n\
+                    No models",
+                    cursor.0,
+                );
+            }
+        }
     }
 }
 
