@@ -54,14 +54,19 @@ pub struct ProcGenDebugPlugin<
     T: ComponentSpawner = NoComponents,
 > {
     generation_view_mode: GenerationViewMode,
+    enable_default_selection_ui: bool,
     typestate: PhantomData<(C, A, T)>,
 }
 
 impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> ProcGenDebugPlugin<C, A, T> {
     /// Plugin constructor
-    pub fn new(generation_view_mode: GenerationViewMode) -> Self {
+    pub fn new(
+        generation_view_mode: GenerationViewMode,
+        enable_default_selection_ui: bool,
+    ) -> Self {
         Self {
             generation_view_mode,
+            enable_default_selection_ui,
             typestate: PhantomData,
         }
     }
@@ -86,7 +91,6 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
         app.add_event::<NodeOverEvent>()
             .add_event::<NodeSelectedEvent>();
 
-        app.add_systems(Startup, setup_selection_cursor_info_ui);
         app.add_systems(
             Update,
             (
@@ -123,7 +127,10 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
             Update,
             update_grid_cursor_info_on_changes::<C, GridSelectionCursor, GridSelectionCursorInfo>,
         );
-        app.add_systems(PostUpdate, update_selection_cursor_info_ui);
+        if self.enable_default_selection_ui {
+            app.add_systems(Startup, setup_selection_cursor_info_ui)
+                .add_systems(PostUpdate, update_selection_cursor_info_ui);
+        }
 
         match self.generation_view_mode {
             GenerationViewMode::StepByStepTimed {

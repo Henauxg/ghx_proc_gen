@@ -64,7 +64,7 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
             FpsDisplayPlugin,
             GridDebugPlugin::<C>::new(),
             DefaultPickingPlugins,
-            ProcGenDebugPlugin::<C, A, T>::new(self.generation_view_mode),
+            ProcGenDebugPlugin::<C, A, T>::new(self.generation_view_mode, true),
         ));
         app.insert_resource(SpawningScaleAnimation::new(
             0.8,
