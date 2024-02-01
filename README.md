@@ -186,7 +186,7 @@ Grids can be configured to loop on any axis, this is set on their `GridDefinitio
 
 # For Bevy users
 
-See the [`bevy_ghx_proc_gen`](bevy_ghx_proc_gen/README.md) which crate uses and exposes `ghx_proc_gen`, as well as additional plugins and utilities dedicated to Bevy.
+See the [`bevy_ghx_proc_gen`](bevy_ghx_proc_gen/README.md) crate which uses and exposes `ghx_proc_gen`, as well as additional plugins and utilities dedicated to Bevy.
 ```
 cargo add bevy_ghx_proc_gen
 ```
@@ -210,8 +210,6 @@ cargo add bevy_ghx_proc_gen
 
 <details>
   <summary>[Command-line] Chessboard example</summary>
-  
-## Chessboard example
 
 ```
 cargo run --example chessboard
@@ -222,8 +220,6 @@ Simple standalone example, the same as in the [quickstart](#quickstart) section.
 
 <details>
   <summary>[Command-line] Unicode terrain example</summary>
-
-## Unicode terrain example
 
 ```
 cargo run --example unicode-terrain
