@@ -7,20 +7,19 @@ use std::{
 };
 
 use bevy::{
-    app::{App, Plugin, PreUpdate, Startup, Update},
+    app::{App, Plugin, PostUpdate, PreUpdate, Startup, Update},
     ecs::{
         component::Component,
         entity::Entity,
         event::EventWriter,
-        query::{Added, Changed, With, Without},
+        query::{Changed, With, Without},
         schedule::IntoSystemConfigs,
         system::{Commands, Query, Res, ResMut, Resource},
     },
-    hierarchy::{BuildChildren, DespawnRecursiveExt, Parent},
+    hierarchy::{BuildChildren, DespawnRecursiveExt},
     input::{keyboard::KeyCode, Input},
     log::{info, warn},
     prelude::{Deref, DerefMut},
-    reflect::Reflect,
     render::color::Color,
     text::{Text, TextSection, TextStyle},
     time::{Time, Timer, TimerMode},
@@ -45,11 +44,21 @@ use ghx_proc_gen::{
 };
 
 #[cfg(feature = "picking")]
+use bevy::{
+    ecs::{
+        event::{Event, EventReader},
+        query::Added,
+    },
+    hierarchy::Parent,
+};
+#[cfg(feature = "picking")]
 use bevy_mod_picking::{
-    events::{Click, Over, Pointer},
-    prelude::{Listener, On},
+    prelude::{Down, ListenerInput, On, Over, Pointer},
     PickableBundle,
 };
+
+#[cfg(feature = "picking")]
+use super::insert_default_bundle_to_spawned_nodes;
 
 use crate::grid::markers::{spawn_marker, GridMarker, MarkerDespawnEvent};
 
@@ -57,9 +66,6 @@ use super::{
     assets::NoComponents, spawn_node, AssetSpawner, AssetsBundleSpawner, ComponentSpawner,
     SpawnedNode,
 };
-
-#[cfg(feature = "picking")]
-use super::insert_default_bundle_to_spawned_nodes;
 
 const CURSOR_KEYS_MOVEMENT_COOLDOWN_MS: u64 = 55;
 
@@ -102,6 +108,10 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
             TimerMode::Once,
         )));
 
+        #[cfg(feature = "picking")]
+        app.add_event::<NodeOverEvent>()
+            .add_event::<NodeSelectedEvent>();
+
         app.add_systems(Startup, setup_selection_cursor_info_ui);
         app.add_systems(
             Update,
@@ -125,16 +135,21 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
             PreUpdate,
             keybinds_update_grid_selection_cursor_position::<C>,
         );
+        #[cfg(feature = "picking")]
         app.add_systems(
             Update,
             (
-                #[cfg(feature = "picking")]
-                update_grid_cursor_info::<C, GridOverCursor, GridOverCursorInfo>,
-                update_grid_cursor_info::<C, GridSelectionCursor, GridSelectionCursorInfo>,
-                display_selection_cursor_info_ui,
+                picking_update_grid_cursor_position::<C, GridOverCursor, NodeOverEvent>,
+                picking_update_grid_cursor_position::<C, GridSelectionCursor, NodeSelectedEvent>,
+                update_grid_cursor_info_on_changes::<C, GridOverCursor, GridOverCursorInfo>,
             )
                 .chain(),
         );
+        app.add_systems(
+            Update,
+            update_grid_cursor_info_on_changes::<C, GridSelectionCursor, GridSelectionCursorInfo>,
+        );
+        app.add_systems(PostUpdate, update_selection_cursor_info_ui);
 
         match self.generation_view_mode {
             GenerationViewMode::StepByStepTimed {
@@ -597,6 +612,7 @@ impl fmt::Display for GridCursor {
     }
 }
 
+#[cfg(feature = "picking")]
 #[derive(Component, Debug, bevy::prelude::Deref, bevy::prelude::DerefMut)]
 pub struct GridOverCursor(pub GridCursor);
 
@@ -613,6 +629,7 @@ impl GridCursorInfo {
     }
 }
 
+#[cfg(feature = "picking")]
 #[derive(Component, Debug, bevy::prelude::Deref, bevy::prelude::DerefMut)]
 pub struct GridOverCursorInfo(pub GridCursorInfo);
 
@@ -620,18 +637,38 @@ pub struct GridOverCursorInfo(pub GridCursorInfo);
 pub struct GridSelectionCursorInfo(pub GridCursorInfo);
 
 #[cfg(feature = "picking")]
+#[derive(Event, Deref, DerefMut)]
+pub struct NodeOverEvent(pub Entity);
+
+#[cfg(feature = "picking")]
+impl From<ListenerInput<Pointer<Over>>> for NodeOverEvent {
+    fn from(event: ListenerInput<Pointer<Over>>) -> Self {
+        NodeOverEvent(event.listener())
+    }
+}
+
+#[cfg(feature = "picking")]
+#[derive(Event, Deref, DerefMut)]
+pub struct NodeSelectedEvent(pub Entity);
+
+#[cfg(feature = "picking")]
 pub fn insert_grid_cursor_picking_handlers_to_spawned_nodes<C: CoordinateSystem>(
     mut commands: Commands,
     spawned_nodes: Query<Entity, Added<SpawnedNode>>,
 ) {
-    use bevy_mod_picking::events::Down;
+    use bevy_mod_picking::{pointer::PointerButton, prelude::ListenerMut};
 
     for node in spawned_nodes.iter() {
-        commands.entity(node).try_insert(On::<Pointer<Over>>::run(
-            picking_update_grid_cursor_position::<C, GridOverCursor, Over>,
-        ));
+        commands
+            .entity(node)
+            .try_insert(On::<Pointer<Over>>::send_event::<NodeOverEvent>());
         commands.entity(node).try_insert(On::<Pointer<Down>>::run(
-            picking_update_grid_cursor_position::<C, GridSelectionCursor, Down>,
+            move |event: ListenerMut<Pointer<Down>>,
+                  mut selection_events: EventWriter<NodeSelectedEvent>| {
+                if event.button == PointerButton::Primary {
+                    selection_events.send(NodeSelectedEvent(event.listener()));
+                }
+            },
         ));
     }
 }
@@ -640,20 +677,19 @@ pub fn insert_grid_cursor_picking_handlers_to_spawned_nodes<C: CoordinateSystem>
 pub fn picking_update_grid_cursor_position<
     C: CoordinateSystem,
     W: Component + DerefMut<Target = GridCursor>,
-    E: core::fmt::Debug + Clone + Reflect,
+    E: Event + DerefMut<Target = Entity>,
 >(
-    event: Listener<Pointer<E>>,
+    mut events: EventReader<E>,
     mut commands: Commands,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
-    mut nodes: Query<(&Parent, &SpawnedNode)>,
-    mut over_cursor: Query<&mut W>,
-    grids: Query<&GridDefinition<C>>,
+    mut nodes: Query<(&SpawnedNode, &Parent)>,
+    mut parent: Query<(&mut W, &GridDefinition<C>)>,
 ) {
-    if let Ok((node_parent, node)) = nodes.get_mut(event.listener()) {
-        let grid_entity = node_parent.get();
-        if let Ok(mut cursor) = over_cursor.get_mut(grid_entity) {
-            if cursor.node_index != node.0 {
-                if let Ok(grid) = grids.get(grid_entity) {
+    for event in events.read().last() {
+        if let Ok((node, node_parent)) = nodes.get_mut(**event) {
+            let parent_entity = node_parent.get();
+            if let Ok((mut cursor, grid)) = parent.get_mut(parent_entity) {
+                if cursor.node_index != node.0 {
                     cursor.node_index = node.0;
                     cursor.position = grid.pos_from_index(node.0);
 
@@ -665,7 +701,7 @@ pub fn picking_update_grid_cursor_position<
                     let marker_entity = commands
                         .spawn(GridMarker::new(cursor.color, cursor.position.clone()))
                         .id();
-                    commands.entity(grid_entity).add_child(marker_entity);
+                    commands.entity(parent_entity).add_child(marker_entity);
                     cursor.marker = Some(marker_entity);
                 }
             }
@@ -673,7 +709,7 @@ pub fn picking_update_grid_cursor_position<
     }
 }
 
-pub fn update_grid_cursor_info<
+pub fn update_grid_cursor_info_on_changes<
     C: CoordinateSystem,
     GC: Component + Deref<Target = GridCursor>,
     GCI: Component + DerefMut<Target = GridCursorInfo>,
@@ -685,7 +721,7 @@ pub fn update_grid_cursor_info<
     }
 }
 
-pub fn display_selection_cursor_info_ui(
+pub fn update_selection_cursor_info_ui(
     mut selection_cursor_text: Query<&mut Text, With<SelectionCursorText>>,
     mut moved_selection_cursors: Query<
         (
