@@ -1,5 +1,6 @@
 use std::{
     collections::{BTreeSet, HashMap, HashSet},
+    fmt,
     marker::PhantomData,
 };
 
@@ -166,6 +167,14 @@ pub struct ModelInfo {
     /// Name given to the original [`Model`]
     #[cfg(feature = "models-names")]
     pub name: Cow<'static, str>,
+}
+
+impl fmt::Display for ModelInfo {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}, w: {}", self.model, self.weight)?;
+        #[cfg(feature = "models-names")]
+        write!(f, ", {}", self.name)
+    }
 }
 
 /// Defines the rules of a generation: the coordinate system, the models, the way they can be rotated, the sockets and their connections.

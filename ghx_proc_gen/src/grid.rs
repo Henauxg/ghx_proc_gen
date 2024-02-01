@@ -44,6 +44,11 @@ impl GridPosition {
         Self { x, y, z: 0 }
     }
 }
+impl fmt::Display for GridPosition {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "x: {}, y: {}, z: {}", self.x, self.y, self.z)
+    }
+}
 
 /// Definition of a grid
 #[derive(Clone)]

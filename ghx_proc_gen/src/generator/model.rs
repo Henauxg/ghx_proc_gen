@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::HashSet, marker::PhantomData};
+use std::{borrow::Cow, collections::HashSet, fmt, marker::PhantomData};
 
 #[cfg(feature = "debug-traces")]
 use {core::fmt, tracing::warn};
@@ -393,6 +393,12 @@ pub struct ModelInstance {
     pub rotation: ModelRotation,
 }
 
+impl fmt::Display for ModelInstance {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "id: {}, rot: {}", self.model_index, self.rotation)
+    }
+}
+
 /// Represents a rotation around an Axis, in the trigonometric(counterclockwise) direction
 #[derive(Default, Clone, Copy, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "bevy", derive(Component))]
@@ -407,6 +413,12 @@ pub enum ModelRotation {
     Rot180,
     /// Rotation of 270°
     Rot270,
+}
+
+impl fmt::Display for ModelRotation {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.value())
+    }
 }
 
 impl ModelRotation {
