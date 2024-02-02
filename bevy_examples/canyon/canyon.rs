@@ -13,10 +13,7 @@ use bevy_ghx_proc_gen::{
         assets::AssetSpawner,
         debug_plugin::{GenerationControl, GenerationViewMode},
     },
-    grid::{
-        view::{DebugGridView, DebugGridViewConfig3d},
-        DebugGridView3dBundle,
-    },
+    grid::{view::DebugGridView, DebugGridView3dBundle},
     proc_gen::{
         generator::{
             builder::GeneratorBuilder, node_heuristic::NodeSelectionHeuristic, rules::RulesBuilder,
@@ -159,10 +156,8 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         },
         observer,
         DebugGridView3dBundle {
-            config: DebugGridViewConfig3d {
-                node_size: NODE_SIZE,
-            },
-            view: DebugGridView::new(false, true, Color::GRAY),
+            view: DebugGridView::new(false, true, Color::GRAY, NODE_SIZE),
+            ..default()
         },
     ));
 
