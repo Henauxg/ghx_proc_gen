@@ -171,7 +171,12 @@ pub fn update_generation_view<C: CoordinateSystem, A: AssetsBundleSpawner, T: Co
                     nodes_to_spawn.clear();
                 }
                 GenerationUpdate::Failed(node_index) => {
-                    spawn_marker(&mut commands, grid, gen_entity, Color::RED, node_index);
+                    spawn_marker(
+                        &mut commands,
+                        gen_entity,
+                        Color::RED,
+                        grid.pos_from_index(node_index),
+                    );
                 }
             }
         }

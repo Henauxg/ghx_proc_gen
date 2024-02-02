@@ -1,5 +1,5 @@
 use bevy::{
-    ecs::{component::Component, system::Query},
+    ecs::{component::Component, query::With, system::Query},
     gizmos::gizmos::Gizmos,
     math::{Vec2, Vec3},
     render::color::Color,
@@ -9,33 +9,13 @@ use ghx_proc_gen::grid::GridDefinition;
 
 use super::CoordinateSystem;
 
-/// 3d-specific ([`bevy::prelude::Camera3d`]) configuration of a grid debug view
-#[derive(Component)]
-pub struct DebugGridViewConfig3d {
-    /// Size of a grid node in world units on all 3 axis. Defaults to [`Vec3::ONE`]
-    pub node_size: Vec3,
-}
-impl Default for DebugGridViewConfig3d {
-    fn default() -> Self {
-        Self {
-            node_size: Vec3::ONE,
-        }
-    }
-}
+/// 3d-specific ([`bevy::prelude::Camera3d`]) component-marker of a grid debug view
+#[derive(Component, Default)]
+pub struct DebugGridView3d;
 
-/// 2d-specific ([`bevy::prelude::Camera2d`]) configuration of a grid debug view
-#[derive(Component)]
-pub struct DebugGridViewConfig2d {
-    /// Size of a grid node in world units on the x and y axis. Defaults to 32.0 on both axis
-    pub node_size: Vec2,
-}
-impl Default for DebugGridViewConfig2d {
-    fn default() -> Self {
-        Self {
-            node_size: Vec2::splat(32.),
-        }
-    }
-}
+/// 2d-specific ([`bevy::prelude::Camera2d`]) component-marker of a grid debug view
+#[derive(Component, Default)]
+pub struct DebugGridView2d;
 
 /// Component used on all debug grid to store configuration.
 ///
@@ -48,6 +28,8 @@ pub struct DebugGridView {
     pub display_markers: bool,
     /// Color of the displayed grid.
     pub color: Color,
+    /// Size of a grid node in world units on all 3 axis. Defaults to [`Vec3::ONE`]
+    pub node_size: Vec3,
 }
 impl Default for DebugGridView {
     fn default() -> Self {
@@ -55,16 +37,18 @@ impl Default for DebugGridView {
             display_grid: true,
             display_markers: true,
             color: Default::default(),
+            node_size: Vec3::ONE,
         }
     }
 }
 impl DebugGridView {
     /// Creates a new [`DebugGridView`]
-    pub fn new(display_grid: bool, display_markers: bool, color: Color) -> Self {
+    pub fn new(display_grid: bool, display_markers: bool, color: Color, node_size: Vec3) -> Self {
         Self {
             display_grid,
             display_markers,
             color,
+            node_size,
         }
     }
 }
@@ -74,26 +58,21 @@ impl DebugGridView {
 /// To be used with a [`bevy::prelude::Camera3d`]
 pub fn draw_debug_grids_3d<T: CoordinateSystem>(
     mut gizmos: Gizmos,
-    debug_grids: Query<(
-        &Transform,
-        &GridDefinition<T>,
-        &DebugGridView,
-        &DebugGridViewConfig3d,
-    )>,
+    debug_grids: Query<(&Transform, &GridDefinition<T>, &DebugGridView), With<DebugGridView3d>>,
 ) {
-    for (transform, grid, view, view_config) in debug_grids.iter() {
+    for (transform, grid, view) in debug_grids.iter() {
         if !view.display_grid {
             continue;
         }
         let start = &transform.translation;
         let end = Vec3 {
-            x: start.x + (grid.size_x() as f32) * view_config.node_size.x,
-            y: start.y + (grid.size_y() as f32) * view_config.node_size.y,
-            z: start.z + (grid.size_z() as f32) * view_config.node_size.z,
+            x: start.x + (grid.size_x() as f32) * view.node_size.x,
+            y: start.y + (grid.size_y() as f32) * view.node_size.y,
+            z: start.z + (grid.size_z() as f32) * view.node_size.z,
         };
         for x in 0..=grid.size_x() {
             let mut points = Vec::with_capacity(4);
-            let current_x = start.x + x as f32 * view_config.node_size.x;
+            let current_x = start.x + x as f32 * view.node_size.x;
             points.push(Vec3::new(current_x, start.y, start.z));
             points.push(Vec3::new(current_x, end.y, start.z));
             points.push(Vec3::new(current_x, end.y, end.z));
@@ -103,7 +82,7 @@ pub fn draw_debug_grids_3d<T: CoordinateSystem>(
         }
         for y in 0..=grid.size_y() {
             let mut points = Vec::with_capacity(4);
-            let current_y = start.y + y as f32 * view_config.node_size.y;
+            let current_y = start.y + y as f32 * view.node_size.y;
             points.push(Vec3::new(start.x, current_y, start.z));
             points.push(Vec3::new(end.x, current_y, start.z));
             points.push(Vec3::new(end.x, current_y, end.z));
@@ -113,7 +92,7 @@ pub fn draw_debug_grids_3d<T: CoordinateSystem>(
         }
         for z in 0..=grid.size_z() {
             let mut points = Vec::with_capacity(4);
-            let current_z = start.z + z as f32 * view_config.node_size.z;
+            let current_z = start.z + z as f32 * view.node_size.z;
             points.push(Vec3::new(start.x, start.y, current_z));
             points.push(Vec3::new(end.x, start.y, current_z));
             points.push(Vec3::new(end.x, end.y, current_z));
@@ -129,30 +108,25 @@ pub fn draw_debug_grids_3d<T: CoordinateSystem>(
 /// To be used with a [`bevy::prelude::Camera2d`]
 pub fn draw_debug_grids_2d<T: CoordinateSystem>(
     mut gizmos: Gizmos,
-    debug_grids: Query<(
-        &Transform,
-        &GridDefinition<T>,
-        &DebugGridView,
-        &DebugGridViewConfig2d,
-    )>,
+    debug_grids: Query<(&Transform, &GridDefinition<T>, &DebugGridView), With<DebugGridView2d>>,
 ) {
-    for (transform, grid, view, view_config) in debug_grids.iter() {
+    for (transform, grid, view) in debug_grids.iter() {
         if !view.display_grid {
             continue;
         }
         let start = &transform.translation;
         let end = Vec2 {
-            x: start.x + (grid.size_x() as f32) * view_config.node_size.x,
-            y: start.y + (grid.size_y() as f32) * view_config.node_size.y,
+            x: start.x + (grid.size_x() as f32) * view.node_size.x,
+            y: start.y + (grid.size_y() as f32) * view.node_size.y,
         };
         for y in 0..=grid.size_y() {
-            let current_y = start.y + y as f32 * view_config.node_size.y;
+            let current_y = start.y + y as f32 * view.node_size.y;
             let from = Vec2::new(start.x, current_y);
             let to = Vec2::new(end.x, current_y);
             gizmos.line_2d(from, to, view.color);
         }
         for x in 0..=grid.size_x() {
-            let current_x = start.x + x as f32 * view_config.node_size.x;
+            let current_x = start.x + x as f32 * view.node_size.x;
             let from = Vec2::new(current_x, start.y);
             let to = Vec2::new(current_x, end.y);
             gizmos.line_2d(from, to, view.color);

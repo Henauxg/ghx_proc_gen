@@ -3,21 +3,21 @@ use bevy::{
         component::Component,
         entity::Entity,
         event::{Event, EventReader},
-        query::With,
+        query::{With, Without},
         system::{Commands, Query},
     },
     gizmos::gizmos::Gizmos,
     hierarchy::{BuildChildren, Parent},
     math::Vec3Swizzles,
+    prelude::SpatialBundle,
     render::color::Color,
-    transform::components::Transform,
+    transform::components::{GlobalTransform, Transform},
 };
-use ghx_proc_gen::grid::{GridDefinition, GridPosition, NodeIndex};
+use ghx_proc_gen::grid::GridPosition;
 
 use super::{
-    get_translation_from_grid_pos_2d, get_translation_from_grid_pos_3d,
-    view::{DebugGridView, DebugGridViewConfig2d, DebugGridViewConfig3d},
-    CoordinateSystem,
+    get_translation_from_grid_pos_3d,
+    view::{DebugGridView, DebugGridView2d, DebugGridView3d},
 };
 
 /// Event used to despawn markers on a [`DebugGridView`]
@@ -52,19 +52,33 @@ impl GridMarker {
     }
 }
 
-/// Helper to spwan a [`Marker`] `Entity` that will be displayed by the [`super::GridDebugPlugin`]
-pub fn spawn_marker<C: CoordinateSystem>(
+/// Helper to spwan a [`GridMarker`] `Entity` that will be displayed by the [`super::GridDebugPlugin`]
+pub fn spawn_marker(
     commands: &mut Commands,
-    grid: &GridDefinition<C>,
     grid_entity: Entity,
     color: Color,
-    node_index: NodeIndex,
+    pos: GridPosition,
 ) -> Entity {
-    let marker_entity = commands
-        .spawn(GridMarker::new(color, grid.pos_from_index(node_index)))
-        .id();
+    let marker_entity = commands.spawn(GridMarker { color, pos }).id();
     commands.entity(grid_entity).add_child(marker_entity);
     marker_entity
+}
+
+pub fn insert_transform_on_new_markers(
+    mut commands: Commands,
+    debug_grid_views: Query<(&DebugGridView)>,
+    mut new_markers: Query<(&Parent, Entity, &GridMarker), (With<GridMarker>, Without<Transform>)>,
+) {
+    for (grid_entity, marker_entity, marker) in &mut new_markers {
+        if let Ok(view) = debug_grid_views.get(grid_entity.get()) {
+            let marker_translation = get_translation_from_grid_pos_3d(&marker.pos, &view.node_size);
+            commands
+                .entity(marker_entity)
+                .insert(SpatialBundle::from_transform(Transform::from_translation(
+                    marker_translation,
+                )));
+        }
+    }
 }
 
 /// This system reads [`MarkerDespawnEvent`] and despawn markers entities accordingly. Tries to check for existence before despawning them.
@@ -104,50 +118,48 @@ pub fn update_debug_markers(
     }
 }
 
-/// This system draws 3d [`Gizmos`] on grids that have any markers on them and a [`DebugGridViewConfig3d`] component.
+/// This system draws 3d [`Gizmos`] on grids that have any markers on them and a [`DebugGridView3d`] component.
 ///
 /// As with any gizmos, should be run once per frame for the rendering to persist.
 pub fn draw_debug_markers_3d(
     mut gizmos: Gizmos,
-    debug_grids: Query<(&Transform, &DebugGridView, &DebugGridViewConfig3d)>,
-    markers: Query<(&Parent, &GridMarker)>,
+    debug_grid_views: Query<&DebugGridView, With<DebugGridView3d>>,
+    markers: Query<(&Parent, &GlobalTransform, &GridMarker)>,
 ) {
-    for (parent_grid, marker) in markers.iter() {
-        if let Ok((transform, view, view_config)) = debug_grids.get(parent_grid.get()) {
+    for (parent_grid, global_transform, marker) in markers.iter() {
+        if let Ok(view) = debug_grid_views.get(parent_grid.get()) {
             if !view.display_markers {
                 continue;
             }
-            let giz_pos = transform.translation
-                + get_translation_from_grid_pos_3d(&marker.pos, &view_config.node_size);
             gizmos.cuboid(
                 // Scale a bit so that it is not on the grid outlines.
-                Transform::from_translation(giz_pos).with_scale(view_config.node_size * 1.05),
+                Transform::from(*global_transform).with_scale(view.node_size * 1.05),
                 marker.color,
             );
         }
     }
 }
 
-/// This system draws 2d [`Gizmos`] on grids that have any markers on them and a [`DebugGridViewConfig2d`] component.
+/// This system draws 2d [`Gizmos`] on grids that have any markers on them and a [`DebugGridView2d`] component.
 ///
 /// As with any gizmos, should be run once per frame for the rendering to persist.
 pub fn draw_debug_markers_2d(
     mut gizmos: Gizmos,
-    debug_grids: Query<(&Transform, &DebugGridView, &DebugGridViewConfig2d)>,
-    markers: Query<(&Parent, &GridMarker)>,
+    debug_grid_views: Query<&DebugGridView, With<DebugGridView2d>>,
+    markers: Query<(&Parent, &GlobalTransform, &GridMarker)>,
 ) {
-    for (parent_grid, marker) in markers.iter() {
-        if let Ok((transform, view, view_config)) = debug_grids.get(parent_grid.get()) {
+    for (parent_grid, global_transform, marker) in markers.iter() {
+        if let Ok(view) = debug_grid_views.get(parent_grid.get()) {
             if !view.display_markers {
                 continue;
             }
-            let giz_pos = transform.translation.xy()
-                + get_translation_from_grid_pos_2d(&marker.pos, &view_config.node_size);
+            let node_size = view.node_size.xy();
+            let (_scale, rot, translation) = global_transform.to_scale_rotation_translation();
             gizmos.rect_2d(
-                giz_pos,
-                0.,
+                translation.xy(),
+                rot.to_axis_angle().1,
                 // Scale a bit so that it is not on the grid outlines.
-                view_config.node_size * 1.05,
+                node_size * 1.05,
                 marker.color,
             );
         }

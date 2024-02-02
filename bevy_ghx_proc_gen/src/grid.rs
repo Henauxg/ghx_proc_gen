@@ -2,18 +2,19 @@ use std::marker::PhantomData;
 
 use bevy::{
     app::{App, Plugin, PostUpdate, Update},
-    ecs::{bundle::Bundle, system::Query},
+    ecs::{bundle::Bundle, schedule::IntoSystemConfigs, system::Query},
     math::{Vec2, Vec3},
+    transform::TransformSystem,
 };
 use ghx_proc_gen::grid::{direction::CoordinateSystem, GridPosition};
 
 use self::{
     markers::{
-        draw_debug_markers_2d, draw_debug_markers_3d, update_debug_markers, MarkerDespawnEvent,
+        draw_debug_markers_2d, draw_debug_markers_3d, insert_transform_on_new_markers,
+        update_debug_markers, MarkerDespawnEvent,
     },
     view::{
-        draw_debug_grids_2d, draw_debug_grids_3d, DebugGridView, DebugGridViewConfig2d,
-        DebugGridViewConfig3d,
+        draw_debug_grids_2d, draw_debug_grids_3d, DebugGridView, DebugGridView2d, DebugGridView3d,
     },
 };
 
@@ -43,8 +44,9 @@ impl<C: CoordinateSystem> Plugin for GridDebugPlugin<C> {
                 PostUpdate,
                 (
                     update_debug_markers,
-                    draw_debug_markers_3d,
-                    draw_debug_markers_2d,
+                    insert_transform_on_new_markers.before(TransformSystem::TransformPropagate),
+                    (draw_debug_markers_3d, draw_debug_markers_2d)
+                        .after(TransformSystem::TransformPropagate),
                 ),
             )
             .add_event::<MarkerDespawnEvent>();
@@ -54,15 +56,15 @@ impl<C: CoordinateSystem> Plugin for GridDebugPlugin<C> {
 /// Add this bundle to a [`bevy::prelude::Entity`] with a [`ghx_proc_gen::grid::GridDefinition`] if you are using a 3d camera ([`bevy::prelude::Camera3d`]).
 #[derive(Bundle)]
 pub struct DebugGridView3dBundle {
-    /// 3d-specific configuration of the debug view
-    pub config: DebugGridViewConfig3d,
-    /// Debug view of the grid
+    /// Debug view configuration of the grid
     pub view: DebugGridView,
+    /// 3d-specific component-marker for the debug view
+    pub view_type: DebugGridView3d,
 }
 impl Default for DebugGridView3dBundle {
     fn default() -> Self {
         Self {
-            config: Default::default(),
+            view_type: Default::default(),
             view: Default::default(),
         }
     }
@@ -71,15 +73,15 @@ impl Default for DebugGridView3dBundle {
 /// Add this bundle to a [`bevy::prelude::Entity`] with a [`ghx_proc_gen::grid::GridDefinition`] if you are using a 2d camera ([`bevy::prelude::Camera2d`]).
 #[derive(Bundle)]
 pub struct DebugGridView2dBundle {
-    /// 2d-specific configuration of the debug view
-    pub config: DebugGridViewConfig2d,
-    /// Debug view of the grid
+    /// Debug view configuration of the grid
     pub view: DebugGridView,
+    /// 2d-specific component-marker for the debug view
+    pub view_type: DebugGridView2d,
 }
 impl Default for DebugGridView2dBundle {
     fn default() -> Self {
         Self {
-            config: Default::default(),
+            view_type: Default::default(),
             view: Default::default(),
         }
     }
