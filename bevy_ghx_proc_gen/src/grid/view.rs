@@ -1,7 +1,7 @@
 use bevy::{
     ecs::{component::Component, query::With, system::Query},
     gizmos::gizmos::Gizmos,
-    math::{Vec2, Vec3},
+    math::{Vec2, Vec3, Vec3Swizzles},
     render::color::Color,
     transform::components::Transform,
 };
@@ -64,40 +64,42 @@ pub fn draw_debug_grids_3d<T: CoordinateSystem>(
         if !view.display_grid {
             continue;
         }
-        let start = &transform.translation;
         let end = Vec3 {
-            x: start.x + (grid.size_x() as f32) * view.node_size.x,
-            y: start.y + (grid.size_y() as f32) * view.node_size.y,
-            z: start.z + (grid.size_z() as f32) * view.node_size.z,
+            x: (grid.size_x() as f32) * view.node_size.x,
+            y: (grid.size_y() as f32) * view.node_size.y,
+            z: (grid.size_z() as f32) * view.node_size.z,
         };
         for x in 0..=grid.size_x() {
-            let mut points = Vec::with_capacity(4);
-            let current_x = start.x + x as f32 * view.node_size.x;
-            points.push(Vec3::new(current_x, start.y, start.z));
-            points.push(Vec3::new(current_x, end.y, start.z));
-            points.push(Vec3::new(current_x, end.y, end.z));
-            points.push(Vec3::new(current_x, start.y, end.z));
-            points.push(Vec3::new(current_x, start.y, start.z));
+            let current_x = x as f32 * view.node_size.x;
+            let points = vec![
+                transform.transform_point(Vec3::new(current_x, 0., 0.)),
+                transform.transform_point(Vec3::new(current_x, end.y, 0.)),
+                transform.transform_point(Vec3::new(current_x, end.y, end.z)),
+                transform.transform_point(Vec3::new(current_x, 0., end.z)),
+                transform.transform_point(Vec3::new(current_x, 0., 0.)),
+            ];
             gizmos.linestrip(points, view.color);
         }
         for y in 0..=grid.size_y() {
-            let mut points = Vec::with_capacity(4);
-            let current_y = start.y + y as f32 * view.node_size.y;
-            points.push(Vec3::new(start.x, current_y, start.z));
-            points.push(Vec3::new(end.x, current_y, start.z));
-            points.push(Vec3::new(end.x, current_y, end.z));
-            points.push(Vec3::new(start.x, current_y, end.z));
-            points.push(Vec3::new(start.x, current_y, start.z));
+            let current_y = y as f32 * view.node_size.y;
+            let points = vec![
+                transform.transform_point(Vec3::new(0., current_y, 0.)),
+                transform.transform_point(Vec3::new(end.x, current_y, 0.)),
+                transform.transform_point(Vec3::new(end.x, current_y, end.z)),
+                transform.transform_point(Vec3::new(0., current_y, end.z)),
+                transform.transform_point(Vec3::new(0., current_y, 0.)),
+            ];
             gizmos.linestrip(points, view.color);
         }
         for z in 0..=grid.size_z() {
-            let mut points = Vec::with_capacity(4);
-            let current_z = start.z + z as f32 * view.node_size.z;
-            points.push(Vec3::new(start.x, start.y, current_z));
-            points.push(Vec3::new(end.x, start.y, current_z));
-            points.push(Vec3::new(end.x, end.y, current_z));
-            points.push(Vec3::new(start.x, end.y, current_z));
-            points.push(Vec3::new(start.x, start.y, current_z));
+            let current_z = z as f32 * view.node_size.z;
+            let points = vec![
+                transform.transform_point(Vec3::new(0., 0., current_z)),
+                transform.transform_point(Vec3::new(end.x, 0., current_z)),
+                transform.transform_point(Vec3::new(end.x, end.y, current_z)),
+                transform.transform_point(Vec3::new(0., end.y, current_z)),
+                transform.transform_point(Vec3::new(0., 0., current_z)),
+            ];
             gizmos.linestrip(points, view.color);
         }
     }
@@ -114,22 +116,21 @@ pub fn draw_debug_grids_2d<T: CoordinateSystem>(
         if !view.display_grid {
             continue;
         }
-        let start = &transform.translation;
         let end = Vec2 {
-            x: start.x + (grid.size_x() as f32) * view.node_size.x,
-            y: start.y + (grid.size_y() as f32) * view.node_size.y,
+            x: (grid.size_x() as f32) * view.node_size.x,
+            y: (grid.size_y() as f32) * view.node_size.y,
         };
         for y in 0..=grid.size_y() {
-            let current_y = start.y + y as f32 * view.node_size.y;
-            let from = Vec2::new(start.x, current_y);
-            let to = Vec2::new(end.x, current_y);
-            gizmos.line_2d(from, to, view.color);
+            let current_y = y as f32 * view.node_size.y;
+            let from = transform.transform_point(Vec3::new(0., current_y, 0.));
+            let to = transform.transform_point(Vec3::new(end.x, current_y, 0.));
+            gizmos.line_2d(from.xy(), to.xy(), view.color);
         }
         for x in 0..=grid.size_x() {
-            let current_x = start.x + x as f32 * view.node_size.x;
-            let from = Vec2::new(current_x, start.y);
-            let to = Vec2::new(current_x, end.y);
-            gizmos.line_2d(from, to, view.color);
+            let current_x = x as f32 * view.node_size.x;
+            let from = transform.transform_point(Vec3::new(current_x, 0., 0.));
+            let to = transform.transform_point(Vec3::new(current_x, end.y, 0.));
+            gizmos.line_2d(from.xy(), to.xy(), view.color);
         }
     }
 }
