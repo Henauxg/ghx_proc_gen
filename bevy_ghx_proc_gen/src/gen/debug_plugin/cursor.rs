@@ -121,7 +121,7 @@ pub struct GridSelectionCursor(pub GridCursor);
 
 #[derive(Debug)]
 pub struct GridCursorInfo {
-    models: Vec<ModelInfo>,
+    pub models: Vec<ModelInfo>,
 }
 impl GridCursorInfo {
     pub fn new() -> Self {
@@ -146,7 +146,7 @@ pub fn update_grid_cursor_info_on_changes<
 
 pub fn update_selection_cursor_info_ui(
     mut selection_cursor_text: Query<&mut Text, With<SelectionCursorText>>,
-    mut moved_selection_cursors: Query<
+    mut updated_cursors: Query<
         (
             &GridSelectionCursorInfo,
             &GridSelectionCursor,
@@ -155,7 +155,7 @@ pub fn update_selection_cursor_info_ui(
         Changed<GridSelectionCursorInfo>,
     >,
 ) {
-    if let Ok((cursor_info, cursor, _active)) = moved_selection_cursors.get_single() {
+    if let Ok((cursor_info, cursor, _active)) = updated_cursors.get_single() {
         for mut text in &mut selection_cursor_text {
             if cursor_info.models.len() > 1 {
                 text.sections[0].value = format!(
