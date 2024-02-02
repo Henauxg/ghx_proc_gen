@@ -66,8 +66,8 @@ pub fn spawn_marker(
 
 pub fn insert_transform_on_new_markers(
     mut commands: Commands,
-    debug_grid_views: Query<(&DebugGridView)>,
-    mut new_markers: Query<(&Parent, Entity, &GridMarker), (With<GridMarker>, Without<Transform>)>,
+    debug_grid_views: Query<&DebugGridView>,
+    mut new_markers: Query<(&Parent, Entity, &GridMarker), Without<Transform>>,
 ) {
     for (grid_entity, marker_entity, marker) in &mut new_markers {
         if let Ok(view) = debug_grid_views.get(grid_entity.get()) {
