@@ -7,7 +7,8 @@ use bevy::{
         system::{Commands, Query},
     },
     gizmos::gizmos::Gizmos,
-    hierarchy::{BuildChildren, Parent},
+    hierarchy::{BuildChildren, DespawnRecursiveExt, Parent},
+    log::info,
     math::Vec3Swizzles,
     prelude::SpatialBundle,
     render::color::Color,
@@ -64,23 +65,6 @@ pub fn spawn_marker(
     marker_entity
 }
 
-pub fn insert_transform_on_new_markers(
-    mut commands: Commands,
-    debug_grid_views: Query<&DebugGridView>,
-    mut new_markers: Query<(&Parent, Entity, &GridMarker), Without<Transform>>,
-) {
-    for (grid_entity, marker_entity, marker) in &mut new_markers {
-        if let Ok(view) = debug_grid_views.get(grid_entity.get()) {
-            let marker_translation = get_translation_from_grid_pos_3d(&marker.pos, &view.node_size);
-            commands
-                .entity(marker_entity)
-                .insert(SpatialBundle::from_transform(Transform::from_translation(
-                    marker_translation,
-                )));
-        }
-    }
-}
-
 /// This system reads [`MarkerDespawnEvent`] and despawn markers entities accordingly. Tries to check for existence before despawning them.
 ///
 /// Should be called after the systems that generate [`MarkerDespawnEvent`]
@@ -95,14 +79,14 @@ pub fn update_debug_markers(
         match marker_event {
             MarkerDespawnEvent::Remove { marker_entity } => {
                 if let Ok(_) = markers.get(*marker_entity) {
-                    commands.entity(*marker_entity).despawn();
+                    commands.entity(*marker_entity).despawn_recursive();
                 }
             }
             MarkerDespawnEvent::Clear { grid_entity } => {
                 for (parent_grid, marker_entity) in markers.iter() {
                     if parent_grid.get() == *grid_entity {
                         if let Ok(_) = markers.get(marker_entity) {
-                            commands.entity(marker_entity).despawn();
+                            commands.entity(marker_entity).despawn_recursive();
                         }
                     }
                 }
@@ -110,10 +94,27 @@ pub fn update_debug_markers(
             MarkerDespawnEvent::ClearAll => {
                 for (_parent_grid, marker_entity) in markers.iter() {
                     if let Ok(_) = markers.get(marker_entity) {
-                        commands.entity(marker_entity).despawn();
+                        commands.entity(marker_entity).despawn_recursive();
                     }
                 }
             }
+        }
+    }
+}
+
+pub fn insert_transform_on_new_markers(
+    mut commands: Commands,
+    debug_grid_views: Query<&DebugGridView>,
+    mut new_markers: Query<(&Parent, Entity, &GridMarker), Without<Transform>>,
+) {
+    for (grid_entity, marker_entity, marker) in &mut new_markers {
+        if let Ok(view) = debug_grid_views.get(grid_entity.get()) {
+            let marker_translation = get_translation_from_grid_pos_3d(&marker.pos, &view.node_size);
+            commands
+                .entity(marker_entity)
+                .try_insert(SpatialBundle::from_transform(Transform::from_translation(
+                    marker_translation,
+                )));
         }
     }
 }

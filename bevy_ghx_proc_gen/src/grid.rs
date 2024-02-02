@@ -2,7 +2,11 @@ use std::marker::PhantomData;
 
 use bevy::{
     app::{App, Plugin, PostUpdate, Update},
-    ecs::{bundle::Bundle, schedule::IntoSystemConfigs, system::Query},
+    ecs::{
+        bundle::Bundle,
+        schedule::{apply_deferred, IntoSystemConfigs},
+        system::Query,
+    },
     math::{Vec2, Vec3},
     transform::TransformSystem,
 };
@@ -43,8 +47,11 @@ impl<C: CoordinateSystem> Plugin for GridDebugPlugin<C> {
             .add_systems(
                 PostUpdate,
                 (
-                    update_debug_markers,
-                    insert_transform_on_new_markers.before(TransformSystem::TransformPropagate),
+                    (update_debug_markers, apply_deferred)
+                        .chain()
+                        .before(insert_transform_on_new_markers),
+                    ((insert_transform_on_new_markers, apply_deferred).chain())
+                        .before(TransformSystem::TransformPropagate),
                     (draw_debug_markers_3d, draw_debug_markers_2d)
                         .after(TransformSystem::TransformPropagate),
                 ),
