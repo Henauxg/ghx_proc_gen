@@ -36,7 +36,7 @@ use ghx_proc_gen::{
 
 use crate::grid::markers::{GridMarker, MarkerDespawnEvent};
 
-use super::ProcGenKeyBindings;
+use super::{GridCursorsUiConfiguration, ProcGenKeyBindings};
 
 #[derive(Component)]
 pub struct GridCursorsOverlayCamera;
@@ -82,12 +82,12 @@ pub struct SelectionCursorInfo(pub GridCursorInfo);
 #[derive(Component, Deref, DerefMut)]
 pub struct SelectionCursorOverlayText(Entity);
 
-pub fn setup_cursors_panel(mut commands: Commands) {
+pub fn setup_cursors_panel(mut commands: Commands, ui_config: Res<GridCursorsUiConfiguration>) {
     let root = commands
         .spawn((
             CursorsPanelRoot,
             NodeBundle {
-                background_color: BackgroundColor(Color::BLACK.with_a(0.5)),
+                background_color: BackgroundColor(ui_config.background_color),
                 style: Style {
                     position_type: PositionType::Absolute,
                     right: Val::Percent(1.),
@@ -110,8 +110,8 @@ pub fn setup_cursors_panel(mut commands: Commands) {
                     TextSection {
                         value: " N/A".into(),
                         style: TextStyle {
-                            font_size: 16.0,
-                            color: Color::WHITE,
+                            font_size: ui_config.font_size,
+                            color: ui_config.text_color,
                             ..default()
                         },
                     },
@@ -119,8 +119,8 @@ pub fn setup_cursors_panel(mut commands: Commands) {
                     TextSection {
                         value: " N/A".into(),
                         style: TextStyle {
-                            font_size: 16.0,
-                            color: Color::WHITE,
+                            font_size: ui_config.font_size,
+                            color: ui_config.text_color,
                             ..default()
                         },
                     },
@@ -291,13 +291,11 @@ pub fn update_cursors_overlay<
 >(
     mut camera_warning_flag: Local<Flag>,
     mut commands: Commands,
+    ui_config: Res<GridCursorsUiConfiguration>,
     just_one_camera: Query<(&Camera, &GlobalTransform), Without<GridCursorsOverlayCamera>>,
     overlay_camera: Query<(&Camera, &GlobalTransform), With<GridCursorsOverlayCamera>>,
     mut cursor_overlay: Query<(Entity, &E)>,
-    mut cursors: Query<
-        (&GCI, &GC, &ActiveGridCursor),
-        // Changed<SelectionCursorInfo>,
-    >,
+    mut cursors: Query<(&GCI, &GC, &ActiveGridCursor)>,
     markers: Query<&GlobalTransform, With<GridMarker>>,
 ) {
     let (camera, cam_gtransform) = match just_one_camera.get_single() {
@@ -332,12 +330,12 @@ pub fn update_cursors_overlay<
 
         let text = cursor_info_to_string(cursor, cursor_info);
         commands.entity(text_entity).insert(TextBundle {
-            background_color: BackgroundColor(Color::BLACK.with_a(0.4)),
+            background_color: BackgroundColor(ui_config.background_color),
             text: Text::from_section(
                 text,
                 TextStyle {
-                    font_size: 15.0,
-                    color: Color::WHITE,
+                    font_size: ui_config.font_size,
+                    color: ui_config.text_color,
                     ..Default::default()
                 },
             ),

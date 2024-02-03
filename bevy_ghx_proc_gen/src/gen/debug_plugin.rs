@@ -4,6 +4,7 @@ use bevy::{
     app::{App, Plugin, PostUpdate, PreUpdate, Startup, Update},
     ecs::{schedule::IntoSystemConfigs, system::Resource},
     input::keyboard::KeyCode,
+    render::color::Color,
     time::{Timer, TimerMode},
 };
 use ghx_proc_gen::grid::direction::CoordinateSystem;
@@ -51,6 +52,23 @@ pub enum CursorUiMode {
     Overlay,
 }
 
+#[derive(Resource, Debug)]
+pub struct GridCursorsUiConfiguration {
+    pub font_size: f32,
+    pub background_color: Color,
+    pub text_color: Color,
+}
+
+impl Default for GridCursorsUiConfiguration {
+    fn default() -> Self {
+        Self {
+            font_size: 15.0,
+            background_color: Color::BLACK.with_a(0.4),
+            text_color: Color::WHITE,
+        }
+    }
+}
+
 /// A [`Plugin`] useful for debug/analysis/demo. It mainly run [`Generator`] components and spawn the generated model's [`crate::gen::assets::ModelAsset`]
 ///
 /// It takes in a [`GenerationViewMode`] to control how the generators components will be run.
@@ -86,6 +104,12 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
         // If the resources already exists, nothing happens, else, add them with default values.
         app.init_resource::<ProcGenKeyBindings>();
         app.init_resource::<GenerationControl>();
+        match self.cursor_ui_mode {
+            CursorUiMode::None => (),
+            _ => {
+                app.init_resource::<GridCursorsUiConfiguration>();
+            }
+        }
 
         app.insert_resource(CursorMoveCooldown(Timer::new(
             Duration::from_millis(CURSOR_KEYS_MOVEMENT_COOLDOWN_MS),
