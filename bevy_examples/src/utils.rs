@@ -87,7 +87,7 @@ where
     models_assets
 }
 
-/// Toggles the [`Visibility`] of an `Entity` with a component of type `T`
+/// Toggles the [`Visibility`] of all `Entity` with a component of type `T`
 ///
 /// ### Example usage
 ///
@@ -98,8 +98,8 @@ where
 ///    toggle_visibility::<UiRoot>.run_if(input_just_pressed(KeyCode::F1)),
 ///  );
 /// ```
-pub fn toggle_visibility<T: Component>(mut vis: Query<&mut Visibility, With<T>>) {
-    if let Ok(mut vis) = vis.get_single_mut() {
+pub fn toggle_visibility<T: Component>(mut visibilities: Query<&mut Visibility, With<T>>) {
+    for mut vis in &mut visibilities {
         *vis = match *vis {
             Visibility::Hidden => Visibility::Visible,
             _ => Visibility::Hidden,
