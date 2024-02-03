@@ -36,7 +36,7 @@ use ghx_proc_gen::{
 
 use crate::grid::markers::{GridMarker, MarkerDespawnEvent};
 
-use super::{GridCursorsUiConfiguration, ProcGenKeyBindings};
+use super::{GridCursorsUiSettings, ProcGenKeyBindings};
 
 #[derive(Component)]
 pub struct GridCursorsOverlayCamera;
@@ -76,19 +76,64 @@ impl GridCursorInfo {
     }
 }
 
-#[derive(Component, Debug, bevy::prelude::Deref, bevy::prelude::DerefMut)]
-pub struct SelectionCursor(pub GridCursor);
+pub trait GridCursorMarkerSettings: Resource {
+    fn color(&self) -> Color;
+}
 
-#[derive(Component, Debug, bevy::prelude::Deref, bevy::prelude::DerefMut)]
+pub trait GridCursorContainer: Component + Deref<Target = GridCursor> {
+    fn new(cursor: GridCursor) -> Self;
+}
+pub trait GridCursorInfoContainer: Component + Deref<Target = GridCursorInfo> {
+    fn new(cursor_info: GridCursorInfo) -> Self;
+}
+pub trait GridCursorOverlay: Component + Deref<Target = Entity> {
+    fn new(grid_entity: Entity) -> Self;
+}
+
+#[derive(Resource)]
+pub struct SelectionCursorMarkerSettings(pub Color);
+impl Default for SelectionCursorMarkerSettings {
+    fn default() -> Self {
+        Self(Color::GREEN)
+    }
+}
+impl GridCursorMarkerSettings for SelectionCursorMarkerSettings {
+    fn color(&self) -> Color {
+        self.0
+    }
+}
+
+#[derive(Component, Debug, Deref, DerefMut)]
+pub struct SelectionCursor(pub GridCursor);
+impl GridCursorContainer for SelectionCursor {
+    fn new(cursor: GridCursor) -> Self {
+        Self(cursor)
+    }
+}
+
+#[derive(Component, Debug, Deref, DerefMut)]
 pub struct SelectionCursorInfo(pub GridCursorInfo);
+impl GridCursorInfoContainer for SelectionCursorInfo {
+    fn new(cursor_info: GridCursorInfo) -> Self {
+        Self(cursor_info)
+    }
+}
 
 #[derive(Component, Deref, DerefMut)]
-pub struct SelectionCursorOverlayText(Entity);
+pub struct SelectionCursorOverlay(pub Entity);
+impl GridCursorOverlay for SelectionCursorOverlay {
+    fn new(grid_entity: Entity) -> Self {
+        Self(grid_entity)
+    }
+}
+
+#[derive(Component, Deref, DerefMut)]
+pub struct UiEntityRef(pub Entity);
 
 pub const OVER_CURSOR_SECTION_INDEX: usize = 0;
 pub const SELECTION_CURSOR_SECTION_INDEX: usize = 1;
 
-pub fn setup_cursors_panel(mut commands: Commands, ui_config: Res<GridCursorsUiConfiguration>) {
+pub fn setup_cursors_panel(mut commands: Commands, ui_config: Res<GridCursorsUiSettings>) {
     let root = commands
         .spawn((
             CursorsPanelRoot,
@@ -146,36 +191,41 @@ pub fn setup_cursors_overlays(mut commands: Commands) {
     commands.entity(root).insert(Pickable::IGNORE);
 }
 
-pub fn insert_selection_cursor_to_new_generations<C: CoordinateSystem>(
+pub fn insert_cursor_to_new_generations<
+    C: CoordinateSystem,
+    GCS: GridCursorMarkerSettings,
+    GC: GridCursorContainer,
+    GCI: GridCursorInfoContainer,
+    GCO: GridCursorOverlay,
+>(
     mut commands: Commands,
-    mut new_generations: Query<
-        (Entity, &GridDefinition<C>, &Generator<C>),
-        Without<SelectionCursor>,
-    >,
+    cursor_config: Res<GCS>,
+    mut new_generations: Query<Entity, (Without<GC>, With<GridDefinition<C>>, With<Generator<C>>)>,
     overlays_root: Query<Entity, With<CursorsOverlaysRoot>>,
 ) {
-    for (gen_entity, _grid, _generation) in new_generations.iter_mut() {
-        commands.entity(gen_entity).insert((
+    for grid_entity in new_generations.iter_mut() {
+        commands.entity(grid_entity).insert((
             ActiveGridCursor,
-            SelectionCursor(GridCursor {
-                color: Color::GREEN,
+            GC::new(GridCursor {
+                color: cursor_config.color(),
                 node_index: 0,
                 position: GridPosition::new(0, 0, 0),
                 marker: None,
             }),
-            SelectionCursorInfo(GridCursorInfo::new()),
+            GCI::new(GridCursorInfo::new()),
         ));
 
         let Ok(root) = overlays_root.get_single() else {
+            // No overlays
             continue;
         };
-        // TODO Handle despawn
+
         let cursor_overlay_entity = commands
             .spawn((
+                GCO::new(grid_entity),
                 // https://github.com/bevyengine/bevy/issues/11572
                 // If we only add the node later, Bevy panics in 0.12.1
                 TextBundle { ..default() },
-                SelectionCursorOverlayText(gen_entity),
             ))
             .id();
         #[cfg(feature = "picking")]
@@ -184,13 +234,17 @@ pub fn insert_selection_cursor_to_new_generations<C: CoordinateSystem>(
             .insert(Pickable::IGNORE);
 
         commands.entity(root).add_child(cursor_overlay_entity);
+
+        commands
+            .entity(grid_entity)
+            .insert(UiEntityRef(cursor_overlay_entity));
     }
 }
 
 pub fn update_cursor_info_on_cursor_changes<
     C: CoordinateSystem,
-    GC: Component + Deref<Target = GridCursor>,
-    GCI: Component + DerefMut<Target = GridCursorInfo>,
+    GC: GridCursorContainer,
+    GCI: GridCursorInfoContainer + DerefMut<Target = GridCursorInfo>,
 >(
     mut moved_cursors: Query<(&Generator<C>, &mut GCI, &GC), Changed<GC>>,
 ) {
@@ -313,16 +367,16 @@ pub fn cursor_info_to_string(cursor: &GridCursor, cursor_info: &GridCursorInfo) 
 pub struct Flag(pub bool);
 
 pub fn update_cursors_overlay<
-    GC: Component + Deref<Target = GridCursor>,
-    GCI: Component + DerefMut<Target = GridCursorInfo>,
-    E: Component + std::ops::DerefMut<Target = Entity>,
+    GC: GridCursorContainer,
+    GCI: GridCursorInfoContainer,
+    GCO: GridCursorOverlay,
 >(
     mut camera_warning_flag: Local<Flag>,
     mut commands: Commands,
-    ui_config: Res<GridCursorsUiConfiguration>,
+    ui_config: Res<GridCursorsUiSettings>,
     just_one_camera: Query<(&Camera, &GlobalTransform), Without<GridCursorsOverlayCamera>>,
     overlay_camera: Query<(&Camera, &GlobalTransform), With<GridCursorsOverlayCamera>>,
-    mut cursor_overlay: Query<(Entity, &E)>,
+    mut cursor_overlay: Query<(Entity, &GCO)>,
     mut cursors: Query<(&GCI, &GC, &ActiveGridCursor)>,
     markers: Query<&GlobalTransform, With<GridMarker>>,
 ) {

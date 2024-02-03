@@ -3,25 +3,17 @@ use bevy::{
         component::Component,
         entity::Entity,
         event::{Event, EventReader, EventWriter},
-        query::{Added, Changed, With, Without},
-        system::{Commands, Query},
+        query::{Added, Changed, With},
+        system::{Commands, Query, Resource},
     },
     hierarchy::{BuildChildren, Parent},
     prelude::{Deref, DerefMut},
     render::color::Color,
     text::Text,
-    ui::node_bundles::TextBundle,
-    utils::default,
 };
 
-use bevy_mod_picking::{
-    picking_core::Pickable,
-    prelude::{Down, ListenerInput, On, Over, Pointer},
-};
-use ghx_proc_gen::{
-    generator::Generator,
-    grid::{direction::CoordinateSystem, GridDefinition, GridPosition},
-};
+use bevy_mod_picking::prelude::{Down, ListenerInput, On, Over, Pointer};
+use ghx_proc_gen::grid::{direction::CoordinateSystem, GridDefinition};
 
 use crate::{
     gen::SpawnedNode,
@@ -29,50 +21,45 @@ use crate::{
 };
 
 use super::cursor::{
-    cursor_info_to_string, ActiveGridCursor, CursorsOverlaysRoot, CursorsPanelText, GridCursor,
-    GridCursorInfo, OVER_CURSOR_SECTION_INDEX,
+    cursor_info_to_string, ActiveGridCursor, CursorsPanelText, GridCursor, GridCursorContainer,
+    GridCursorInfo, GridCursorInfoContainer, GridCursorMarkerSettings, GridCursorOverlay,
+    OVER_CURSOR_SECTION_INDEX,
 };
 
-#[derive(Component, Debug, bevy::prelude::Deref, bevy::prelude::DerefMut)]
-pub struct OverCursor(pub GridCursor);
+#[derive(Resource)]
+pub struct OverCursorMarkerSettings(pub Color);
+impl Default for OverCursorMarkerSettings {
+    fn default() -> Self {
+        Self(Color::rgb(0.85, 0.85, 0.73))
+    }
+}
+impl GridCursorMarkerSettings for OverCursorMarkerSettings {
+    fn color(&self) -> Color {
+        self.0
+    }
+}
 
-#[derive(Component, Debug, bevy::prelude::Deref, bevy::prelude::DerefMut)]
+#[derive(Component, Debug, Deref, DerefMut)]
+pub struct OverCursor(pub GridCursor);
+impl GridCursorContainer for OverCursor {
+    fn new(cursor: GridCursor) -> Self {
+        Self(cursor)
+    }
+}
+
+#[derive(Component, Debug, Deref, DerefMut)]
 pub struct OverCursorInfo(pub GridCursorInfo);
+impl GridCursorInfoContainer for OverCursorInfo {
+    fn new(cursor_info: GridCursorInfo) -> Self {
+        Self(cursor_info)
+    }
+}
 
 #[derive(Component, Deref, DerefMut)]
-pub struct OverCursorOverlayText(Entity);
-
-pub fn insert_over_cursor_to_new_generations<C: CoordinateSystem>(
-    mut commands: Commands,
-    mut new_generations: Query<(Entity, &GridDefinition<C>, &Generator<C>), Without<OverCursor>>,
-    overlays_root: Query<Entity, With<CursorsOverlaysRoot>>,
-) {
-    for (gen_entity, _grid, _generation) in new_generations.iter_mut() {
-        commands.entity(gen_entity).insert((
-            ActiveGridCursor,
-            OverCursor(GridCursor {
-                color: Color::BLUE,
-                node_index: 0,
-                position: GridPosition::new(0, 0, 0),
-                marker: None,
-            }),
-            OverCursorInfo(GridCursorInfo::new()),
-        ));
-
-        let Ok(root) = overlays_root.get_single() else {
-            continue;
-        };
-        // TODO Handle despawn
-        let cursor_overlay_entity = commands
-            .spawn((
-                // https://github.com/bevyengine/bevy/issues/11572
-                // If we only add the node later, Bevy panics in 0.12.1
-                TextBundle { ..default() },
-                OverCursorOverlayText(gen_entity),
-                Pickable::IGNORE,
-            ))
-            .id();
-        commands.entity(root).add_child(cursor_overlay_entity);
+pub struct OverCursorOverlay(pub Entity);
+impl GridCursorOverlay for OverCursorOverlay {
+    fn new(grid_entity: Entity) -> Self {
+        Self(grid_entity)
     }
 }
 

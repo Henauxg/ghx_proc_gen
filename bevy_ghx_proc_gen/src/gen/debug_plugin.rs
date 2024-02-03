@@ -11,16 +11,17 @@ use ghx_proc_gen::grid::direction::CoordinateSystem;
 
 use self::{
     cursor::{
-        insert_selection_cursor_to_new_generations, keybinds_update_selection_cursor_position,
+        insert_cursor_to_new_generations, keybinds_update_selection_cursor_position,
         setup_cursors_overlays, setup_cursors_panel, update_cursor_info_on_cursor_changes,
         update_cursors_overlay, update_selection_cursor_panel_text, CursorMoveCooldown,
-        SelectionCursor, SelectionCursorInfo, SelectionCursorOverlayText,
+        SelectionCursor, SelectionCursorInfo, SelectionCursorMarkerSettings,
+        SelectionCursorOverlay,
     },
     generation::{
         generate_all, insert_void_nodes_to_new_generations, step_by_step_input_update,
         step_by_step_timed_update, update_generation_control, update_generation_view,
     },
-    picking::{update_over_cursor_panel_text, OverCursorOverlayText},
+    picking::{update_over_cursor_panel_text, OverCursorMarkerSettings, OverCursorOverlay},
 };
 use super::{
     assets::NoComponents, insert_default_bundle_to_spawned_nodes, spawn_node, AssetSpawner,
@@ -32,8 +33,8 @@ use bevy_mod_picking::PickableBundle;
 
 #[cfg(feature = "picking")]
 use self::picking::{
-    insert_grid_cursor_picking_handlers_to_spawned_nodes, insert_over_cursor_to_new_generations,
-    picking_update_cursors_position, NodeOverEvent, NodeSelectedEvent, OverCursor, OverCursorInfo,
+    insert_grid_cursor_picking_handlers_to_spawned_nodes, picking_update_cursors_position,
+    NodeOverEvent, NodeSelectedEvent, OverCursor, OverCursorInfo,
 };
 
 #[cfg(feature = "picking")]
@@ -53,13 +54,13 @@ pub enum CursorUiMode {
 }
 
 #[derive(Resource, Debug)]
-pub struct GridCursorsUiConfiguration {
+pub struct GridCursorsUiSettings {
     pub font_size: f32,
     pub background_color: Color,
     pub text_color: Color,
 }
 
-impl Default for GridCursorsUiConfiguration {
+impl Default for GridCursorsUiSettings {
     fn default() -> Self {
         Self {
             font_size: 15.0,
@@ -104,10 +105,12 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
         // If the resources already exists, nothing happens, else, add them with default values.
         app.init_resource::<ProcGenKeyBindings>();
         app.init_resource::<GenerationControl>();
+        app.init_resource::<OverCursorMarkerSettings>();
+        app.init_resource::<SelectionCursorMarkerSettings>();
         match self.cursor_ui_mode {
             CursorUiMode::None => (),
             _ => {
-                app.init_resource::<GridCursorsUiConfiguration>();
+                app.init_resource::<GridCursorsUiSettings>();
             }
         }
 
@@ -124,14 +127,26 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
             Update,
             (
                 update_generation_control,
-                insert_selection_cursor_to_new_generations::<C>,
+                insert_cursor_to_new_generations::<
+                    C,
+                    SelectionCursorMarkerSettings,
+                    SelectionCursor,
+                    SelectionCursorInfo,
+                    SelectionCursorOverlay,
+                >,
             ),
         );
         #[cfg(feature = "picking")]
         app.add_systems(
             Update,
             (
-                insert_over_cursor_to_new_generations::<C>,
+                insert_cursor_to_new_generations::<
+                    C,
+                    OverCursorMarkerSettings,
+                    OverCursor,
+                    OverCursorInfo,
+                    OverCursorOverlay,
+                >,
                 insert_grid_cursor_picking_handlers_to_spawned_nodes::<C>,
                 insert_default_bundle_to_spawned_nodes::<PickableBundle>,
             ),
@@ -168,13 +183,13 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
                     update_cursors_overlay::<
                         SelectionCursor,
                         SelectionCursorInfo,
-                        SelectionCursorOverlayText,
+                        SelectionCursorOverlay,
                     >,
                 );
                 #[cfg(feature = "picking")]
                 app.add_systems(
                     Update,
-                    update_cursors_overlay::<OverCursor, OverCursorInfo, OverCursorOverlayText>,
+                    update_cursors_overlay::<OverCursor, OverCursorInfo, OverCursorOverlay>,
                 );
             }
         }
