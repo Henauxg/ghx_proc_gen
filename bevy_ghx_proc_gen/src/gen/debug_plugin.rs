@@ -12,9 +12,9 @@ use ghx_proc_gen::grid::direction::CoordinateSystem;
 use self::{
     cursor::{
         insert_selection_cursor_to_new_generations, keybinds_update_selection_cursor_position,
-        setup_cursors_panel, update_cursors_overlay, update_grid_cursor_info_on_cursor_changes,
-        update_selection_cursor_panel_text, CursorMoveCooldown, SelectionCursor,
-        SelectionCursorInfo, SelectionCursorOverlayText,
+        setup_cursors_overlays, setup_cursors_panel, update_cursor_info_on_cursor_changes,
+        update_cursors_overlay, update_selection_cursor_panel_text, CursorMoveCooldown,
+        SelectionCursor, SelectionCursorInfo, SelectionCursorOverlayText,
     },
     generation::{
         generate_all, insert_void_nodes_to_new_generations, step_by_step_input_update,
@@ -145,13 +145,13 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
             (
                 picking_update_cursors_position::<C, OverCursor, NodeOverEvent>,
                 picking_update_cursors_position::<C, SelectionCursor, NodeSelectedEvent>,
-                update_grid_cursor_info_on_cursor_changes::<C, OverCursor, OverCursorInfo>,
+                update_cursor_info_on_cursor_changes::<C, OverCursor, OverCursorInfo>,
             )
                 .chain(),
         );
         app.add_systems(
             Update,
-            update_grid_cursor_info_on_cursor_changes::<C, SelectionCursor, SelectionCursorInfo>,
+            update_cursor_info_on_cursor_changes::<C, SelectionCursor, SelectionCursorInfo>,
         );
         match self.cursor_ui_mode {
             CursorUiMode::None => (),
@@ -162,6 +162,7 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
                 app.add_systems(PostUpdate, update_over_cursor_panel_text);
             }
             CursorUiMode::Overlay => {
+                app.add_systems(Startup, setup_cursors_overlays);
                 app.add_systems(
                     Update,
                     update_cursors_overlay::<

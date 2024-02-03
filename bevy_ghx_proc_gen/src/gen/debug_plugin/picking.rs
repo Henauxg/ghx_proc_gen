@@ -10,6 +10,8 @@ use bevy::{
     prelude::{Deref, DerefMut},
     render::color::Color,
     text::Text,
+    ui::node_bundles::TextBundle,
+    utils::default,
 };
 
 use bevy_mod_picking::{
@@ -27,7 +29,8 @@ use crate::{
 };
 
 use super::cursor::{
-    cursor_info_to_string, ActiveGridCursor, CursorsPanelText, GridCursor, GridCursorInfo,
+    cursor_info_to_string, ActiveGridCursor, CursorsOverlaysRoot, CursorsPanelText, GridCursor,
+    GridCursorInfo, OVER_CURSOR_SECTION_INDEX,
 };
 
 #[derive(Component, Debug, bevy::prelude::Deref, bevy::prelude::DerefMut)]
@@ -42,6 +45,7 @@ pub struct OverCursorOverlayText(Entity);
 pub fn insert_over_cursor_to_new_generations<C: CoordinateSystem>(
     mut commands: Commands,
     mut new_generations: Query<(Entity, &GridDefinition<C>, &Generator<C>), Without<OverCursor>>,
+    overlays_root: Query<Entity, With<CursorsOverlaysRoot>>,
 ) {
     for (gen_entity, _grid, _generation) in new_generations.iter_mut() {
         commands.entity(gen_entity).insert((
@@ -54,10 +58,21 @@ pub fn insert_over_cursor_to_new_generations<C: CoordinateSystem>(
             }),
             OverCursorInfo(GridCursorInfo::new()),
         ));
+
+        let Ok(root) = overlays_root.get_single() else {
+            continue;
+        };
         // TODO Handle despawn
         let cursor_overlay_entity = commands
-            .spawn((OverCursorOverlayText(gen_entity), Pickable::IGNORE))
+            .spawn((
+                // https://github.com/bevyengine/bevy/issues/11572
+                // If we only add the node later, Bevy panics in 0.12.1
+                TextBundle { ..default() },
+                OverCursorOverlayText(gen_entity),
+                Pickable::IGNORE,
+            ))
             .id();
+        commands.entity(root).add_child(cursor_overlay_entity);
     }
 }
 
@@ -103,7 +118,7 @@ pub fn update_over_cursor_panel_text(
 ) {
     if let Ok((cursor_info, cursor, _active)) = updated_cursors.get_single() {
         for mut text in &mut selection_cursor_text {
-            text.sections[0].value =
+            text.sections[OVER_CURSOR_SECTION_INDEX].value =
                 format!("Hovered:\n{}", cursor_info_to_string(cursor, cursor_info));
         }
     }
