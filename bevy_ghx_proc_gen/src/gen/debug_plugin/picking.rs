@@ -3,15 +3,19 @@ use bevy::{
         component::Component,
         entity::Entity,
         event::{Event, EventReader, EventWriter},
-        query::{Added, Without},
+        query::{Added, Changed, With, Without},
         system::{Commands, Query},
     },
     hierarchy::{BuildChildren, Parent},
     prelude::{Deref, DerefMut},
     render::color::Color,
+    text::Text,
 };
 
-use bevy_mod_picking::prelude::{Down, ListenerInput, On, Over, Pointer};
+use bevy_mod_picking::{
+    picking_core::Pickable,
+    prelude::{Down, ListenerInput, On, Over, Pointer},
+};
 use ghx_proc_gen::{
     generator::Generator,
     grid::{direction::CoordinateSystem, GridDefinition, GridPosition},
@@ -22,32 +26,38 @@ use crate::{
     grid::markers::{GridMarker, MarkerDespawnEvent},
 };
 
-use super::cursor::{ActiveGridCursor, GridCursor, GridCursorInfo};
+use super::cursor::{
+    cursor_info_to_string, ActiveGridCursor, CursorsPanelText, GridCursor, GridCursorInfo,
+};
 
 #[derive(Component, Debug, bevy::prelude::Deref, bevy::prelude::DerefMut)]
-pub struct GridOverCursor(pub GridCursor);
+pub struct OverCursor(pub GridCursor);
 
 #[derive(Component, Debug, bevy::prelude::Deref, bevy::prelude::DerefMut)]
-pub struct GridOverCursorInfo(pub GridCursorInfo);
+pub struct OverCursorInfo(pub GridCursorInfo);
+
+#[derive(Component, Deref, DerefMut)]
+pub struct OverCursorOverlayText(Entity);
 
 pub fn insert_over_cursor_to_new_generations<C: CoordinateSystem>(
     mut commands: Commands,
-    mut new_generations: Query<
-        (Entity, &GridDefinition<C>, &Generator<C>),
-        Without<GridOverCursor>,
-    >,
+    mut new_generations: Query<(Entity, &GridDefinition<C>, &Generator<C>), Without<OverCursor>>,
 ) {
     for (gen_entity, _grid, _generation) in new_generations.iter_mut() {
         commands.entity(gen_entity).insert((
             ActiveGridCursor,
-            GridOverCursor(GridCursor {
+            OverCursor(GridCursor {
                 color: Color::BLUE,
                 node_index: 0,
                 position: GridPosition::new(0, 0, 0),
                 marker: None,
             }),
-            GridOverCursorInfo(GridCursorInfo::new()),
+            OverCursorInfo(GridCursorInfo::new()),
         ));
+        // TODO Handle despawn
+        let cursor_overlay_entity = commands
+            .spawn((OverCursorOverlayText(gen_entity), Pickable::IGNORE))
+            .id();
     }
 }
 
@@ -84,21 +94,36 @@ pub fn insert_grid_cursor_picking_handlers_to_spawned_nodes<C: CoordinateSystem>
     }
 }
 
-pub fn picking_update_grid_cursor_position<
+pub fn update_over_cursor_panel_text(
+    mut selection_cursor_text: Query<&mut Text, With<CursorsPanelText>>,
+    mut updated_cursors: Query<
+        (&OverCursorInfo, &OverCursor, &ActiveGridCursor),
+        Changed<OverCursorInfo>,
+    >,
+) {
+    if let Ok((cursor_info, cursor, _active)) = updated_cursors.get_single() {
+        for mut text in &mut selection_cursor_text {
+            text.sections[0].value =
+                format!("Hovered:\n{}", cursor_info_to_string(cursor, cursor_info));
+        }
+    }
+}
+
+pub fn picking_update_cursors_position<
     C: CoordinateSystem,
-    W: Component + std::ops::DerefMut<Target = GridCursor>,
+    GC: Component + std::ops::DerefMut<Target = GridCursor>,
     E: Event + std::ops::DerefMut<Target = Entity>,
 >(
     mut events: EventReader<E>,
     mut commands: Commands,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
     mut nodes: Query<(&SpawnedNode, &Parent)>,
-    mut parent: Query<(&mut W, &GridDefinition<C>)>,
+    mut cursors: Query<(&mut GC, &GridDefinition<C>)>,
 ) {
     for event in events.read().last() {
         if let Ok((node, node_parent)) = nodes.get_mut(**event) {
             let parent_entity = node_parent.get();
-            if let Ok((mut cursor, grid)) = parent.get_mut(parent_entity) {
+            if let Ok((mut cursor, grid)) = cursors.get_mut(parent_entity) {
                 if cursor.node_index != node.0 {
                     cursor.node_index = node.0;
                     cursor.position = grid.pos_from_index(node.0);

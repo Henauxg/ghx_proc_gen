@@ -18,7 +18,9 @@ use bevy::{
 use bevy_ghx_proc_gen::{
     gen::{
         assets::{AssetsBundleSpawner, ComponentSpawner, NoComponents},
-        debug_plugin::{cursor::SelectionCursorUiRoot, GenerationViewMode, ProcGenDebugPlugin},
+        debug_plugin::{
+            cursor::CursorsPanelRoot, CursorUiMode, GenerationViewMode, ProcGenDebugPlugin,
+        },
         insert_bundle_from_resource_to_spawned_nodes,
     },
     grid::{toggle_debug_grids_visibilities, toggle_grid_markers_visibilities, GridDebugPlugin},
@@ -64,7 +66,7 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
             FpsDisplayPlugin,
             GridDebugPlugin::<C>::new(),
             DefaultPickingPlugins,
-            ProcGenDebugPlugin::<C, A, T>::new(self.generation_view_mode, true),
+            ProcGenDebugPlugin::<C, A, T>::new(self.generation_view_mode, CursorUiMode::Overlay),
         ));
         app.insert_resource(SpawningScaleAnimation::new(
             0.8,
@@ -78,7 +80,7 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
                 insert_bundle_from_resource_to_spawned_nodes::<SpawningScaleAnimation>,
                 animate_scale,
                 toggle_visibility::<KeybindingsUiRoot>.run_if(input_just_pressed(KeyCode::F1)),
-                toggle_visibility::<SelectionCursorUiRoot>.run_if(input_just_pressed(KeyCode::F1)),
+                toggle_visibility::<CursorsPanelRoot>.run_if(input_just_pressed(KeyCode::F1)),
                 toggle_visibility::<FpsRoot>.run_if(input_just_pressed(KeyCode::F2)),
                 toggle_debug_grids_visibilities.run_if(input_just_pressed(KeyCode::F3)),
                 toggle_grid_markers_visibilities.run_if(input_just_pressed(KeyCode::F4)),

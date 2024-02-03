@@ -9,20 +9,23 @@ use bevy::{
         entity::Entity,
         event::EventWriter,
         query::{Changed, With, Without},
-        system::{Commands, Query, Res, ResMut, Resource},
+        system::{Commands, Local, Query, Res, ResMut, Resource},
     },
     hierarchy::BuildChildren,
     input::{keyboard::KeyCode, Input},
+    log::warn,
     prelude::{Deref, DerefMut},
-    render::color::Color,
+    render::{camera::Camera, color::Color},
     text::{Text, TextSection, TextStyle},
     time::{Time, Timer},
+    transform::components::GlobalTransform,
     ui::{
         node_bundles::{NodeBundle, TextBundle},
         BackgroundColor, PositionType, Style, UiRect, Val,
     },
     utils::default,
 };
+use bevy_mod_picking::picking_core::Pickable;
 use ghx_proc_gen::{
     generator::{rules::ModelInfo, Generator},
     grid::{
@@ -36,69 +39,13 @@ use crate::grid::markers::{GridMarker, MarkerDespawnEvent};
 use super::ProcGenKeyBindings;
 
 #[derive(Component)]
-pub struct SelectionCursorUiRoot;
+pub struct GridCursorsOverlayCamera;
 
 #[derive(Component)]
-pub struct SelectionCursorText;
+pub struct CursorsPanelRoot;
 
-pub fn setup_selection_cursor_info_ui(mut commands: Commands) {
-    let root = commands
-        .spawn((
-            SelectionCursorUiRoot,
-            NodeBundle {
-                background_color: BackgroundColor(Color::BLACK.with_a(0.5)),
-                style: Style {
-                    position_type: PositionType::Absolute,
-                    right: Val::Percent(1.),
-                    bottom: Val::Percent(1.),
-                    top: Val::Auto,
-                    left: Val::Auto,
-                    padding: UiRect::all(Val::Px(4.0)),
-                    ..default()
-                },
-                ..default()
-            },
-        ))
-        .id();
-    let text = commands
-        .spawn((
-            SelectionCursorText,
-            TextBundle {
-                text: Text::from_sections([TextSection {
-                    value: " N/A".into(),
-                    style: TextStyle {
-                        font_size: 16.0,
-                        color: Color::WHITE,
-                        ..default()
-                    },
-                }]),
-                ..Default::default()
-            },
-        ))
-        .id();
-    commands.entity(root).add_child(text);
-}
-
-pub fn insert_selection_cursor_to_new_generations<C: CoordinateSystem>(
-    mut commands: Commands,
-    mut new_generations: Query<
-        (Entity, &GridDefinition<C>, &Generator<C>),
-        Without<GridSelectionCursor>,
-    >,
-) {
-    for (gen_entity, _grid, _generation) in new_generations.iter_mut() {
-        commands.entity(gen_entity).insert((
-            ActiveGridCursor,
-            GridSelectionCursor(GridCursor {
-                color: Color::GREEN,
-                node_index: 0,
-                position: GridPosition::new(0, 0, 0),
-                marker: None,
-            }),
-            GridSelectionCursorInfo(GridCursorInfo::new()),
-        ));
-    }
-}
+#[derive(Component)]
+pub struct CursorsPanelText;
 
 #[derive(Component)]
 pub struct ActiveGridCursor;
@@ -116,9 +63,6 @@ impl fmt::Display for GridCursor {
     }
 }
 
-#[derive(Component, Debug, bevy::prelude::Deref, bevy::prelude::DerefMut)]
-pub struct GridSelectionCursor(pub GridCursor);
-
 #[derive(Debug)]
 pub struct GridCursorInfo {
     pub models: Vec<ModelInfo>,
@@ -130,9 +74,92 @@ impl GridCursorInfo {
 }
 
 #[derive(Component, Debug, bevy::prelude::Deref, bevy::prelude::DerefMut)]
-pub struct GridSelectionCursorInfo(pub GridCursorInfo);
+pub struct SelectionCursor(pub GridCursor);
 
-pub fn update_grid_cursor_info_on_changes<
+#[derive(Component, Debug, bevy::prelude::Deref, bevy::prelude::DerefMut)]
+pub struct SelectionCursorInfo(pub GridCursorInfo);
+
+#[derive(Component, Deref, DerefMut)]
+pub struct SelectionCursorOverlayText(Entity);
+
+pub fn setup_cursors_panel(mut commands: Commands) {
+    let root = commands
+        .spawn((
+            CursorsPanelRoot,
+            NodeBundle {
+                background_color: BackgroundColor(Color::BLACK.with_a(0.5)),
+                style: Style {
+                    position_type: PositionType::Absolute,
+                    right: Val::Percent(1.),
+                    bottom: Val::Percent(1.),
+                    top: Val::Auto,
+                    left: Val::Auto,
+                    padding: UiRect::all(Val::Px(4.0)),
+                    ..default()
+                },
+                ..default()
+            },
+        ))
+        .id();
+    let text = commands
+        .spawn((
+            CursorsPanelText,
+            TextBundle {
+                text: Text::from_sections([
+                    // Over cursor
+                    TextSection {
+                        value: " N/A".into(),
+                        style: TextStyle {
+                            font_size: 16.0,
+                            color: Color::WHITE,
+                            ..default()
+                        },
+                    },
+                    // Selection cursor
+                    TextSection {
+                        value: " N/A".into(),
+                        style: TextStyle {
+                            font_size: 16.0,
+                            color: Color::WHITE,
+                            ..default()
+                        },
+                    },
+                ]),
+                ..Default::default()
+            },
+        ))
+        .id();
+    commands.entity(root).add_child(text);
+}
+
+pub fn insert_selection_cursor_to_new_generations<C: CoordinateSystem>(
+    mut commands: Commands,
+    mut new_generations: Query<
+        (Entity, &GridDefinition<C>, &Generator<C>),
+        Without<SelectionCursor>,
+    >,
+) {
+    for (gen_entity, _grid, _generation) in new_generations.iter_mut() {
+        commands.entity(gen_entity).insert((
+            ActiveGridCursor,
+            SelectionCursor(GridCursor {
+                color: Color::GREEN,
+                node_index: 0,
+                position: GridPosition::new(0, 0, 0),
+                marker: None,
+            }),
+            SelectionCursorInfo(GridCursorInfo::new()),
+        ));
+        // TODO Handle despawn
+        let cursor_overlay_entity = commands.spawn(SelectionCursorOverlayText(gen_entity)).id();
+        #[cfg(feature = "picking")]
+        commands
+            .entity(cursor_overlay_entity)
+            .insert(Pickable::IGNORE);
+    }
+}
+
+pub fn update_grid_cursor_info_on_cursor_changes<
     C: CoordinateSystem,
     GC: Component + Deref<Target = GridCursor>,
     GCI: Component + DerefMut<Target = GridCursorInfo>,
@@ -144,44 +171,17 @@ pub fn update_grid_cursor_info_on_changes<
     }
 }
 
-pub fn update_selection_cursor_info_ui(
-    mut selection_cursor_text: Query<&mut Text, With<SelectionCursorText>>,
+pub fn update_selection_cursor_panel_text(
+    mut selection_cursor_text: Query<&mut Text, With<CursorsPanelText>>,
     mut updated_cursors: Query<
-        (
-            &GridSelectionCursorInfo,
-            &GridSelectionCursor,
-            &ActiveGridCursor,
-        ),
-        Changed<GridSelectionCursorInfo>,
+        (&SelectionCursorInfo, &SelectionCursor, &ActiveGridCursor),
+        Changed<SelectionCursorInfo>,
     >,
 ) {
     if let Ok((cursor_info, cursor, _active)) = updated_cursors.get_single() {
         for mut text in &mut selection_cursor_text {
-            if cursor_info.models.len() > 1 {
-                text.sections[0].value = format!(
-                    "Grid: {{{}}}\n\
-                    {} possible models:\n\
-                    {{{}}}\n\
-                    {{{}}}\n\
-                    ...",
-                    cursor.0,
-                    cursor_info.models.len(),
-                    cursor_info.models[0],
-                    cursor_info.models[1],
-                );
-            } else if cursor_info.models.len() == 1 {
-                text.sections[0].value = format!(
-                    "Grid: {{{}}}\n\
-                    Model: {{{}}}",
-                    cursor.0, cursor_info.models[0],
-                );
-            } else {
-                text.sections[0].value = format!(
-                    "Grid: {{{}}}\n\
-                    No models",
-                    cursor.0,
-                );
-            }
+            text.sections[1].value =
+                format!("Selected:\n{}", cursor_info_to_string(cursor, cursor_info));
         }
     }
 }
@@ -189,7 +189,7 @@ pub fn update_selection_cursor_info_ui(
 #[derive(Resource, Deref, DerefMut)]
 pub struct CursorMoveCooldown(pub Timer);
 
-pub fn keybinds_update_grid_selection_cursor_position<C: CoordinateSystem>(
+pub fn keybinds_update_selection_cursor_position<C: CoordinateSystem>(
     mut commands: Commands,
     keys: Res<Input<KeyCode>>,
     time: Res<Time>,
@@ -197,7 +197,7 @@ pub fn keybinds_update_grid_selection_cursor_position<C: CoordinateSystem>(
     mut marker_events: EventWriter<MarkerDespawnEvent>,
     mut move_cooldown: ResMut<CursorMoveCooldown>,
     mut active_grid_cursors: Query<
-        (Entity, &GridDefinition<C>, &mut GridSelectionCursor),
+        (Entity, &GridDefinition<C>, &mut SelectionCursor),
         With<ActiveGridCursor>,
     >,
 ) {
@@ -249,5 +249,105 @@ pub fn keybinds_update_grid_selection_cursor_position<C: CoordinateSystem>(
                 }
             }
         }
+    }
+}
+
+pub fn cursor_info_to_string(cursor: &GridCursor, cursor_info: &GridCursorInfo) -> String {
+    let text = if cursor_info.models.len() > 1 {
+        format!(
+            "Grid: {{{}}}\n\
+            {} possible models:\n\
+            {{{}}}\n\
+            {{{}}}\n\
+            ...\n",
+            cursor,
+            cursor_info.models.len(),
+            cursor_info.models[0],
+            cursor_info.models[1],
+        )
+    } else if cursor_info.models.len() == 1 {
+        format!(
+            "Grid: {{{}}}\n\
+            Model: {{{}}}\n",
+            cursor, cursor_info.models[0],
+        )
+    } else {
+        format!(
+            "Grid: {{{}}}\n\
+            No models\n",
+            cursor,
+        )
+    };
+    text
+}
+
+#[derive(Default)]
+pub struct Flag(pub bool);
+
+pub fn update_cursors_overlay<
+    GC: Component + Deref<Target = GridCursor>,
+    GCI: Component + DerefMut<Target = GridCursorInfo>,
+    E: Component + std::ops::DerefMut<Target = Entity>,
+>(
+    mut camera_warning_flag: Local<Flag>,
+    mut commands: Commands,
+    just_one_camera: Query<(&Camera, &GlobalTransform), Without<GridCursorsOverlayCamera>>,
+    overlay_camera: Query<(&Camera, &GlobalTransform), With<GridCursorsOverlayCamera>>,
+    mut cursor_overlay: Query<(Entity, &E)>,
+    mut cursors: Query<
+        (&GCI, &GC, &ActiveGridCursor),
+        // Changed<SelectionCursorInfo>,
+    >,
+    markers: Query<&GlobalTransform, With<GridMarker>>,
+) {
+    let (camera, cam_gtransform) = match just_one_camera.get_single() {
+        Ok(found) => found,
+        Err(_) => match overlay_camera.get_single() {
+            Ok(found) => found,
+            Err(_) => {
+                if !camera_warning_flag.0 {
+                    warn!("None (or too many) Camera(s) found with 'GridCursorsOverlayCamera' component to display cursors overlays. Add `GridCursorsOverlayCamera` component to a Camera or change the cursor UI mode.");
+                    camera_warning_flag.0 = true;
+                }
+                return;
+            }
+        },
+    };
+
+    for (text_entity, cursor_entity) in &mut cursor_overlay {
+        let Ok((cursor_info, cursor, _active)) = cursors.get(**cursor_entity) else {
+            return;
+        };
+        let Some(marker_entity) = cursor.marker else {
+            return;
+        };
+        let Ok(marker_gtransform) = markers.get(marker_entity) else {
+            return;
+        };
+        let Some(viewport_pos) =
+            camera.world_to_viewport(cam_gtransform, marker_gtransform.translation())
+        else {
+            return;
+        };
+
+        let text = cursor_info_to_string(cursor, cursor_info);
+        commands.entity(text_entity).insert(TextBundle {
+            background_color: BackgroundColor(Color::BLACK.with_a(0.4)),
+            text: Text::from_section(
+                text,
+                TextStyle {
+                    font_size: 15.0,
+                    color: Color::WHITE,
+                    ..Default::default()
+                },
+            ),
+            style: Style {
+                position_type: PositionType::Absolute,
+                left: Val::Px(viewport_pos.x - 5.0),
+                top: Val::Px(viewport_pos.y - 5.0),
+                ..Default::default()
+            },
+            ..Default::default()
+        });
     }
 }

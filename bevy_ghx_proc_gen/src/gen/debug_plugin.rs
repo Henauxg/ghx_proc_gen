@@ -10,15 +10,16 @@ use ghx_proc_gen::grid::direction::CoordinateSystem;
 
 use self::{
     cursor::{
-        insert_selection_cursor_to_new_generations, keybinds_update_grid_selection_cursor_position,
-        setup_selection_cursor_info_ui, update_grid_cursor_info_on_changes,
-        update_selection_cursor_info_ui, CursorMoveCooldown, GridSelectionCursor,
-        GridSelectionCursorInfo,
+        insert_selection_cursor_to_new_generations, keybinds_update_selection_cursor_position,
+        setup_cursors_panel, update_cursors_overlay, update_grid_cursor_info_on_cursor_changes,
+        update_selection_cursor_panel_text, CursorMoveCooldown, SelectionCursor,
+        SelectionCursorInfo, SelectionCursorOverlayText,
     },
     generation::{
         generate_all, insert_void_nodes_to_new_generations, step_by_step_input_update,
         step_by_step_timed_update, update_generation_control, update_generation_view,
     },
+    picking::{update_over_cursor_panel_text, OverCursorOverlayText},
 };
 use super::{
     assets::NoComponents, insert_default_bundle_to_spawned_nodes, spawn_node, AssetSpawner,
@@ -31,8 +32,7 @@ use bevy_mod_picking::PickableBundle;
 #[cfg(feature = "picking")]
 use self::picking::{
     insert_grid_cursor_picking_handlers_to_spawned_nodes, insert_over_cursor_to_new_generations,
-    picking_update_grid_cursor_position, GridOverCursor, GridOverCursorInfo, NodeOverEvent,
-    NodeSelectedEvent,
+    picking_update_cursors_position, NodeOverEvent, NodeSelectedEvent, OverCursor, OverCursorInfo,
 };
 
 #[cfg(feature = "picking")]
@@ -42,6 +42,14 @@ pub mod cursor;
 pub mod generation;
 
 const CURSOR_KEYS_MOVEMENT_COOLDOWN_MS: u64 = 55;
+
+#[derive(Default, Debug, PartialEq, Eq)]
+pub enum CursorUiMode {
+    None,
+    Panel,
+    #[default]
+    Overlay,
+}
 
 /// A [`Plugin`] useful for debug/analysis/demo. It mainly run [`Generator`] components and spawn the generated model's [`crate::gen::assets::ModelAsset`]
 ///
@@ -54,19 +62,16 @@ pub struct ProcGenDebugPlugin<
     T: ComponentSpawner = NoComponents,
 > {
     generation_view_mode: GenerationViewMode,
-    enable_default_selection_ui: bool,
+    cursor_ui_mode: CursorUiMode,
     typestate: PhantomData<(C, A, T)>,
 }
 
 impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> ProcGenDebugPlugin<C, A, T> {
     /// Plugin constructor
-    pub fn new(
-        generation_view_mode: GenerationViewMode,
-        enable_default_selection_ui: bool,
-    ) -> Self {
+    pub fn new(generation_view_mode: GenerationViewMode, cursor_ui_mode: CursorUiMode) -> Self {
         Self {
             generation_view_mode,
-            enable_default_selection_ui,
+            cursor_ui_mode,
             typestate: PhantomData,
         }
     }
@@ -98,7 +103,6 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
                 insert_selection_cursor_to_new_generations::<C>,
             ),
         );
-
         #[cfg(feature = "picking")]
         app.add_systems(
             Update,
@@ -108,28 +112,46 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
                 insert_default_bundle_to_spawned_nodes::<PickableBundle>,
             ),
         );
+
         // Keybinds and picking events handlers run in PreUpdate
-        app.add_systems(
-            PreUpdate,
-            keybinds_update_grid_selection_cursor_position::<C>,
-        );
+        app.add_systems(PreUpdate, keybinds_update_selection_cursor_position::<C>);
         #[cfg(feature = "picking")]
         app.add_systems(
             Update,
             (
-                picking_update_grid_cursor_position::<C, GridOverCursor, NodeOverEvent>,
-                picking_update_grid_cursor_position::<C, GridSelectionCursor, NodeSelectedEvent>,
-                update_grid_cursor_info_on_changes::<C, GridOverCursor, GridOverCursorInfo>,
+                picking_update_cursors_position::<C, OverCursor, NodeOverEvent>,
+                picking_update_cursors_position::<C, SelectionCursor, NodeSelectedEvent>,
+                update_grid_cursor_info_on_cursor_changes::<C, OverCursor, OverCursorInfo>,
             )
                 .chain(),
         );
         app.add_systems(
             Update,
-            update_grid_cursor_info_on_changes::<C, GridSelectionCursor, GridSelectionCursorInfo>,
+            update_grid_cursor_info_on_cursor_changes::<C, SelectionCursor, SelectionCursorInfo>,
         );
-        if self.enable_default_selection_ui {
-            app.add_systems(Startup, setup_selection_cursor_info_ui)
-                .add_systems(PostUpdate, update_selection_cursor_info_ui);
+        match self.cursor_ui_mode {
+            CursorUiMode::None => (),
+            CursorUiMode::Panel => {
+                app.add_systems(Startup, setup_cursors_panel)
+                    .add_systems(PostUpdate, update_selection_cursor_panel_text);
+                #[cfg(feature = "picking")]
+                app.add_systems(PostUpdate, update_over_cursor_panel_text);
+            }
+            CursorUiMode::Overlay => {
+                app.add_systems(
+                    Update,
+                    update_cursors_overlay::<
+                        SelectionCursor,
+                        SelectionCursorInfo,
+                        SelectionCursorOverlayText,
+                    >,
+                );
+                #[cfg(feature = "picking")]
+                app.add_systems(
+                    Update,
+                    update_cursors_overlay::<OverCursor, OverCursorInfo, OverCursorOverlayText>,
+                );
+            }
         }
 
         match self.generation_view_mode {

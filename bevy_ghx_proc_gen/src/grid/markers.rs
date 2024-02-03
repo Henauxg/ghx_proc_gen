@@ -8,7 +8,6 @@ use bevy::{
     },
     gizmos::gizmos::Gizmos,
     hierarchy::{BuildChildren, DespawnRecursiveExt, Parent},
-    log::info,
     math::Vec3Swizzles,
     prelude::SpatialBundle,
     render::color::Color,
