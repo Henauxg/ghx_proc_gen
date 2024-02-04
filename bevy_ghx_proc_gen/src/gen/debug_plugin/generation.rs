@@ -4,13 +4,14 @@ use bevy::{
     ecs::{
         component::Component,
         entity::Entity,
-        event::EventWriter,
+        event::{Event, EventWriter},
         query::{With, Without},
         system::{Commands, Query, Res, ResMut},
     },
     hierarchy::DespawnRecursiveExt,
     input::{keyboard::KeyCode, Input},
     log::{info, warn},
+    prelude::{Deref, DerefMut},
     render::color::Color,
     time::Time,
 };
@@ -20,7 +21,7 @@ use ghx_proc_gen::{
         observer::{GenerationUpdate, QueuedObserver},
         GenerationStatus, Generator,
     },
-    grid::{direction::CoordinateSystem, GridDefinition},
+    grid::{direction::CoordinateSystem, GridDefinition, NodeIndex},
     GeneratorError,
 };
 
@@ -32,8 +33,17 @@ use super::{
 };
 
 /// Component used to store model indexes of models with no assets, just to be able to skip their generation when stepping
-#[derive(Component, bevy::prelude::Deref)]
+#[derive(Component, Default, Deref, DerefMut)]
 pub struct VoidNodes(pub HashSet<ModelIndex>);
+
+#[derive(Component, Default, Deref, DerefMut)]
+pub struct ErrorMarkers(pub Vec<Entity>);
+
+#[derive(Event, Clone, Copy, Debug)]
+pub enum GenerationEvent {
+    Reinitialized(Entity),
+    Updated(Entity, NodeIndex),
+}
 
 /// Simple system that calculates and add a [`VoidNodes`] component for generator entites which don't have one yet.
 pub fn insert_void_nodes_to_new_generations<
@@ -55,6 +65,15 @@ pub fn insert_void_nodes_to_new_generations<
             }
         }
         commands.entity(gen_entity).insert(VoidNodes(void_nodes));
+    }
+}
+
+pub fn insert_error_markers_to_new_generations<C: CoordinateSystem>(
+    mut commands: Commands,
+    mut new_generations: Query<Entity, (With<Generator<C>>, Without<ErrorMarkers>)>,
+) {
+    for gen_entity in new_generations.iter_mut() {
+        commands.entity(gen_entity).insert(ErrorMarkers::default());
     }
 }
 
@@ -150,15 +169,18 @@ pub fn step_by_step_timed_update<C: CoordinateSystem>(
 pub fn update_generation_view<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner>(
     mut commands: Commands,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
+    mut generation_events: EventWriter<GenerationEvent>,
     mut generators: Query<(
         Entity,
         &GridDefinition<C>,
         &AssetSpawner<A, T>,
         &mut QueuedObserver,
+        &mut ErrorMarkers,
     )>,
     existing_nodes: Query<Entity, With<SpawnedNode>>,
 ) {
-    for (gen_entity, grid, asset_spawner, mut observer) in generators.iter_mut() {
+    for (grid_entity, grid, asset_spawner, mut observer, mut error_markers) in generators.iter_mut()
+    {
         let mut reinitialized = false;
         let mut nodes_to_spawn = Vec::new();
         for update in observer.dequeue_all() {
@@ -171,27 +193,32 @@ pub fn update_generation_view<C: CoordinateSystem, A: AssetsBundleSpawner, T: Co
                     nodes_to_spawn.clear();
                 }
                 GenerationUpdate::Failed(node_index) => {
-                    spawn_marker(
+                    error_markers.push(spawn_marker(
                         &mut commands,
-                        gen_entity,
+                        grid_entity,
                         Color::RED,
                         grid.pos_from_index(node_index),
-                    );
+                    ));
                 }
             }
         }
 
         if reinitialized {
+            generation_events.send(GenerationEvent::Reinitialized(grid_entity));
             for existing_node in existing_nodes.iter() {
                 commands.entity(existing_node).despawn_recursive();
             }
-            marker_events.send(MarkerDespawnEvent::ClearAll);
+            for marker in error_markers.iter() {
+                marker_events.send(MarkerDespawnEvent::Marker(*marker));
+            }
+            error_markers.clear();
         }
 
         for grid_node in nodes_to_spawn {
+            generation_events.send(GenerationEvent::Updated(grid_entity, grid_node.node_index));
             spawn_node(
                 &mut commands,
-                gen_entity,
+                grid_entity,
                 &grid,
                 asset_spawner,
                 &grid_node.model_instance,

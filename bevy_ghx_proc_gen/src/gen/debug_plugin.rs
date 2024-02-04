@@ -13,13 +13,14 @@ use self::{
     cursor::{
         insert_cursor_to_new_generations, keybinds_update_selection_cursor_position,
         setup_cursors_overlays, setup_cursors_panel, update_cursor_info_on_cursor_changes,
-        update_cursors_overlay, update_selection_cursor_panel_text, CursorMoveCooldown,
-        SelectionCursor, SelectionCursorInfo, SelectionCursorMarkerSettings,
-        SelectionCursorOverlay,
+        update_cursors_from_generation_events, update_cursors_overlay,
+        update_selection_cursor_panel_text, CursorKeyboardMoveCooldown, SelectionCursor,
+        SelectionCursorInfo, SelectionCursorMarkerSettings, SelectionCursorOverlay,
     },
     generation::{
-        generate_all, insert_void_nodes_to_new_generations, step_by_step_input_update,
-        step_by_step_timed_update, update_generation_control, update_generation_view,
+        generate_all, insert_error_markers_to_new_generations,
+        insert_void_nodes_to_new_generations, step_by_step_input_update, step_by_step_timed_update,
+        update_generation_control, update_generation_view, GenerationEvent,
     },
     picking::{
         picking_remove_previous_over_cursor, update_over_cursor_panel_text, NodeOutEvent,
@@ -117,11 +118,12 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
             }
         }
 
-        app.insert_resource(CursorMoveCooldown(Timer::new(
+        app.insert_resource(CursorKeyboardMoveCooldown(Timer::new(
             Duration::from_millis(CURSOR_KEYS_MOVEMENT_COOLDOWN_MS),
             TimerMode::Once,
         )));
 
+        app.add_event::<GenerationEvent>();
         #[cfg(feature = "picking")]
         app.add_event::<NodeOverEvent>()
             .add_event::<NodeOutEvent>()
@@ -181,6 +183,14 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
             Update,
             update_cursor_info_on_cursor_changes::<C, SelectionCursor, SelectionCursorInfo>,
         );
+        app.add_systems(
+            PostUpdate,
+            (
+                update_cursors_from_generation_events::<C, SelectionCursor, SelectionCursorInfo>,
+                update_cursors_from_generation_events::<C, OverCursor, OverCursorInfo>,
+            ),
+        );
+
         match self.cursor_ui_mode {
             CursorUiMode::None => (),
             CursorUiMode::Panel => {
@@ -215,7 +225,10 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
                 app.add_systems(
                     Update,
                     (
-                        insert_void_nodes_to_new_generations::<C, A, T>,
+                        (
+                            insert_error_markers_to_new_generations::<C>,
+                            insert_void_nodes_to_new_generations::<C, A, T>,
+                        ),
                         step_by_step_timed_update::<C>,
                         update_generation_view::<C, A, T>,
                     )
@@ -230,7 +243,10 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
                 app.add_systems(
                     Update,
                     (
-                        insert_void_nodes_to_new_generations::<C, A, T>,
+                        (
+                            insert_error_markers_to_new_generations::<C>,
+                            insert_void_nodes_to_new_generations::<C, A, T>,
+                        ),
                         step_by_step_input_update::<C>,
                         update_generation_view::<C, A, T>,
                     )

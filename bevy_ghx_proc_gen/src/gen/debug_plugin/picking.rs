@@ -154,9 +154,7 @@ pub fn picking_update_cursors_position<
                 let update_cursor = match (&*cursor).as_ref() {
                     Some(grid_cursor) => {
                         if grid_cursor.node_index != node.0 {
-                            marker_events.send(MarkerDespawnEvent::Remove {
-                                marker_entity: grid_cursor.marker,
-                            });
+                            marker_events.send(MarkerDespawnEvent::Marker(grid_cursor.marker));
                             true
                         } else {
                             false
@@ -192,9 +190,7 @@ pub fn picking_remove_previous_over_cursor<C: CoordinateSystem>(
         if let Ok(node_parent) = nodes.get_mut(**event) {
             if let Ok(mut cursor) = cursors.get_mut(node_parent.get()) {
                 if let Some(grid_cursor) = &cursor.0 {
-                    marker_events.send(MarkerDespawnEvent::Remove {
-                        marker_entity: grid_cursor.marker,
-                    });
+                    marker_events.send(MarkerDespawnEvent::Marker(grid_cursor.marker));
                     **cursor = None;
                 }
             }

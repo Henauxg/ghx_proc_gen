@@ -23,18 +23,12 @@ use super::{
 /// Event used to despawn markers on a [`DebugGridView`]
 #[derive(Event)]
 pub enum MarkerDespawnEvent {
-    /// Send this event to delete a marker on a grid node
-    Remove {
-        /// Marker `Entity`
-        marker_entity: Entity,
-    },
-    /// Send this event to clear all markers on a grid
-    Clear {
-        /// Grid entity from which all markers should be removed
-        grid_entity: Entity,
-    },
+    /// Send this event to delete a marker Entity
+    Marker(Entity),
+    /// Send this event to clear all markers on a grid Entity
+    Grid(Entity),
     /// Send this event to clear all markers from all grids
-    ClearAll,
+    All,
 }
 
 /// Marker to be displayed on a grid
@@ -76,12 +70,12 @@ pub fn update_debug_markers(
 ) {
     for marker_event in marker_events.read() {
         match marker_event {
-            MarkerDespawnEvent::Remove { marker_entity } => {
+            MarkerDespawnEvent::Marker(marker_entity) => {
                 if let Ok(_) = markers.get(*marker_entity) {
                     commands.entity(*marker_entity).despawn_recursive();
                 }
             }
-            MarkerDespawnEvent::Clear { grid_entity } => {
+            MarkerDespawnEvent::Grid(grid_entity) => {
                 for (parent_grid, marker_entity) in markers.iter() {
                     if parent_grid.get() == *grid_entity {
                         if let Ok(_) = markers.get(marker_entity) {
@@ -90,7 +84,7 @@ pub fn update_debug_markers(
                     }
                 }
             }
-            MarkerDespawnEvent::ClearAll => {
+            MarkerDespawnEvent::All => {
                 for (_parent_grid, marker_entity) in markers.iter() {
                     if let Ok(_) = markers.get(marker_entity) {
                         commands.entity(marker_entity).despawn_recursive();

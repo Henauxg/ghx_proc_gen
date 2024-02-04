@@ -7,7 +7,7 @@ use bevy::{
     ecs::{
         component::Component,
         entity::Entity,
-        event::EventWriter,
+        event::{EventReader, EventWriter},
         query::{Changed, With, Without},
         system::{Commands, Local, Query, Res, ResMut, Resource},
     },
@@ -36,7 +36,7 @@ use ghx_proc_gen::{
 
 use crate::grid::markers::{GridMarker, MarkerDespawnEvent};
 
-use super::{GridCursorsUiSettings, ProcGenKeyBindings};
+use super::{generation::GenerationEvent, GridCursorsUiSettings, ProcGenKeyBindings};
 
 #[derive(Component)]
 pub struct GridCursorsOverlayCamera;
@@ -84,7 +84,9 @@ pub trait GridCursorContainer:
 {
     fn new(cursor: Option<GridCursor>) -> Self;
 }
-pub trait GridCursorInfoContainer: Component + Deref<Target = GridCursorInfo> {
+pub trait GridCursorInfoContainer:
+    Component + Deref<Target = GridCursorInfo> + DerefMut<Target = GridCursorInfo>
+{
     fn new(cursor_info: GridCursorInfo) -> Self;
 }
 pub trait GridCursorOverlay: Component + Deref<Target = Entity> {
@@ -238,7 +240,7 @@ pub fn insert_cursor_to_new_generations<
 pub fn update_cursor_info_on_cursor_changes<
     C: CoordinateSystem,
     GC: GridCursorContainer,
-    GCI: GridCursorInfoContainer + DerefMut<Target = GridCursorInfo>,
+    GCI: GridCursorInfoContainer,
 >(
     mut moved_cursors: Query<(&Generator<C>, &mut GCI, &GC), Changed<GC>>,
 ) {
@@ -248,6 +250,45 @@ pub fn update_cursor_info_on_cursor_changes<
                 cursor_info.models = generator.get_models_info_on(grid_cursor.node_index)
             }
             None => cursor_info.models.clear(),
+        }
+    }
+}
+
+pub fn update_cursors_from_generation_events<
+    C: CoordinateSystem,
+    GC: GridCursorContainer,
+    GCI: GridCursorInfoContainer,
+>(
+    mut cursors_events: EventReader<GenerationEvent>,
+    mut selection_cursors: Query<(&Generator<C>, &GC, &mut GCI)>,
+) {
+    for event in cursors_events.read() {
+        match event {
+            GenerationEvent::Reinitialized(grid_entity) => {
+                let Ok((generator, select_cursor, mut select_cursor_info)) =
+                    selection_cursors.get_mut(*grid_entity)
+                else {
+                    continue;
+                };
+                let Some(grid_cursor) = &select_cursor.deref() else {
+                    continue;
+                };
+                select_cursor_info.models = generator.get_models_info_on(grid_cursor.node_index);
+            }
+            GenerationEvent::Updated(grid_entity, node_index) => {
+                let Ok((generator, select_cursor, mut select_cursor_info)) =
+                    selection_cursors.get_mut(*grid_entity)
+                else {
+                    continue;
+                };
+                let Some(grid_cursor) = &select_cursor.deref() else {
+                    continue;
+                };
+                if grid_cursor.node_index == *node_index {
+                    select_cursor_info.models =
+                        generator.get_models_info_on(grid_cursor.node_index);
+                }
+            }
         }
     }
 }
@@ -276,7 +317,7 @@ pub fn update_selection_cursor_panel_text(
 }
 
 #[derive(Resource, Deref, DerefMut)]
-pub struct CursorMoveCooldown(pub Timer);
+pub struct CursorKeyboardMoveCooldown(pub Timer);
 
 pub fn keybinds_update_selection_cursor_position<C: CoordinateSystem>(
     mut commands: Commands,
@@ -285,7 +326,7 @@ pub fn keybinds_update_selection_cursor_position<C: CoordinateSystem>(
     selection_marker_settings: Res<SelectionCursorMarkerSettings>,
     proc_gen_key_bindings: Res<ProcGenKeyBindings>,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
-    mut move_cooldown: ResMut<CursorMoveCooldown>,
+    mut move_cooldown: ResMut<CursorKeyboardMoveCooldown>,
     mut active_grid_cursors: Query<
         (Entity, &GridDefinition<C>, &mut SelectionCursor),
         With<ActiveGridCursor>,
@@ -324,9 +365,7 @@ pub fn keybinds_update_selection_cursor_position<C: CoordinateSystem>(
                     Some(grid_cursor) => {
                         match grid.get_index_in_direction(&grid_cursor.position, axis, movement) {
                             Some(node_index) => {
-                                marker_events.send(MarkerDespawnEvent::Remove {
-                                    marker_entity: grid_cursor.marker,
-                                });
+                                marker_events.send(MarkerDespawnEvent::Marker(grid_cursor.marker));
                                 Some((node_index, grid.pos_from_index(node_index)))
                             }
                             None => None,
