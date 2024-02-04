@@ -4,7 +4,7 @@ use bevy::{
         entity::Entity,
         event::{Event, EventReader, EventWriter},
         query::{Added, Changed, With},
-        system::{Commands, Query, Resource},
+        system::{Commands, Query, Res, Resource},
     },
     hierarchy::{BuildChildren, Parent},
     prelude::{Deref, DerefMut},
@@ -113,11 +113,13 @@ pub fn update_over_cursor_panel_text(
 
 pub fn picking_update_cursors_position<
     C: CoordinateSystem,
+    GCS: GridCursorMarkerSettings,
     GC: Component + std::ops::DerefMut<Target = GridCursor>,
     E: Event + std::ops::DerefMut<Target = Entity>,
 >(
     mut events: EventReader<E>,
     mut commands: Commands,
+    cursor_marker_settings: Res<GCS>,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
     mut nodes: Query<(&SpawnedNode, &Parent)>,
     mut cursors: Query<(&mut GC, &GridDefinition<C>)>,
@@ -136,7 +138,10 @@ pub fn picking_update_cursors_position<
                         });
                     }
                     let marker_entity = commands
-                        .spawn(GridMarker::new(cursor.color, cursor.position.clone()))
+                        .spawn(GridMarker::new(
+                            cursor_marker_settings.color(),
+                            cursor.position.clone(),
+                        ))
                         .id();
                     commands.entity(parent_entity).add_child(marker_entity);
                     cursor.marker = Some(marker_entity);

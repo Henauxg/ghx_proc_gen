@@ -158,8 +158,18 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
         app.add_systems(
             Update,
             (
-                picking_update_cursors_position::<C, OverCursor, NodeOverEvent>,
-                picking_update_cursors_position::<C, SelectionCursor, NodeSelectedEvent>,
+                picking_update_cursors_position::<
+                    C,
+                    OverCursorMarkerSettings,
+                    OverCursor,
+                    NodeOverEvent,
+                >,
+                picking_update_cursors_position::<
+                    C,
+                    SelectionCursorMarkerSettings,
+                    SelectionCursor,
+                    NodeSelectedEvent,
+                >,
                 update_cursor_info_on_cursor_changes::<C, OverCursor, OverCursorInfo>,
             )
                 .chain(),

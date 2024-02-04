@@ -275,6 +275,7 @@ pub fn keybinds_update_selection_cursor_position<C: CoordinateSystem>(
     mut commands: Commands,
     keys: Res<Input<KeyCode>>,
     time: Res<Time>,
+    selection_marker_settings: Res<SelectionCursorMarkerSettings>,
     proc_gen_key_bindings: Res<ProcGenKeyBindings>,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
     mut move_cooldown: ResMut<CursorMoveCooldown>,
@@ -322,7 +323,10 @@ pub fn keybinds_update_selection_cursor_position<C: CoordinateSystem>(
                         cursor.node_index = node_index;
                         cursor.position = grid.pos_from_index(node_index);
                         let marker_entity = commands
-                            .spawn(GridMarker::new(cursor.color, cursor.position.clone()))
+                            .spawn(GridMarker::new(
+                                selection_marker_settings.color(),
+                                cursor.position.clone(),
+                            ))
                             .id();
                         commands.entity(grid_entity).add_child(marker_entity);
                         cursor.marker = Some(marker_entity);
