@@ -55,10 +55,9 @@ pub struct ActiveGridCursor;
 
 #[derive(Debug)]
 pub struct GridCursor {
-    pub color: Color,
     pub node_index: NodeIndex,
     pub position: GridPosition,
-    pub marker: Option<Entity>,
+    pub marker: Entity,
 }
 impl fmt::Display for GridCursor {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -66,7 +65,7 @@ impl fmt::Display for GridCursor {
     }
 }
 
-#[derive(Debug)]
+#[derive(Default, Debug)]
 pub struct GridCursorInfo {
     pub models: Vec<ModelInfo>,
 }
@@ -80,8 +79,10 @@ pub trait GridCursorMarkerSettings: Resource {
     fn color(&self) -> Color;
 }
 
-pub trait GridCursorContainer: Component + Deref<Target = GridCursor> {
-    fn new(cursor: GridCursor) -> Self;
+pub trait GridCursorContainer:
+    Component + Deref<Target = Option<GridCursor>> + DerefMut<Target = Option<GridCursor>>
+{
+    fn new(cursor: Option<GridCursor>) -> Self;
 }
 pub trait GridCursorInfoContainer: Component + Deref<Target = GridCursorInfo> {
     fn new(cursor_info: GridCursorInfo) -> Self;
@@ -104,9 +105,9 @@ impl GridCursorMarkerSettings for SelectionCursorMarkerSettings {
 }
 
 #[derive(Component, Debug, Deref, DerefMut)]
-pub struct SelectionCursor(pub GridCursor);
+pub struct SelectionCursor(pub Option<GridCursor>);
 impl GridCursorContainer for SelectionCursor {
-    fn new(cursor: GridCursor) -> Self {
+    fn new(cursor: Option<GridCursor>) -> Self {
         Self(cursor)
     }
 }
@@ -193,25 +194,18 @@ pub fn setup_cursors_overlays(mut commands: Commands) {
 
 pub fn insert_cursor_to_new_generations<
     C: CoordinateSystem,
-    GCS: GridCursorMarkerSettings,
     GC: GridCursorContainer,
     GCI: GridCursorInfoContainer,
     GCO: GridCursorOverlay,
 >(
     mut commands: Commands,
-    cursor_config: Res<GCS>,
     mut new_generations: Query<Entity, (Without<GC>, With<GridDefinition<C>>, With<Generator<C>>)>,
     overlays_root: Query<Entity, With<CursorsOverlaysRoot>>,
 ) {
     for grid_entity in new_generations.iter_mut() {
         commands.entity(grid_entity).insert((
             ActiveGridCursor,
-            GC::new(GridCursor {
-                color: cursor_config.color(),
-                node_index: 0,
-                position: GridPosition::new(0, 0, 0),
-                marker: None,
-            }),
+            GC::new(None),
             GCI::new(GridCursorInfo::new()),
         ));
 
@@ -249,21 +243,34 @@ pub fn update_cursor_info_on_cursor_changes<
     mut moved_cursors: Query<(&Generator<C>, &mut GCI, &GC), Changed<GC>>,
 ) {
     for (generator, mut cursor_info, cursor) in moved_cursors.iter_mut() {
-        cursor_info.models = generator.get_models_info_on(cursor.node_index);
+        match cursor.as_ref() {
+            Some(grid_cursor) => {
+                cursor_info.models = generator.get_models_info_on(grid_cursor.node_index)
+            }
+            None => cursor_info.models.clear(),
+        }
     }
 }
 
 pub fn update_selection_cursor_panel_text(
-    mut selection_cursor_text: Query<&mut Text, With<CursorsPanelText>>,
+    mut cursors_panel_text: Query<&mut Text, With<CursorsPanelText>>,
     mut updated_cursors: Query<
         (&SelectionCursorInfo, &SelectionCursor, &ActiveGridCursor),
         Changed<SelectionCursorInfo>,
     >,
 ) {
     if let Ok((cursor_info, cursor, _active)) = updated_cursors.get_single() {
-        for mut text in &mut selection_cursor_text {
-            text.sections[SELECTION_CURSOR_SECTION_INDEX].value =
-                format!("Selected:\n{}", cursor_info_to_string(cursor, cursor_info));
+        for mut text in &mut cursors_panel_text {
+            let ui_text = &mut text.sections[SELECTION_CURSOR_SECTION_INDEX].value;
+            match &cursor.0 {
+                Some(grid_cursor) => {
+                    *ui_text = format!(
+                        "Selected:\n{}",
+                        cursor_info_to_string(&grid_cursor, cursor_info)
+                    );
+                }
+                None => ui_text.clear(),
+            }
         }
     }
 }
@@ -313,23 +320,32 @@ pub fn keybinds_update_selection_cursor_position<C: CoordinateSystem>(
             move_cooldown.reset();
 
             for (grid_entity, grid, mut cursor) in active_grid_cursors.iter_mut() {
-                match grid.get_index_in_direction(&cursor.position, axis, movement) {
-                    Some(node_index) => {
-                        if let Some(previous_cursor_entity) = cursor.marker {
-                            marker_events.send(MarkerDespawnEvent::Remove {
-                                marker_entity: previous_cursor_entity,
-                            });
+                let update_cursor = match &cursor.0 {
+                    Some(grid_cursor) => {
+                        match grid.get_index_in_direction(&grid_cursor.position, axis, movement) {
+                            Some(node_index) => {
+                                marker_events.send(MarkerDespawnEvent::Remove {
+                                    marker_entity: grid_cursor.marker,
+                                });
+                                Some((node_index, grid.pos_from_index(node_index)))
+                            }
+                            None => None,
                         }
-                        cursor.node_index = node_index;
-                        cursor.position = grid.pos_from_index(node_index);
-                        let marker_entity = commands
-                            .spawn(GridMarker::new(
-                                selection_marker_settings.color(),
-                                cursor.position.clone(),
-                            ))
+                    }
+                    None => Some((0, GridPosition::new(0, 0, 0))),
+                };
+
+                match update_cursor {
+                    Some((node_index, position)) => {
+                        let marker = commands
+                            .spawn(GridMarker::new(selection_marker_settings.color(), position))
                             .id();
-                        commands.entity(grid_entity).add_child(marker_entity);
-                        cursor.marker = Some(marker_entity);
+                        commands.entity(grid_entity).add_child(marker);
+                        **cursor = Some(GridCursor {
+                            node_index,
+                            position,
+                            marker,
+                        });
                     }
                     None => (),
                 }
@@ -402,10 +418,14 @@ pub fn update_cursors_overlay<
         let Ok((cursor_info, cursor, _active)) = cursors.get(**cursor_entity) else {
             return;
         };
-        let Some(marker_entity) = cursor.marker else {
+        let Some(grid_cursor) = cursor.as_ref() else {
+            // No marker => no text overlay
+            commands.entity(text_entity).insert(TextBundle {
+                ..Default::default()
+            });
             return;
         };
-        let Ok(marker_gtransform) = markers.get(marker_entity) else {
+        let Ok(marker_gtransform) = markers.get(grid_cursor.marker) else {
             return;
         };
         let Some(viewport_pos) =
@@ -414,7 +434,7 @@ pub fn update_cursors_overlay<
             return;
         };
 
-        let text = cursor_info_to_string(cursor, cursor_info);
+        let text = cursor_info_to_string(&grid_cursor, cursor_info);
         commands.entity(text_entity).insert(TextBundle {
             background_color: BackgroundColor(ui_config.background_color),
             text: Text {

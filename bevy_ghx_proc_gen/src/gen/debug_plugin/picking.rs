@@ -12,7 +12,10 @@ use bevy::{
     text::Text,
 };
 
-use bevy_mod_picking::prelude::{Down, ListenerInput, On, Over, Pointer};
+use bevy_mod_picking::{
+    events::Out,
+    prelude::{Down, ListenerInput, On, Over, Pointer},
+};
 use ghx_proc_gen::grid::{direction::CoordinateSystem, GridDefinition};
 
 use crate::{
@@ -40,9 +43,9 @@ impl GridCursorMarkerSettings for OverCursorMarkerSettings {
 }
 
 #[derive(Component, Debug, Deref, DerefMut)]
-pub struct OverCursor(pub GridCursor);
+pub struct OverCursor(pub Option<GridCursor>);
 impl GridCursorContainer for OverCursor {
-    fn new(cursor: GridCursor) -> Self {
+    fn new(cursor: Option<GridCursor>) -> Self {
         Self(cursor)
     }
 }
@@ -73,6 +76,15 @@ impl From<ListenerInput<Pointer<Over>>> for NodeOverEvent {
 }
 
 #[derive(Event, Deref, DerefMut)]
+pub struct NodeOutEvent(pub Entity);
+
+impl From<ListenerInput<Pointer<Out>>> for NodeOutEvent {
+    fn from(event: ListenerInput<Pointer<Out>>) -> Self {
+        NodeOutEvent(event.listener())
+    }
+}
+
+#[derive(Event, Deref, DerefMut)]
 pub struct NodeSelectedEvent(pub Entity);
 
 pub fn insert_grid_cursor_picking_handlers_to_spawned_nodes<C: CoordinateSystem>(
@@ -85,6 +97,9 @@ pub fn insert_grid_cursor_picking_handlers_to_spawned_nodes<C: CoordinateSystem>
         commands
             .entity(node)
             .try_insert(On::<Pointer<Over>>::send_event::<NodeOverEvent>());
+        commands
+            .entity(node)
+            .try_insert(On::<Pointer<Out>>::send_event::<NodeOutEvent>());
         commands.entity(node).try_insert(On::<Pointer<Down>>::run(
             move |event: ListenerMut<Pointer<Down>>,
                   mut selection_events: EventWriter<NodeSelectedEvent>| {
@@ -97,16 +112,24 @@ pub fn insert_grid_cursor_picking_handlers_to_spawned_nodes<C: CoordinateSystem>
 }
 
 pub fn update_over_cursor_panel_text(
-    mut selection_cursor_text: Query<&mut Text, With<CursorsPanelText>>,
+    mut cursors_panel_text: Query<&mut Text, With<CursorsPanelText>>,
     mut updated_cursors: Query<
         (&OverCursorInfo, &OverCursor, &ActiveGridCursor),
         Changed<OverCursorInfo>,
     >,
 ) {
     if let Ok((cursor_info, cursor, _active)) = updated_cursors.get_single() {
-        for mut text in &mut selection_cursor_text {
-            text.sections[OVER_CURSOR_SECTION_INDEX].value =
-                format!("Hovered:\n{}", cursor_info_to_string(cursor, cursor_info));
+        for mut text in &mut cursors_panel_text {
+            let ui_text = &mut text.sections[OVER_CURSOR_SECTION_INDEX].value;
+            match cursor.as_ref() {
+                Some(grid_cursor) => {
+                    *ui_text = format!(
+                        "Hovered:\n{}",
+                        cursor_info_to_string(grid_cursor, cursor_info)
+                    );
+                }
+                None => ui_text.clear(),
+            }
         }
     }
 }
@@ -114,37 +137,65 @@ pub fn update_over_cursor_panel_text(
 pub fn picking_update_cursors_position<
     C: CoordinateSystem,
     GCS: GridCursorMarkerSettings,
-    GC: Component + std::ops::DerefMut<Target = GridCursor>,
+    GC: GridCursorContainer,
     E: Event + std::ops::DerefMut<Target = Entity>,
 >(
-    mut events: EventReader<E>,
     mut commands: Commands,
     cursor_marker_settings: Res<GCS>,
+    mut events: EventReader<E>,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
     mut nodes: Query<(&SpawnedNode, &Parent)>,
     mut cursors: Query<(&mut GC, &GridDefinition<C>)>,
 ) {
-    for event in events.read().last() {
+    if let Some(event) = events.read().last() {
         if let Ok((node, node_parent)) = nodes.get_mut(**event) {
             let parent_entity = node_parent.get();
             if let Ok((mut cursor, grid)) = cursors.get_mut(parent_entity) {
-                if cursor.node_index != node.0 {
-                    cursor.node_index = node.0;
-                    cursor.position = grid.pos_from_index(node.0);
-
-                    if let Some(previous_cursor_entity) = cursor.marker {
-                        marker_events.send(MarkerDespawnEvent::Remove {
-                            marker_entity: previous_cursor_entity,
-                        });
+                let update_cursor = match (&*cursor).as_ref() {
+                    Some(grid_cursor) => {
+                        if grid_cursor.node_index != node.0 {
+                            marker_events.send(MarkerDespawnEvent::Remove {
+                                marker_entity: grid_cursor.marker,
+                            });
+                            true
+                        } else {
+                            false
+                        }
                     }
-                    let marker_entity = commands
-                        .spawn(GridMarker::new(
-                            cursor_marker_settings.color(),
-                            cursor.position.clone(),
-                        ))
+                    None => true,
+                };
+
+                if update_cursor {
+                    let position = grid.pos_from_index(node.0);
+                    let marker = commands
+                        .spawn(GridMarker::new(cursor_marker_settings.color(), position))
                         .id();
-                    commands.entity(parent_entity).add_child(marker_entity);
-                    cursor.marker = Some(marker_entity);
+                    commands.entity(parent_entity).add_child(marker);
+                    **cursor = Some(GridCursor {
+                        node_index: node.0,
+                        position,
+                        marker,
+                    });
+                }
+            }
+        }
+    }
+}
+
+pub fn picking_remove_previous_over_cursor<C: CoordinateSystem>(
+    mut out_events: EventReader<NodeOutEvent>,
+    mut marker_events: EventWriter<MarkerDespawnEvent>,
+    mut nodes: Query<&Parent, With<SpawnedNode>>,
+    mut cursors: Query<&mut OverCursor>,
+) {
+    if let Some(event) = out_events.read().last() {
+        if let Ok(node_parent) = nodes.get_mut(**event) {
+            if let Ok(mut cursor) = cursors.get_mut(node_parent.get()) {
+                if let Some(grid_cursor) = &cursor.0 {
+                    marker_events.send(MarkerDespawnEvent::Remove {
+                        marker_entity: grid_cursor.marker,
+                    });
+                    **cursor = None;
                 }
             }
         }

@@ -21,7 +21,10 @@ use self::{
         generate_all, insert_void_nodes_to_new_generations, step_by_step_input_update,
         step_by_step_timed_update, update_generation_control, update_generation_view,
     },
-    picking::{update_over_cursor_panel_text, OverCursorMarkerSettings, OverCursorOverlay},
+    picking::{
+        picking_remove_previous_over_cursor, update_over_cursor_panel_text, NodeOutEvent,
+        OverCursorMarkerSettings, OverCursorOverlay,
+    },
 };
 use super::{
     assets::NoComponents, insert_default_bundle_to_spawned_nodes, spawn_node, AssetSpawner,
@@ -121,6 +124,7 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
 
         #[cfg(feature = "picking")]
         app.add_event::<NodeOverEvent>()
+            .add_event::<NodeOutEvent>()
             .add_event::<NodeSelectedEvent>();
 
         app.add_systems(
@@ -129,7 +133,6 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
                 update_generation_control,
                 insert_cursor_to_new_generations::<
                     C,
-                    SelectionCursorMarkerSettings,
                     SelectionCursor,
                     SelectionCursorInfo,
                     SelectionCursorOverlay,
@@ -142,7 +145,6 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
             (
                 insert_cursor_to_new_generations::<
                     C,
-                    OverCursorMarkerSettings,
                     OverCursor,
                     OverCursorInfo,
                     OverCursorOverlay,
@@ -158,6 +160,7 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
         app.add_systems(
             Update,
             (
+                picking_remove_previous_over_cursor::<C>,
                 picking_update_cursors_position::<
                     C,
                     OverCursorMarkerSettings,
