@@ -332,6 +332,16 @@ pub fn keybinds_update_selection_cursor_position<C: CoordinateSystem>(
         With<ActiveGridCursor>,
     >,
 ) {
+    if keys.pressed(proc_gen_key_bindings.deselect) {
+        for (_grid_entity, _grid, mut cursor) in active_grid_cursors.iter_mut() {
+            if let Some(grid_cursor) = &cursor.0 {
+                marker_events.send(MarkerDespawnEvent::Marker(grid_cursor.marker));
+                cursor.0 = None;
+            }
+        }
+        return;
+    }
+
     let axis_selection = if keys.pressed(proc_gen_key_bindings.cursor_x_axis) {
         Some(Direction::XForward)
     } else if keys.pressed(proc_gen_key_bindings.cursor_y_axis) {

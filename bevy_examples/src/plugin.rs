@@ -12,8 +12,12 @@ use bevy::{
     hierarchy::BuildChildren,
     input::{common_conditions::input_just_pressed, keyboard::KeyCode},
     math::Vec3,
+    prelude::default,
     text::TextStyle,
-    ui::node_bundles::{NodeBundle, TextBundle},
+    ui::{
+        node_bundles::{NodeBundle, TextBundle},
+        PositionType, Style, Val,
+    },
 };
 use bevy_ghx_proc_gen::{
     gen::{
@@ -105,10 +109,26 @@ pub struct KeybindingsUiRoot;
 
 pub fn setup_ui(mut commands: Commands, view_mode: Res<GenerationViewMode>) {
     let root = commands
-        .spawn((KeybindingsUiRoot, NodeBundle::default()))
+        .spawn((
+            KeybindingsUiRoot,
+            NodeBundle {
+                style: Style {
+                    position_type: PositionType::Absolute,
+                    left: Val::Percent(1.),
+                    top: Val::Percent(1.),
+                    right: Val::Auto,
+                    bottom: Val::Auto,
+                    ..default()
+                },
+                ..default()
+            },
+        ))
         .id();
-    let mut controls_text = " `F1` ui | `F2` fps | `F3` grid | `F4` markers | `F5` camera rotation\n `Space` unpause\n `Click` or `x/y/z`+`Left/Right` move selection"
-        .to_string();
+    let mut controls_text =
+        "`F1` ui | `F2` fps | `F3` grid | `F4` markers | `F5` camera rotation\n\
+       'Esc' deselect | `Click` or `x/y/z`+`Left/Right` move selection\n\
+     `Space` unpause"
+            .to_string();
 
     if *view_mode == GenerationViewMode::StepByStepPaused {
         controls_text.push_str("\n 'Up' or 'Right' step the generation");

@@ -341,6 +341,7 @@ pub struct ProcGenKeyBindings {
     pub cursor_x_axis: KeyCode,
     pub cursor_y_axis: KeyCode,
     pub cursor_z_axis: KeyCode,
+    pub deselect: KeyCode,
 
     /// Key to unpause the current [`GenerationControlStatus`]
     pub unpause: KeyCode,
@@ -358,6 +359,7 @@ impl Default for ProcGenKeyBindings {
             cursor_x_axis: KeyCode::X,
             cursor_y_axis: KeyCode::Y,
             cursor_z_axis: KeyCode::Z,
+            deselect: KeyCode::Escape,
             unpause: KeyCode::Space,
             step: KeyCode::Down,
             continuous_step: KeyCode::Up,
