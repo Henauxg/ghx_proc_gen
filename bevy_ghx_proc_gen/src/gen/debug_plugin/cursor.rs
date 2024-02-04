@@ -419,13 +419,17 @@ pub fn update_cursors_overlay<
             return;
         };
         let Some(grid_cursor) = cursor.as_ref() else {
-            // No marker => no text overlay
+            // No cursor => no text overlay
             commands.entity(text_entity).insert(TextBundle {
                 ..Default::default()
             });
             return;
         };
         let Ok(marker_gtransform) = markers.get(grid_cursor.marker) else {
+            // No marker => no text overlay
+            commands.entity(text_entity).insert(TextBundle {
+                ..Default::default()
+            });
             return;
         };
         let Some(viewport_pos) =
