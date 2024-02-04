@@ -175,7 +175,7 @@ pub fn update_generation_view<C: CoordinateSystem, A: AssetsBundleSpawner, T: Co
         &GridDefinition<C>,
         &AssetSpawner<A, T>,
         &mut QueuedObserver,
-        &mut ErrorMarkers,
+        Option<&mut ErrorMarkers>,
     )>,
     existing_nodes: Query<Entity, With<SpawnedNode>>,
 ) {
@@ -193,12 +193,14 @@ pub fn update_generation_view<C: CoordinateSystem, A: AssetsBundleSpawner, T: Co
                     nodes_to_spawn.clear();
                 }
                 GenerationUpdate::Failed(node_index) => {
-                    error_markers.push(spawn_marker(
-                        &mut commands,
-                        grid_entity,
-                        Color::RED,
-                        grid.pos_from_index(node_index),
-                    ));
+                    if let Some(error_markers) = error_markers.as_mut() {
+                        error_markers.push(spawn_marker(
+                            &mut commands,
+                            grid_entity,
+                            Color::RED,
+                            grid.pos_from_index(node_index),
+                        ));
+                    }
                 }
             }
         }
@@ -208,10 +210,12 @@ pub fn update_generation_view<C: CoordinateSystem, A: AssetsBundleSpawner, T: Co
             for existing_node in existing_nodes.iter() {
                 commands.entity(existing_node).despawn_recursive();
             }
-            for marker in error_markers.iter() {
-                marker_events.send(MarkerDespawnEvent::Marker(*marker));
+            if let Some(error_markers) = error_markers.as_mut() {
+                for marker in error_markers.iter() {
+                    marker_events.send(MarkerDespawnEvent::Marker(*marker));
+                }
+                error_markers.clear();
             }
-            error_markers.clear();
         }
 
         for grid_node in nodes_to_spawn {
