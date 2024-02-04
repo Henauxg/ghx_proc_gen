@@ -80,9 +80,12 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
             (
                 insert_bundle_from_resource_to_spawned_nodes::<SpawningScaleAnimation>,
                 animate_scale,
-                toggle_visibility::<KeybindingsUiRoot>.run_if(input_just_pressed(KeyCode::F1)),
-                toggle_visibility::<CursorsPanelRoot>.run_if(input_just_pressed(KeyCode::F1)),
-                toggle_visibility::<CursorsOverlaysRoot>.run_if(input_just_pressed(KeyCode::F1)),
+                (
+                    toggle_visibility::<KeybindingsUiRoot>,
+                    toggle_visibility::<CursorsPanelRoot>,
+                    toggle_visibility::<CursorsOverlaysRoot>,
+                )
+                    .run_if(input_just_pressed(KeyCode::F1)),
                 toggle_visibility::<FpsRoot>.run_if(input_just_pressed(KeyCode::F2)),
                 toggle_debug_grids_visibilities.run_if(input_just_pressed(KeyCode::F3)),
                 toggle_grid_markers_visibilities.run_if(input_just_pressed(KeyCode::F4)),
@@ -104,7 +107,7 @@ pub fn setup_ui(mut commands: Commands, view_mode: Res<GenerationViewMode>) {
     let root = commands
         .spawn((KeybindingsUiRoot, NodeBundle::default()))
         .id();
-    let mut controls_text = " `F1` ui | `F2` fps | `F3` grid | `F4` cursors | `F5` camera rotation\n `Space` unpause\n `Click` or `x/y/z`+`Left/Right` move selection"
+    let mut controls_text = " `F1` ui | `F2` fps | `F3` grid | `F4` markers | `F5` camera rotation\n `Space` unpause\n `Click` or `x/y/z`+`Left/Right` move selection"
         .to_string();
 
     if *view_mode == GenerationViewMode::StepByStepPaused {
