@@ -39,14 +39,10 @@ const GRID_Z: u32 = 80;
 
 /// Size of a block in world units
 const BLOCK_SIZE: f32 = 1.;
-const NODE_SIZE: Vec3 = Vec3::new(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+const NODE_SIZE: Vec3 = Vec3::splat(BLOCK_SIZE);
 
 const ASSETS_SCALE_FACTOR: f32 = BLOCK_SIZE / 4.; // Models are 4 units wide
-const ASSETS_SCALE: Vec3 = Vec3::new(
-    ASSETS_SCALE_FACTOR,
-    ASSETS_SCALE_FACTOR,
-    ASSETS_SCALE_FACTOR,
-);
+const ASSETS_SCALE: Vec3 = Vec3::splat(ASSETS_SCALE_FACTOR);
 
 fn setup_scene(
     mut commands: Commands,

@@ -50,14 +50,10 @@ const ASSETS_PATH: &str = "canyon";
 /// Size of a block in world units
 const BLOCK_SIZE: f32 = 1.;
 /// Size of a grid node in world units
-const NODE_SIZE: Vec3 = Vec3::new(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+const NODE_SIZE: Vec3 = Vec3::splat(BLOCK_SIZE);
 
 const ASSETS_SCALE_FACTOR: f32 = BLOCK_SIZE / 2.;
-const ASSETS_SCALE: Vec3 = Vec3::new(
-    ASSETS_SCALE_FACTOR,
-    ASSETS_SCALE_FACTOR,
-    ASSETS_SCALE_FACTOR,
-);
+const ASSETS_SCALE: Vec3 = Vec3::splat(ASSETS_SCALE_FACTOR);
 
 fn setup_scene(mut commands: Commands) {
     // Camera
