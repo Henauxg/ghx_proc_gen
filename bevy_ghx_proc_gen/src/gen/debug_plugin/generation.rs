@@ -100,8 +100,8 @@ pub fn generate_all<C: CoordinateSystem>(
     mut generation_control: ResMut<GenerationControl>,
     mut observed_generations: Query<&mut Generator<C>, With<QueuedObserver>>,
 ) {
-    for mut generation in observed_generations.iter_mut() {
-        if generation_control.status == GenerationControlStatus::Ongoing {
+    if generation_control.status == GenerationControlStatus::Ongoing {
+        for mut generation in observed_generations.iter_mut() {
             match generation.generate() {
                 Ok(gen_info) => {
                     info!(
@@ -120,9 +120,9 @@ pub fn generate_all<C: CoordinateSystem>(
                     );
                 }
             }
-            generation_control.status = GenerationControlStatus::Paused;
         }
     }
+    generation_control.status = GenerationControlStatus::Paused;
 }
 
 /// This system steps all [`Generator`] components if they already are observed through an [`Observed`] component, if the current control status is [`GenerationControlStatus::Ongoing`] and if the appropriate keys are pressed.
