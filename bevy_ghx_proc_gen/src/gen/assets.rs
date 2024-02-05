@@ -45,7 +45,7 @@ impl ComponentSpawner for NoComponents {
 /// Represents spawnable asset(s) & component(s) for a model.
 ///
 /// They will be spawned every time this model is generated. One `ModelAsset` will spawn exactly one [`bevy::prelude::Entity`] (but note that one Model may have more than one `ModelAsset`).
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ModelAsset<A: AssetsBundleSpawner, T: ComponentSpawner = NoComponents> {
     /// Stores handle(s) to the asset(s) and spawns their bundle
     pub assets_bundle: A,
@@ -58,6 +58,7 @@ pub struct ModelAsset<A: AssetsBundleSpawner, T: ComponentSpawner = NoComponents
 }
 
 /// Defines a map which links a `Model` via its [`ModelIndex`] to his spawnable [`ModelAsset`]
+#[derive(Debug)]
 pub struct RulesModelsAssets<A: AssetsBundleSpawner, T: ComponentSpawner = NoComponents> {
     /// Only contains a ModelIndex if there are some assets for it. One model may have multiple [`ModelAsset`].
     map: HashMap<ModelIndex, Vec<ModelAsset<A, T>>>,
@@ -113,7 +114,7 @@ impl<A: AssetsBundleSpawner, T: ComponentSpawner> RulesModelsAssets<A, T> {
 }
 
 /// Stores information needed to spawn assets from a [`ghx_proc_gen::generator::Generator`]
-#[derive(Component)]
+#[derive(Component, Clone, Debug)]
 pub struct AssetSpawner<A: AssetsBundleSpawner, T: ComponentSpawner = NoComponents> {
     /// Link a `Model` via its [`ModelIndex`] to his spawnable assets (can be shared by multiple [`AssetSpawner`])
     pub assets: Arc<RulesModelsAssets<A, T>>,
