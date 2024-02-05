@@ -2,6 +2,7 @@ use std::marker::PhantomData;
 
 use bevy::{
     app::{App, Plugin, Startup, Update},
+    core::Name,
     diagnostic::FrameTimeDiagnosticsPlugin,
     ecs::{
         component::Component,
@@ -122,6 +123,7 @@ pub fn setup_ui(mut commands: Commands, view_mode: Res<GenerationViewMode>) {
                 },
                 ..default()
             },
+            Name::new("KeybindingsUiRoot"),
         ))
         .id();
     let mut controls_text =
