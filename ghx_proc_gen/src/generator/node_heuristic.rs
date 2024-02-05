@@ -5,6 +5,7 @@ use crate::grid::{direction::CoordinateSystem, NodeIndex};
 use super::rules::Rules;
 
 /// Defines a heuristic for the choice of a node to generate. For some given Rules, each heuristic will lead to different visual results and different failure rates.
+#[derive(Copy, Clone, Debug)]
 pub enum NodeSelectionHeuristic {
     /// The node with with the minimum count of possible models remaining will be chosen at each selection iteration. If multiple nodes have the same value, a random one is picked.
     ///s

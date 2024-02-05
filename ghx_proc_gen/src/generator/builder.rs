@@ -17,9 +17,11 @@ use super::{
 pub const DEFAULT_RETRY_COUNT: u32 = 50;
 
 /// Internal type used to provide a type-safe builder with compatible [`GridDefinition`] and [`Rules`]
-pub enum Set {}
+#[derive(Copy, Clone)]
+pub struct Set;
 /// Internal type used to provide a type-safe builder with compatible [`GridDefinition`] and [`Rules`]
-pub enum Unset {}
+#[derive(Copy, Clone)]
+pub struct Unset;
 
 /// Used to instantiate a new [`Generator`].
 ///
@@ -46,6 +48,7 @@ pub enum Unset {}
 ///    .with_grid(grid)
 ///    .build();
 /// ```
+#[derive(Clone)]
 pub struct GeneratorBuilder<G, R, C: CoordinateSystem> {
     rules: Option<Arc<Rules<C>>>,
     grid: Option<GridDefinition<C>>,
