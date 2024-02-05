@@ -1,7 +1,7 @@
 use std::{marker::PhantomData, time::Duration};
 
 use bevy::{
-    app::{App, Plugin, PostUpdate, PreUpdate, Startup, Update},
+    app::{App, Plugin, PostStartup, PostUpdate, PreUpdate, Startup, Update},
     ecs::{schedule::IntoSystemConfigs, system::Resource},
     input::keyboard::KeyCode,
     render::color::Color,
@@ -11,9 +11,9 @@ use ghx_proc_gen::grid::direction::CoordinateSystem;
 
 use self::{
     cursor::{
-        insert_cursor_to_new_generations, keybinds_update_selection_cursor_position,
-        setup_cursors_overlays, setup_cursors_panel, update_cursor_info_on_cursor_changes,
-        update_cursors_from_generation_events, update_cursors_overlay,
+        keybinds_update_selection_cursor_position, setup_cursor, setup_cursors_overlays,
+        setup_cursors_panel, update_cursor_from_generation_events,
+        update_cursor_info_on_cursor_changes, update_cursors_overlay,
         update_selection_cursor_panel_text, CursorKeyboardMoveCooldown, SelectionCursor,
         SelectionCursorInfo, SelectionCursorMarkerSettings, SelectionCursorOverlay,
     },
@@ -130,27 +130,20 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
             .add_event::<NodeSelectedEvent>();
 
         app.add_systems(
-            Update,
-            (
-                update_generation_control,
-                insert_cursor_to_new_generations::<
-                    C,
-                    SelectionCursor,
-                    SelectionCursorInfo,
-                    SelectionCursorOverlay,
-                >,
-            ),
+            // PostStartup to wait for setup_cursors_overlays to be applied.
+            PostStartup,
+            setup_cursor::<C, SelectionCursor, SelectionCursorInfo, SelectionCursorOverlay>,
         );
+        app.add_systems(Update, update_generation_control);
         #[cfg(feature = "picking")]
         app.add_systems(
+            // PostStartup to wait for setup_cursors_overlays to be applied.
+            PostStartup,
+            setup_cursor::<C, OverCursor, OverCursorInfo, OverCursorOverlay>,
+        )
+        .add_systems(
             Update,
             (
-                insert_cursor_to_new_generations::<
-                    C,
-                    OverCursor,
-                    OverCursorInfo,
-                    OverCursorOverlay,
-                >,
                 insert_grid_cursor_picking_handlers_to_spawned_nodes::<C>,
                 insert_default_bundle_to_spawned_nodes::<PickableBundle>,
             ),
@@ -186,8 +179,8 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
         app.add_systems(
             PostUpdate,
             (
-                update_cursors_from_generation_events::<C, SelectionCursor, SelectionCursorInfo>,
-                update_cursors_from_generation_events::<C, OverCursor, OverCursorInfo>,
+                update_cursor_from_generation_events::<C, SelectionCursor, SelectionCursorInfo>,
+                update_cursor_from_generation_events::<C, OverCursor, OverCursorInfo>,
             ),
         );
 

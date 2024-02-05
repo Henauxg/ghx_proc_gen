@@ -24,8 +24,8 @@ use crate::{
 };
 
 use super::cursor::{
-    cursor_info_to_string, ActiveGridCursor, CursorsPanelText, GridCursor, GridCursorContainer,
-    GridCursorInfo, GridCursorInfoContainer, GridCursorMarkerSettings, GridCursorOverlay,
+    cursor_info_to_string, CursorsPanelText, GridCursor, GridCursorContainer, GridCursorInfo,
+    GridCursorInfoContainer, GridCursorMarkerSettings, GridCursorOverlay,
     OVER_CURSOR_SECTION_INDEX,
 };
 
@@ -113,12 +113,9 @@ pub fn insert_grid_cursor_picking_handlers_to_spawned_nodes<C: CoordinateSystem>
 
 pub fn update_over_cursor_panel_text(
     mut cursors_panel_text: Query<&mut Text, With<CursorsPanelText>>,
-    mut updated_cursors: Query<
-        (&OverCursorInfo, &OverCursor, &ActiveGridCursor),
-        Changed<OverCursorInfo>,
-    >,
+    mut updated_cursors: Query<(&OverCursorInfo, &OverCursor), Changed<OverCursorInfo>>,
 ) {
-    if let Ok((cursor_info, cursor, _active)) = updated_cursors.get_single() {
+    if let Ok((cursor_info, cursor)) = updated_cursors.get_single() {
         for mut text in &mut cursors_panel_text {
             let ui_text = &mut text.sections[OVER_CURSOR_SECTION_INDEX].value;
             match cursor.as_ref() {
@@ -145,36 +142,43 @@ pub fn picking_update_cursors_position<
     mut events: EventReader<E>,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
     mut nodes: Query<(&SpawnedNode, &Parent)>,
-    mut cursors: Query<(&mut GC, &GridDefinition<C>)>,
+    mut cursor: Query<&mut GC>,
+    grids: Query<&GridDefinition<C>>,
 ) {
     if let Some(event) = events.read().last() {
-        if let Ok((node, node_parent)) = nodes.get_mut(**event) {
-            let parent_entity = node_parent.get();
-            if let Ok((mut cursor, grid)) = cursors.get_mut(parent_entity) {
-                let update_cursor = match (&*cursor).as_ref() {
-                    Some(grid_cursor) => {
-                        if grid_cursor.node_index != node.0 {
-                            marker_events.send(MarkerDespawnEvent::Marker(grid_cursor.marker));
-                            true
-                        } else {
-                            false
-                        }
-                    }
-                    None => true,
-                };
+        let Ok(mut cursor) = cursor.get_single_mut() else {
+            return;
+        };
 
-                if update_cursor {
-                    let position = grid.pos_from_index(node.0);
-                    let marker = commands
-                        .spawn(GridMarker::new(cursor_marker_settings.color(), position))
-                        .id();
-                    commands.entity(parent_entity).add_child(marker);
-                    **cursor = Some(GridCursor {
-                        node_index: node.0,
-                        position,
-                        marker,
-                    });
+        if let Ok((node, node_parent)) = nodes.get_mut(*event.deref()) {
+            let picked_grid_entity = node_parent.get();
+            let update_cursor = match cursor.deref_mut() {
+                Some(grid_cursor) => {
+                    if grid_cursor.grid != picked_grid_entity && grid_cursor.node_index != node.0 {
+                        marker_events.send(MarkerDespawnEvent::Marker(grid_cursor.marker));
+                        true
+                    } else {
+                        false
+                    }
                 }
+                None => true,
+            };
+
+            if update_cursor {
+                let Ok(grid) = grids.get(picked_grid_entity) else {
+                    return;
+                };
+                let position = grid.pos_from_index(node.0);
+                let marker = commands
+                    .spawn(GridMarker::new(cursor_marker_settings.color(), position))
+                    .id();
+                commands.entity(picked_grid_entity).add_child(marker);
+                **cursor = Some(GridCursor {
+                    grid: picked_grid_entity,
+                    node_index: node.0,
+                    position,
+                    marker,
+                });
             }
         }
     }
@@ -183,16 +187,20 @@ pub fn picking_update_cursors_position<
 pub fn picking_remove_previous_over_cursor<C: CoordinateSystem>(
     mut out_events: EventReader<NodeOutEvent>,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
-    mut nodes: Query<&Parent, With<SpawnedNode>>,
-    mut cursors: Query<&mut OverCursor>,
+    mut nodes: Query<&SpawnedNode>,
+    mut over_cursor: Query<&mut OverCursor>,
 ) {
     if let Some(event) = out_events.read().last() {
-        if let Ok(node_parent) = nodes.get_mut(**event) {
-            if let Ok(mut cursor) = cursors.get_mut(node_parent.get()) {
-                if let Some(grid_cursor) = &cursor.0 {
-                    marker_events.send(MarkerDespawnEvent::Marker(grid_cursor.marker));
-                    **cursor = None;
-                }
+        let Ok(mut cursor) = over_cursor.get_single_mut() else {
+            return;
+        };
+        let Some(grid_cursor) = &cursor.0 else {
+            return;
+        };
+        if let Ok(node) = nodes.get_mut(**event) {
+            if grid_cursor.node_index == node.0 {
+                marker_events.send(MarkerDespawnEvent::Marker(grid_cursor.marker));
+                **cursor = None;
             }
         }
     }
