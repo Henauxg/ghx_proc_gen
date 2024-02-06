@@ -127,9 +127,9 @@ pub fn setup_ui(mut commands: Commands, view_mode: Res<GenerationViewMode>) {
         ))
         .id();
     let mut controls_text =
-        "`F1` ui | `F2` fps | `F3` grid | `F4` markers | `F5` camera rotation\n\
-       'Esc' deselect | `Click` or `x/y/z`+`Left/Right` move selection\n\
-     `Space` unpause"
+        "Toggles: `F1` ui | `F2` fps | `F3` grid | `F4` markers | `F5` camera rotation\n\
+       Selection: 'Esc' deselect | 'Tab' (switch active grid) | `Click` or `x/y/z`+`Left/Right` move selection\n\
+     Generation: `Space` unpause"
             .to_string();
 
     if *view_mode == GenerationViewMode::StepByStepPaused {
