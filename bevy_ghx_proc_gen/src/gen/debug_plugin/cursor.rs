@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, time::Duration};
 
 use bevy::{
     core::Name,
@@ -15,7 +15,7 @@ use bevy::{
     prelude::{Deref, DerefMut},
     render::{camera::Camera, color::Color},
     text::{BreakLineOn, Text, TextSection, TextStyle},
-    time::{Time, Timer},
+    time::{Time, Timer, TimerMode},
     transform::components::GlobalTransform,
     ui::{
         node_bundles::{NodeBundle, TextBundle},
@@ -34,7 +34,10 @@ use ghx_proc_gen::{
 
 use crate::grid::markers::{spawn_marker, GridMarker, MarkerDespawnEvent};
 
-use super::{generation::GenerationEvent, GridCursorsUiSettings, ProcGenKeyBindings};
+use super::{
+    generation::GenerationEvent, GridCursorsUiSettings, ProcGenKeyBindings,
+    CURSOR_KEYS_MOVEMENT_COOLDOWN_MS,
+};
 
 #[derive(Component)]
 pub struct GridCursorsOverlayCamera;
@@ -320,6 +323,15 @@ pub fn switch_grid_selection_from_keybinds<C: CoordinateSystem>(
 
 #[derive(Resource, Deref, DerefMut)]
 pub struct CursorKeyboardMoveCooldown(pub Timer);
+
+impl Default for CursorKeyboardMoveCooldown {
+    fn default() -> Self {
+        Self(Timer::new(
+            Duration::from_millis(CURSOR_KEYS_MOVEMENT_COOLDOWN_MS),
+            TimerMode::Once,
+        ))
+    }
+}
 
 pub fn move_selection_from_keybinds<C: CoordinateSystem>(
     mut commands: Commands,

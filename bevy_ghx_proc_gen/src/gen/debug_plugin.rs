@@ -111,17 +111,13 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
         app.init_resource::<GenerationControl>();
         app.init_resource::<OverCursorMarkerSettings>();
         app.init_resource::<SelectionCursorMarkerSettings>();
+        app.init_resource::<CursorKeyboardMoveCooldown>();
         match self.cursor_ui_mode {
             CursorUiMode::None => (),
             _ => {
                 app.init_resource::<GridCursorsUiSettings>();
             }
         }
-
-        app.insert_resource(CursorKeyboardMoveCooldown(Timer::new(
-            Duration::from_millis(CURSOR_KEYS_MOVEMENT_COOLDOWN_MS),
-            TimerMode::Once,
-        )));
 
         app.add_event::<GenerationEvent>();
         #[cfg(feature = "picking")]
