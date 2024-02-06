@@ -24,9 +24,8 @@ use crate::{
 };
 
 use super::cursor::{
-    cursor_info_to_string, CursorsPanelText, GridCursor, GridCursorContainer, GridCursorInfo,
-    GridCursorInfoContainer, GridCursorMarkerSettings, GridCursorOverlay,
-    OVER_CURSOR_SECTION_INDEX,
+    cursor_info_to_string, Cursor, CursorIdentifier, CursorInfo, CursorMarkerSettings,
+    CursorsPanelText, GridCursor, OVER_CURSOR_SECTION_INDEX,
 };
 
 #[derive(Resource)]
@@ -36,39 +35,22 @@ impl Default for OverCursorMarkerSettings {
         Self(Color::rgb(0.85, 0.85, 0.73))
     }
 }
-impl GridCursorMarkerSettings for OverCursorMarkerSettings {
+impl CursorMarkerSettings for OverCursorMarkerSettings {
     fn color(&self) -> Color {
         self.0
     }
 }
 
-#[derive(Component, Debug, Deref, DerefMut)]
-pub struct OverCursor(pub Option<GridCursor>);
-impl GridCursorContainer for OverCursor {
-    fn new(cursor: Option<GridCursor>) -> Self {
-        Self(cursor)
-    }
-}
-
-#[derive(Component, Debug, Deref, DerefMut)]
-pub struct OverCursorInfo(pub GridCursorInfo);
-impl GridCursorInfoContainer for OverCursorInfo {
-    fn new(cursor_info: GridCursorInfo) -> Self {
-        Self(cursor_info)
-    }
-}
-
-#[derive(Component, Deref, DerefMut)]
-pub struct OverCursorOverlay(pub Entity);
-impl GridCursorOverlay for OverCursorOverlay {
-    fn new(grid_entity: Entity) -> Self {
-        Self(grid_entity)
+#[derive(Component, Debug)]
+pub struct OverCursor;
+impl CursorIdentifier for OverCursor {
+    fn new() -> Self {
+        Self
     }
 }
 
 #[derive(Event, Deref, DerefMut)]
 pub struct NodeOverEvent(pub Entity);
-
 impl From<ListenerInput<Pointer<Over>>> for NodeOverEvent {
     fn from(event: ListenerInput<Pointer<Over>>) -> Self {
         NodeOverEvent(event.listener())
@@ -77,7 +59,6 @@ impl From<ListenerInput<Pointer<Over>>> for NodeOverEvent {
 
 #[derive(Event, Deref, DerefMut)]
 pub struct NodeOutEvent(pub Entity);
-
 impl From<ListenerInput<Pointer<Out>>> for NodeOutEvent {
     fn from(event: ListenerInput<Pointer<Out>>) -> Self {
         NodeOutEvent(event.listener())
@@ -113,12 +94,12 @@ pub fn insert_grid_cursor_picking_handlers_to_spawned_nodes<C: CoordinateSystem>
 
 pub fn update_over_cursor_panel_text(
     mut cursors_panel_text: Query<&mut Text, With<CursorsPanelText>>,
-    mut updated_cursors: Query<(&OverCursorInfo, &OverCursor), Changed<OverCursorInfo>>,
+    mut updated_cursors: Query<(&CursorInfo, &Cursor), (Changed<CursorInfo>, With<OverCursor>)>,
 ) {
     if let Ok((cursor_info, cursor)) = updated_cursors.get_single() {
         for mut text in &mut cursors_panel_text {
             let ui_text = &mut text.sections[OVER_CURSOR_SECTION_INDEX].value;
-            match cursor.as_ref() {
+            match &cursor.0 {
                 Some(grid_cursor) => {
                     *ui_text = format!(
                         "Hovered:\n{}",
@@ -133,16 +114,16 @@ pub fn update_over_cursor_panel_text(
 
 pub fn picking_update_cursors_position<
     C: CoordinateSystem,
-    GCS: GridCursorMarkerSettings,
-    GC: GridCursorContainer,
-    E: Event + std::ops::DerefMut<Target = Entity>,
+    CS: CursorMarkerSettings,
+    CI: CursorIdentifier,
+    PE: Event + std::ops::DerefMut<Target = Entity>,
 >(
     mut commands: Commands,
-    cursor_marker_settings: Res<GCS>,
-    mut events: EventReader<E>,
+    cursor_marker_settings: Res<CS>,
+    mut events: EventReader<PE>,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
     mut nodes: Query<(&SpawnedNode, &Parent)>,
-    mut cursor: Query<&mut GC>,
+    mut cursor: Query<&mut Cursor, With<CI>>,
     grids: Query<&GridDefinition<C>>,
 ) {
     if let Some(event) = events.read().last() {
@@ -152,7 +133,7 @@ pub fn picking_update_cursors_position<
 
         if let Ok((node, node_parent)) = nodes.get_mut(*event.deref()) {
             let picked_grid_entity = node_parent.get();
-            let update_cursor = match cursor.deref_mut() {
+            let update_cursor = match &cursor.0 {
                 Some(grid_cursor) => {
                     if (grid_cursor.grid != picked_grid_entity)
                         || (grid_cursor.node_index != node.0)
@@ -175,7 +156,7 @@ pub fn picking_update_cursors_position<
                     .spawn(GridMarker::new(cursor_marker_settings.color(), position))
                     .id();
                 commands.entity(picked_grid_entity).add_child(marker);
-                **cursor = Some(GridCursor {
+                cursor.0 = Some(GridCursor {
                     grid: picked_grid_entity,
                     node_index: node.0,
                     position,
@@ -190,7 +171,7 @@ pub fn picking_remove_previous_over_cursor<C: CoordinateSystem>(
     mut out_events: EventReader<NodeOutEvent>,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
     mut nodes: Query<&SpawnedNode>,
-    mut over_cursor: Query<&mut OverCursor>,
+    mut over_cursor: Query<&mut Cursor, With<OverCursor>>,
 ) {
     if let Some(event) = out_events.read().last() {
         let Ok(mut cursor) = over_cursor.get_single_mut() else {
@@ -202,7 +183,7 @@ pub fn picking_remove_previous_over_cursor<C: CoordinateSystem>(
         if let Ok(node) = nodes.get_mut(**event) {
             if grid_cursor.node_index == node.0 {
                 marker_events.send(MarkerDespawnEvent::Marker(grid_cursor.marker));
-                **cursor = None;
+                cursor.0 = None;
             }
         }
     }
