@@ -11,11 +11,12 @@ use ghx_proc_gen::grid::direction::CoordinateSystem;
 
 use self::{
     cursor::{
-        keybinds_update_selection_cursor_position, setup_cursor, setup_cursors_overlays,
-        setup_cursors_panel, update_cursor_from_generation_events,
-        update_cursor_info_on_cursor_changes, update_cursors_overlay,
-        update_selection_cursor_panel_text, CursorKeyboardMoveCooldown, SelectionCursor,
-        SelectionCursorInfo, SelectionCursorMarkerSettings, SelectionCursorOverlay,
+        deselect_from_keybinds, move_selection_from_keybinds, setup_cursor, setup_cursors_overlays,
+        setup_cursors_panel, switch_grid_selection_from_keybinds,
+        update_cursor_from_generation_events, update_cursor_info_on_cursor_changes,
+        update_cursors_overlay, update_selection_cursor_panel_text, CursorKeyboardMoveCooldown,
+        SelectionCursor, SelectionCursorInfo, SelectionCursorMarkerSettings,
+        SelectionCursorOverlay,
     },
     generation::{
         generate_all, insert_error_markers_to_new_generations,
@@ -150,7 +151,14 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
         );
 
         // Keybinds and picking events handlers run in PreUpdate
-        app.add_systems(PreUpdate, keybinds_update_selection_cursor_position::<C>);
+        app.add_systems(
+            PreUpdate,
+            (
+                deselect_from_keybinds,
+                switch_grid_selection_from_keybinds::<C>,
+                move_selection_from_keybinds::<C>,
+            ),
+        );
         #[cfg(feature = "picking")]
         app.add_systems(
             Update,
@@ -335,6 +343,7 @@ pub struct ProcGenKeyBindings {
     pub cursor_y_axis: KeyCode,
     pub cursor_z_axis: KeyCode,
     pub deselect: KeyCode,
+    pub switch_grid: KeyCode,
 
     /// Key to unpause the current [`GenerationControlStatus`]
     pub unpause: KeyCode,
@@ -353,6 +362,7 @@ impl Default for ProcGenKeyBindings {
             cursor_y_axis: KeyCode::Y,
             cursor_z_axis: KeyCode::Z,
             deselect: KeyCode::Escape,
+            switch_grid: KeyCode::Tab,
             unpause: KeyCode::Space,
             step: KeyCode::Down,
             continuous_step: KeyCode::Up,

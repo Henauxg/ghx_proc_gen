@@ -35,7 +35,7 @@ use ghx_proc_gen::{
     },
 };
 
-use crate::grid::markers::{GridMarker, MarkerDespawnEvent};
+use crate::grid::markers::{spawn_marker, GridMarker, MarkerDespawnEvent};
 
 use super::{generation::GenerationEvent, GridCursorsUiSettings, ProcGenKeyBindings};
 
@@ -313,7 +313,60 @@ pub fn update_selection_cursor_panel_text(
 #[derive(Resource, Deref, DerefMut)]
 pub struct CursorKeyboardMoveCooldown(pub Timer);
 
-pub fn keybinds_update_selection_cursor_position<C: CoordinateSystem>(
+pub fn deselect_from_keybinds(
+    keys: Res<Input<KeyCode>>,
+    proc_gen_key_bindings: Res<ProcGenKeyBindings>,
+    mut marker_events: EventWriter<MarkerDespawnEvent>,
+    mut selection_cursor: Query<&mut SelectionCursor>,
+) {
+    if keys.just_pressed(proc_gen_key_bindings.deselect) {
+        let Ok(mut cursor) = selection_cursor.get_single_mut() else {
+            return;
+        };
+
+        if let Some(grid_cursor) = &cursor.0 {
+            marker_events.send(MarkerDespawnEvent::Marker(grid_cursor.marker));
+            cursor.0 = None;
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct GridIndexStorage(usize);
+
+pub fn switch_grid_selection_from_keybinds<C: CoordinateSystem>(
+    mut local_grid_index: Local<GridIndexStorage>,
+    mut commands: Commands,
+    keys: Res<Input<KeyCode>>,
+    selection_marker_settings: Res<SelectionCursorMarkerSettings>,
+    proc_gen_key_bindings: Res<ProcGenKeyBindings>,
+    mut marker_events: EventWriter<MarkerDespawnEvent>,
+    mut selection_cursor: Query<&mut SelectionCursor>,
+    grids: Query<Entity, With<GridDefinition<C>>>,
+) {
+    if keys.just_pressed(proc_gen_key_bindings.switch_grid) {
+        let Ok(mut cursor) = selection_cursor.get_single_mut() else {
+            return;
+        };
+
+        let all_grids: Vec<Entity> = grids.iter().collect();
+        local_grid_index.0 = (local_grid_index.0 + 1) % all_grids.len();
+        let grid_entity = all_grids[local_grid_index.0];
+        // Despawn previous if any
+        if let Some(grid_cursor) = &cursor.0 {
+            marker_events.send(MarkerDespawnEvent::Marker(grid_cursor.marker));
+        }
+        // Spawn on new selected grid
+        **cursor = Some(spawn_marker_and_create_cursor(
+            &mut commands,
+            grid_entity,
+            GridPosition::new(0, 0, 0),
+            0,
+            selection_marker_settings.color(),
+        ));
+    }
+}
+pub fn move_selection_from_keybinds<C: CoordinateSystem>(
     mut commands: Commands,
     keys: Res<Input<KeyCode>>,
     time: Res<Time>,
@@ -327,14 +380,6 @@ pub fn keybinds_update_selection_cursor_position<C: CoordinateSystem>(
     let Ok(mut cursor) = selection_cursor.get_single_mut() else {
         return;
     };
-
-    if keys.pressed(proc_gen_key_bindings.deselect) {
-        if let Some(grid_cursor) = &cursor.0 {
-            marker_events.send(MarkerDespawnEvent::Marker(grid_cursor.marker));
-            cursor.0 = None;
-        }
-        return;
-    }
 
     let axis_selection = if keys.pressed(proc_gen_key_bindings.cursor_x_axis) {
         Some(Direction::XForward)
@@ -382,7 +427,8 @@ pub fn keybinds_update_selection_cursor_position<C: CoordinateSystem>(
                     }
                 }
                 None => {
-                    let Some((grid_entity, grid)) = grids.iter().last() else {
+                    // Currently no selection cursor, spawn it on the last Grid
+                    let Some((grid_entity, _grid)) = grids.iter().last() else {
                         return;
                     };
                     Some((grid_entity, 0, GridPosition::new(0, 0, 0)))
@@ -391,20 +437,33 @@ pub fn keybinds_update_selection_cursor_position<C: CoordinateSystem>(
 
             match update_cursor {
                 Some((grid_entity, node_index, position)) => {
-                    let marker = commands
-                        .spawn(GridMarker::new(selection_marker_settings.color(), position))
-                        .id();
-                    commands.entity(grid_entity).add_child(marker);
-                    **cursor = Some(GridCursor {
-                        grid: grid_entity,
-                        node_index,
+                    **cursor = Some(spawn_marker_and_create_cursor(
+                        &mut commands,
+                        grid_entity,
                         position,
-                        marker,
-                    });
+                        node_index,
+                        selection_marker_settings.color(),
+                    ));
                 }
                 None => (),
             }
         }
+    }
+}
+
+pub fn spawn_marker_and_create_cursor(
+    commands: &mut Commands,
+    grid_entity: Entity,
+    position: GridPosition,
+    node_index: NodeIndex,
+    color: Color,
+) -> GridCursor {
+    let marker = spawn_marker(commands, grid_entity, color, position);
+    GridCursor {
+        grid: grid_entity,
+        node_index,
+        position,
+        marker,
     }
 }
 
