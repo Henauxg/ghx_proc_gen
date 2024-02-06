@@ -12,15 +12,16 @@ use ghx_proc_gen::grid::direction::CoordinateSystem;
 use self::{
     cursor::{
         deselect_from_keybinds, move_selection_from_keybinds, setup_cursor, setup_cursors_overlays,
-        setup_cursors_panel, switch_grid_selection_from_keybinds,
-        update_cursor_from_generation_events, update_cursors_info_on_cursors_changes,
+        setup_cursors_panel, switch_generation_selection_from_keybinds,
+        update_cursors_info_from_generation_events, update_cursors_info_on_cursors_changes,
         update_cursors_overlays, update_selection_cursor_panel_text, CursorKeyboardMoveCooldown,
         SelectCursor, SelectionCursorMarkerSettings,
     },
     generation::{
         generate_all, insert_error_markers_to_new_generations,
         insert_void_nodes_to_new_generations, step_by_step_input_update, step_by_step_timed_update,
-        update_generation_control, update_generation_view, GenerationEvent,
+        update_active_generation, update_generation_control, update_generation_view,
+        ActiveGeneration, GenerationEvent,
     },
     picking::{
         picking_remove_previous_over_cursor, update_over_cursor_panel_text, NodeOutEvent,
@@ -118,64 +119,66 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
                 app.init_resource::<GridCursorsUiSettings>();
             }
         }
+        app.insert_resource(ActiveGeneration::default());
 
         app.add_event::<GenerationEvent>();
+
         #[cfg(feature = "picking")]
         app.add_event::<NodeOverEvent>()
             .add_event::<NodeOutEvent>()
             .add_event::<NodeSelectedEvent>();
 
-        app.add_systems(
+        app
             // PostStartup to wait for setup_cursors_overlays to be applied.
-            PostStartup,
-            setup_cursor::<C, SelectCursor>,
-        );
-        app.add_systems(Update, update_generation_control);
-        #[cfg(feature = "picking")]
-        app.add_systems(
-            // PostStartup to wait for setup_cursors_overlays to be applied.
-            PostStartup,
-            setup_cursor::<C, OverCursor>,
-        )
-        .add_systems(
-            Update,
-            (
-                insert_grid_cursor_picking_handlers_to_spawned_nodes::<C>,
-                insert_default_bundle_to_spawned_nodes::<PickableBundle>,
-            ),
-        );
-
-        // Keybinds and picking events handlers run in PreUpdate
-        app.add_systems(
-            PreUpdate,
-            (
-                deselect_from_keybinds,
-                switch_grid_selection_from_keybinds::<C>,
-                move_selection_from_keybinds::<C>,
-            ),
-        );
-        #[cfg(feature = "picking")]
-        app.add_systems(
-            Update,
-            (
-                picking_remove_previous_over_cursor::<C>,
-                picking_update_cursors_position::<
-                    C,
-                    OverCursorMarkerSettings,
-                    OverCursor,
-                    NodeOverEvent,
-                >,
-                picking_update_cursors_position::<
-                    C,
-                    SelectionCursorMarkerSettings,
-                    SelectCursor,
-                    NodeSelectedEvent,
-                >,
+            .add_systems(PostStartup, setup_cursor::<C, SelectCursor>)
+            // Keybinds and picking events handlers run in PreUpdate
+            .add_systems(
+                PreUpdate,
+                (
+                    deselect_from_keybinds,
+                    switch_generation_selection_from_keybinds::<C>,
+                    move_selection_from_keybinds::<C>,
+                ),
             )
-                .chain(),
-        );
-        app.add_systems(Update, update_cursors_info_on_cursors_changes::<C>);
-        app.add_systems(PostUpdate, update_cursor_from_generation_events::<C>);
+            .add_systems(
+                Update,
+                (
+                    update_generation_control,
+                    update_active_generation::<C>,
+                    update_cursors_info_on_cursors_changes::<C>,
+                ),
+            )
+            .add_systems(PostUpdate, update_cursors_info_from_generation_events::<C>);
+
+        #[cfg(feature = "picking")]
+        app
+            // PostStartup to wait for setup_cursors_overlays to be applied.
+            .add_systems(PostStartup, setup_cursor::<C, OverCursor>)
+            .add_systems(
+                Update,
+                (
+                    (
+                        insert_grid_cursor_picking_handlers_to_spawned_nodes::<C>,
+                        insert_default_bundle_to_spawned_nodes::<PickableBundle>,
+                    ),
+                    (
+                        picking_remove_previous_over_cursor::<C>,
+                        picking_update_cursors_position::<
+                            C,
+                            OverCursorMarkerSettings,
+                            OverCursor,
+                            NodeOverEvent,
+                        >,
+                        picking_update_cursors_position::<
+                            C,
+                            SelectionCursorMarkerSettings,
+                            SelectCursor,
+                            NodeSelectedEvent,
+                        >,
+                    )
+                        .chain(),
+                ),
+            );
 
         match self.cursor_ui_mode {
             CursorUiMode::None => (),

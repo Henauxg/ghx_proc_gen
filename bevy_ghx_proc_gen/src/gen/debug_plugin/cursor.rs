@@ -35,8 +35,8 @@ use ghx_proc_gen::{
 use crate::grid::markers::{spawn_marker, GridMarker, MarkerDespawnEvent};
 
 use super::{
-    generation::GenerationEvent, GridCursorsUiSettings, ProcGenKeyBindings,
-    CURSOR_KEYS_MOVEMENT_COOLDOWN_MS,
+    generation::{ActiveGeneration, GenerationEvent},
+    GridCursorsUiSettings, ProcGenKeyBindings, CURSOR_KEYS_MOVEMENT_COOLDOWN_MS,
 };
 
 #[derive(Component)]
@@ -72,8 +72,9 @@ pub struct CursorInfo {
     pub models: Vec<ModelInfo>,
 }
 
-pub trait CursorIdentifier: Component {
+pub trait CursorBehavior: Component {
     fn new() -> Self;
+    fn updates_active_gen() -> bool;
 }
 
 #[derive(Component, Debug)]
@@ -100,9 +101,12 @@ impl CursorMarkerSettings for SelectionCursorMarkerSettings {
 
 #[derive(Component, Debug)]
 pub struct SelectCursor;
-impl CursorIdentifier for SelectCursor {
+impl CursorBehavior for SelectCursor {
     fn new() -> Self {
         Self
+    }
+    fn updates_active_gen() -> bool {
+        true
     }
 }
 
@@ -172,7 +176,7 @@ pub fn setup_cursors_overlays(mut commands: Commands) {
     commands.entity(root).insert(Pickable::IGNORE);
 }
 
-pub fn setup_cursor<C: CoordinateSystem, CI: CursorIdentifier>(
+pub fn setup_cursor<C: CoordinateSystem, CI: CursorBehavior>(
     mut commands: Commands,
     overlays_root: Query<Entity, With<CursorsOverlaysRoot>>,
 ) {
@@ -217,16 +221,17 @@ pub fn update_cursors_info_on_cursors_changes<C: CoordinateSystem>(
     }
 }
 
-pub fn update_cursor_from_generation_events<C: CoordinateSystem>(
+pub fn update_cursors_info_from_generation_events<C: CoordinateSystem>(
     mut cursors_events: EventReader<GenerationEvent>,
     generators: Query<&Generator<C>>,
     mut cursors: Query<(&Cursor, &mut CursorInfo)>,
 ) {
-    for (cursor, mut cursor_info) in cursors.iter_mut() {
-        let Some(grid_cursor) = &cursor.0 else {
-            return;
-        };
-        for event in cursors_events.read() {
+    for event in cursors_events.read() {
+        for (cursor, mut cursor_info) in cursors.iter_mut() {
+            let Some(grid_cursor) = &cursor.0 else {
+                continue;
+            };
+
             match event {
                 GenerationEvent::Reinitialized(grid_entity) => {
                     let Ok(generator) = generators.get(*grid_entity) else {
@@ -285,27 +290,48 @@ pub fn deselect_from_keybinds(
     }
 }
 
-#[derive(Default)]
-pub struct GridIndexStorage(usize);
+pub struct EntityProvider {
+    pub entities: Vec<Entity>,
+    pub index: usize,
+}
 
-pub fn switch_grid_selection_from_keybinds<C: CoordinateSystem>(
-    mut local_grid_index: Local<GridIndexStorage>,
+impl Default for EntityProvider {
+    fn default() -> Self {
+        Self {
+            entities: Vec::new(),
+            index: 0,
+        }
+    }
+}
+impl EntityProvider {
+    pub fn update(&mut self, entities: Vec<Entity>) {
+        self.entities = entities;
+        self.index = (self.index + 1) % self.entities.len();
+    }
+    pub fn get(&self) -> Entity {
+        self.entities[self.index]
+    }
+}
+
+pub fn switch_generation_selection_from_keybinds<C: CoordinateSystem>(
+    mut local_grid_cycler: Local<EntityProvider>,
     mut commands: Commands,
+    mut active_generation: ResMut<ActiveGeneration>,
     keys: Res<Input<KeyCode>>,
     selection_marker_settings: Res<SelectionCursorMarkerSettings>,
     proc_gen_key_bindings: Res<ProcGenKeyBindings>,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
     mut selection_cursor: Query<&mut Cursor, With<SelectCursor>>,
-    grids: Query<Entity, With<GridDefinition<C>>>,
+    generators: Query<Entity, (With<Generator<C>>, With<GridDefinition<C>>)>,
 ) {
     if keys.just_pressed(proc_gen_key_bindings.switch_grid) {
         let Ok(mut cursor) = selection_cursor.get_single_mut() else {
             return;
         };
 
-        let all_grids: Vec<Entity> = grids.iter().collect();
-        local_grid_index.0 = (local_grid_index.0 + 1) % all_grids.len();
-        let grid_entity = all_grids[local_grid_index.0];
+        local_grid_cycler.update(generators.iter().collect());
+        let grid_entity = local_grid_cycler.get();
+        active_generation.0 = Some(grid_entity);
         // Despawn previous if any
         if let Some(grid_cursor) = &cursor.0 {
             marker_events.send(MarkerDespawnEvent::Marker(grid_cursor.marker));

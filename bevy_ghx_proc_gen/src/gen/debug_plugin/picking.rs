@@ -4,7 +4,7 @@ use bevy::{
         entity::Entity,
         event::{Event, EventReader, EventWriter},
         query::{Added, Changed, With},
-        system::{Commands, Query, Res, Resource},
+        system::{Commands, Query, Res, ResMut, Resource},
     },
     hierarchy::{BuildChildren, Parent},
     prelude::{Deref, DerefMut},
@@ -16,16 +16,22 @@ use bevy_mod_picking::{
     events::Out,
     prelude::{Down, ListenerInput, On, Over, Pointer},
 };
-use ghx_proc_gen::grid::{direction::CoordinateSystem, GridDefinition};
+use ghx_proc_gen::{
+    generator::Generator,
+    grid::{direction::CoordinateSystem, GridDefinition},
+};
 
 use crate::{
     gen::SpawnedNode,
     grid::markers::{GridMarker, MarkerDespawnEvent},
 };
 
-use super::cursor::{
-    cursor_info_to_string, Cursor, CursorIdentifier, CursorInfo, CursorMarkerSettings,
-    CursorsPanelText, GridCursor, OVER_CURSOR_SECTION_INDEX,
+use super::{
+    cursor::{
+        cursor_info_to_string, Cursor, CursorBehavior, CursorInfo, CursorMarkerSettings,
+        CursorsPanelText, GridCursor, OVER_CURSOR_SECTION_INDEX,
+    },
+    generation::ActiveGeneration,
 };
 
 #[derive(Resource)]
@@ -43,9 +49,12 @@ impl CursorMarkerSettings for OverCursorMarkerSettings {
 
 #[derive(Component, Debug)]
 pub struct OverCursor;
-impl CursorIdentifier for OverCursor {
+impl CursorBehavior for OverCursor {
     fn new() -> Self {
         Self
+    }
+    fn updates_active_gen() -> bool {
+        false
     }
 }
 
@@ -115,16 +124,17 @@ pub fn update_over_cursor_panel_text(
 pub fn picking_update_cursors_position<
     C: CoordinateSystem,
     CS: CursorMarkerSettings,
-    CI: CursorIdentifier,
+    CB: CursorBehavior,
     PE: Event + std::ops::DerefMut<Target = Entity>,
 >(
     mut commands: Commands,
     cursor_marker_settings: Res<CS>,
+    mut active_generation: ResMut<ActiveGeneration>,
     mut events: EventReader<PE>,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
     mut nodes: Query<(&SpawnedNode, &Parent)>,
-    mut cursor: Query<&mut Cursor, With<CI>>,
-    grids: Query<&GridDefinition<C>>,
+    mut cursor: Query<&mut Cursor, With<CB>>,
+    generations: Query<(Entity, &GridDefinition<C>), With<Generator<C>>>,
 ) {
     if let Some(event) = events.read().last() {
         let Ok(mut cursor) = cursor.get_single_mut() else {
@@ -148,9 +158,13 @@ pub fn picking_update_cursors_position<
             };
 
             if update_cursor {
-                let Ok(grid) = grids.get(picked_grid_entity) else {
+                let Ok((gen_entity, grid)) = generations.get(picked_grid_entity) else {
                     return;
                 };
+
+                if CB::updates_active_gen() {
+                    active_generation.0 = Some(gen_entity);
+                }
                 let position = grid.pos_from_index(node.0);
                 let marker = commands
                     .spawn(GridMarker::new(cursor_marker_settings.color(), position))

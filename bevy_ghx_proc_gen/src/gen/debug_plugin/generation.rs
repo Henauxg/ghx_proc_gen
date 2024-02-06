@@ -5,10 +5,10 @@ use bevy::{
         component::Component,
         entity::Entity,
         event::{Event, EventWriter},
-        query::{With, Without},
-        system::{Commands, Query, Res, ResMut},
+        query::{Added, With, Without},
+        system::{Commands, Query, Res, ResMut, Resource},
     },
-    hierarchy::DespawnRecursiveExt,
+    hierarchy::{Children, DespawnRecursiveExt},
     input::{keyboard::KeyCode, Input},
     log::{info, warn},
     prelude::{Deref, DerefMut},
@@ -45,6 +45,9 @@ pub enum GenerationEvent {
     Updated(Entity, NodeIndex),
 }
 
+#[derive(Resource, Default)]
+pub struct ActiveGeneration(pub Option<Entity>);
+
 /// Simple system that calculates and add a [`VoidNodes`] component for generator entites which don't have one yet.
 pub fn insert_void_nodes_to_new_generations<
     C: CoordinateSystem,
@@ -77,6 +80,19 @@ pub fn insert_error_markers_to_new_generations<C: CoordinateSystem>(
     }
 }
 
+pub fn update_active_generation<C: CoordinateSystem>(
+    mut active_generation: ResMut<ActiveGeneration>,
+    generations: Query<Entity, With<Generator<C>>>,
+) {
+    if active_generation.0.is_some() {
+        return;
+    }
+
+    if let Some(gen_entity) = generations.iter().last() {
+        active_generation.0 = Some(gen_entity);
+    }
+}
+
 /// This system unpauses the [`GenerationControlStatus`] in the [`GenerationControl`] `Resource` on a keypress.
 ///
 /// The keybind is read from the [`ProcGenKeyBindings`] `Resource`
@@ -85,27 +101,30 @@ pub fn update_generation_control(
     proc_gen_key_bindings: Res<ProcGenKeyBindings>,
     mut generation_control: ResMut<GenerationControl>,
 ) {
-    if keys.just_pressed(proc_gen_key_bindings.unpause) {
-        match generation_control.status {
-            GenerationControlStatus::Paused => {
-                generation_control.status = GenerationControlStatus::Ongoing;
-            }
-            GenerationControlStatus::Ongoing => (),
+    if generation_control.status == GenerationControlStatus::Paused {
+        if keys.just_pressed(proc_gen_key_bindings.unpause) {
+            generation_control.status = GenerationControlStatus::Ongoing;
         }
     }
 }
 
-/// This system request the full generation to all [`Generator`] components, if they already are observed through an [`Observed`] component and if the current control status is [`GenerationControlStatus::Ongoing`]
+/// This system request the full generation to a [`Generator`] component, if it is observed through a [`QueuedObserver`] component, if the current control status is [`GenerationControlStatus::Ongoing`] and if it is currently the [`ActiveGeneration`]
 pub fn generate_all<C: CoordinateSystem>(
     mut generation_control: ResMut<GenerationControl>,
+    active_generation: Res<ActiveGeneration>,
     mut observed_generations: Query<&mut Generator<C>, With<QueuedObserver>>,
 ) {
+    let Some(active_generation) = active_generation.0 else {
+        return;
+    };
+
     if generation_control.status == GenerationControlStatus::Ongoing {
-        for mut generation in observed_generations.iter_mut() {
+        if let Ok(mut generation) = observed_generations.get_mut(active_generation) {
             match generation.generate() {
                 Ok(gen_info) => {
                     info!(
-                        "Generation done, try_count: {}, seed: {}; grid: {}",
+                        "Generation done {:?}, try_count: {}, seed: {}; grid: {}",
+                        active_generation,
                         gen_info.try_count,
                         generation.seed(),
                         generation.grid()
@@ -113,53 +132,64 @@ pub fn generate_all<C: CoordinateSystem>(
                 }
                 Err(GeneratorError { node_index }) => {
                     warn!(
-                        "Generation Failed at node {}, seed: {}; grid: {}",
+                        "Generation Failed {:?} at node {}, seed: {}; grid: {}",
+                        active_generation,
                         node_index,
                         generation.seed(),
                         generation.grid()
                     );
                 }
             }
+            generation_control.status = GenerationControlStatus::Paused;
         }
     }
-    generation_control.status = GenerationControlStatus::Paused;
 }
 
-/// This system steps all [`Generator`] components if they already are observed through an [`Observed`] component, if the current control status is [`GenerationControlStatus::Ongoing`] and if the appropriate keys are pressed.
+/// This system steps a [`Generator`] component if it is  observed through a [`QueuedObserver`] component, if the current control status is [`GenerationControlStatus::Ongoing`], if it is currently the [`ActiveGeneration`] and if the appropriate keys are pressed.
 ///
 /// The keybinds are read from the [`ProcGenKeyBindings`] `Resource`
 pub fn step_by_step_input_update<C: CoordinateSystem>(
     keys: Res<Input<KeyCode>>,
     proc_gen_key_bindings: Res<ProcGenKeyBindings>,
     mut generation_control: ResMut<GenerationControl>,
+    active_generation: Res<ActiveGeneration>,
     mut observed_generations: Query<(&mut Generator<C>, &VoidNodes), With<QueuedObserver>>,
 ) {
+    let Some(active_generation) = active_generation.0 else {
+        return;
+    };
+
     if generation_control.status == GenerationControlStatus::Ongoing
         && (keys.just_pressed(proc_gen_key_bindings.step)
             || keys.pressed(proc_gen_key_bindings.continuous_step))
     {
-        for (mut generation, void_nodes) in observed_generations.iter_mut() {
+        if let Ok((mut generation, void_nodes)) = observed_generations.get_mut(active_generation) {
             step_generation(&mut generation, void_nodes, &mut generation_control);
         }
     }
 }
 
-/// This system steps all [`Generator`] components if they already are observed through an [`Observed`] component, if the current control status is [`GenerationControlStatus::Ongoing`] and if the timer in the [`StepByStepTimed`] `Resource` has finished.
+/// This system steps a [`Generator`] component if it is observed through a [`QueuedObserver`] component, if the current control status is [`GenerationControlStatus::Ongoing`] if it is currently the [`ActiveGeneration`] and if the timer in the [`StepByStepTimed`] `Resource` has finished.
 pub fn step_by_step_timed_update<C: CoordinateSystem>(
     mut generation_control: ResMut<GenerationControl>,
     mut steps_and_timer: ResMut<StepByStepTimed>,
     time: Res<Time>,
+    active_generation: Res<ActiveGeneration>,
     mut observed_generations: Query<(&mut Generator<C>, &VoidNodes), With<QueuedObserver>>,
 ) {
+    let Some(active_generation) = active_generation.0 else {
+        return;
+    };
+
     steps_and_timer.timer.tick(time.delta());
     if steps_and_timer.timer.finished()
         && generation_control.status == GenerationControlStatus::Ongoing
     {
-        for (mut generation, void_nodes) in observed_generations.iter_mut() {
+        if let Ok((mut generation, void_nodes)) = observed_generations.get_mut(active_generation) {
             for _ in 0..steps_and_timer.steps_count {
                 step_generation(&mut generation, void_nodes, &mut generation_control);
                 if generation_control.status != GenerationControlStatus::Ongoing {
-                    break;
+                    return;
                 }
             }
         }
@@ -175,11 +205,13 @@ pub fn update_generation_view<C: CoordinateSystem, A: AssetsBundleSpawner, T: Co
         &GridDefinition<C>,
         &AssetSpawner<A, T>,
         &mut QueuedObserver,
+        Option<&Children>,
         Option<&mut ErrorMarkers>,
     )>,
     existing_nodes: Query<Entity, With<SpawnedNode>>,
 ) {
-    for (grid_entity, grid, asset_spawner, mut observer, mut error_markers) in generators.iter_mut()
+    for (grid_entity, grid, asset_spawner, mut observer, children, mut error_markers) in
+        generators.iter_mut()
     {
         let mut reinitialized = false;
         let mut nodes_to_spawn = Vec::new();
@@ -207,9 +239,14 @@ pub fn update_generation_view<C: CoordinateSystem, A: AssetsBundleSpawner, T: Co
 
         if reinitialized {
             generation_events.send(GenerationEvent::Reinitialized(grid_entity));
-            for existing_node in existing_nodes.iter() {
-                commands.entity(existing_node).despawn_recursive();
+            if let Some(children) = children {
+                for &child in children.iter() {
+                    if let Ok(node) = existing_nodes.get(child) {
+                        commands.entity(node).despawn_recursive();
+                    }
+                }
             }
+
             if let Some(error_markers) = error_markers.as_mut() {
                 for marker in error_markers.iter() {
                     marker_events.send(MarkerDespawnEvent::Marker(*marker));
@@ -220,6 +257,7 @@ pub fn update_generation_view<C: CoordinateSystem, A: AssetsBundleSpawner, T: Co
 
         for grid_node in nodes_to_spawn {
             generation_events.send(GenerationEvent::Updated(grid_entity, grid_node.node_index));
+
             spawn_node(
                 &mut commands,
                 grid_entity,
