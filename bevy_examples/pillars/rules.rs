@@ -31,41 +31,49 @@ pub(crate) fn rules_and_assets() -> (
     let mut models = ModelCollection::new();
 
     models_assets.push(vec![]);
-    models.create(
-        SocketsCartesian3D::Mono(void)
-            .to_template()
-            .with_weight(60.),
-    );
+    models
+        .create(
+            SocketsCartesian3D::Mono(void)
+                .to_template()
+                .with_weight(60.),
+        )
+        .with_name("void");
 
     models_assets.push(vec![AssetDef::new("pillar_base")]);
-    models.create(SocketsCartesian3D::Simple {
-        x_pos: pillar_side,
-        x_neg: pillar_side,
-        z_pos: pillar_side,
-        z_neg: pillar_side,
-        y_pos: pillar_base_top,
-        y_neg: pillar_base_bottom,
-    });
+    models
+        .create(SocketsCartesian3D::Simple {
+            x_pos: pillar_side,
+            x_neg: pillar_side,
+            z_pos: pillar_side,
+            z_neg: pillar_side,
+            y_pos: pillar_base_top,
+            y_neg: pillar_base_bottom,
+        })
+        .with_name("pillar_base");
 
     models_assets.push(vec![AssetDef::new("pillar_core")]);
-    models.create(SocketsCartesian3D::Simple {
-        x_pos: pillar_side,
-        x_neg: pillar_side,
-        z_pos: pillar_side,
-        z_neg: pillar_side,
-        y_pos: pillar_core_top,
-        y_neg: pillar_core_bottom,
-    });
+    models
+        .create(SocketsCartesian3D::Simple {
+            x_pos: pillar_side,
+            x_neg: pillar_side,
+            z_pos: pillar_side,
+            z_neg: pillar_side,
+            y_pos: pillar_core_top,
+            y_neg: pillar_core_bottom,
+        })
+        .with_name("pillar_core");
 
     models_assets.push(vec![AssetDef::new("pillar_cap")]);
-    models.create(SocketsCartesian3D::Simple {
-        x_pos: pillar_side,
-        x_neg: pillar_side,
-        z_pos: pillar_side,
-        z_neg: pillar_side,
-        y_pos: pillar_cap_top,
-        y_neg: pillar_cap_bottom,
-    });
+    models
+        .create(SocketsCartesian3D::Simple {
+            x_pos: pillar_side,
+            x_neg: pillar_side,
+            z_pos: pillar_side,
+            z_neg: pillar_side,
+            y_pos: pillar_cap_top,
+            y_neg: pillar_cap_bottom,
+        })
+        .with_name("pillar_cap");
 
     sockets
         .add_connections(vec![

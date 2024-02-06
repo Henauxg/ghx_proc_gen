@@ -1,4 +1,4 @@
-use std::f32::consts::PI;
+use std::{f32::consts::PI, sync::Arc};
 
 use bevy::{log::LogPlugin, pbr::DirectionalLightShadowMap, prelude::*};
 
@@ -26,15 +26,12 @@ mod rules;
 
 // --------------------------------------------
 /// Change this value to change the way the generation is visualized
-const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::StepByStepTimed {
-    steps_count: 5,
-    interval_ms: 5,
-};
+const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::Final;
 
 /// Change this to change the map size.
 const GRID_HEIGHT: u32 = 7;
-const GRID_X: u32 = 80;
-const GRID_Z: u32 = 80;
+const GRID_X: u32 = 30;
+const GRID_Z: u32 = 70;
 // --------------------------------------------
 
 /// Size of a block in world units
@@ -50,7 +47,7 @@ fn setup_scene(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // Camera
-    let camera_position = Vec3::new(0., 1.5 * GRID_HEIGHT as f32, GRID_Z as f32 / 3.);
+    let camera_position = Vec3::new(0., 3. * GRID_HEIGHT as f32, 0.75 * GRID_Z as f32);
     let radius = camera_position.length();
     commands.spawn((
         Camera3dBundle {
@@ -64,38 +61,43 @@ fn setup_scene(
         FogSettings {
             color: Color::rgba(0.2, 0.15, 0.1, 1.0),
             falloff: FogFalloff::Linear {
-                start: 20.0,
-                end: 45.0,
+                start: 55.0,
+                end: 145.0,
             },
             ..default()
         },
     ));
-    // Sky
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(shape::Box::default())),
-        material: materials.add(StandardMaterial {
-            base_color: Color::hex("888888").unwrap(),
-            unlit: true,
-            cull_mode: None,
+    commands.spawn((
+        PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::Box::default())),
+            material: materials.add(StandardMaterial {
+                base_color: Color::hex("888888").unwrap(),
+                unlit: true,
+                cull_mode: None,
+                ..default()
+            }),
+            transform: Transform::from_scale(Vec3::splat(1_000_000.0)),
+
             ..default()
-        }),
-        transform: Transform::from_scale(Vec3::splat(1_000_000.0)),
-        ..default()
-    });
-    // Ground
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(shape::Plane::default())),
-        material: materials.add(StandardMaterial {
-            base_color: Color::hex("888888").unwrap(),
+        },
+        Name::new("Sky"),
+    ));
+    commands.spawn((
+        PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::Plane::default())),
+            material: materials.add(StandardMaterial {
+                base_color: Color::hex("888888").unwrap(),
+                ..default()
+            }),
+            transform: Transform::from_scale(Vec3::splat(200.0)).with_translation(Vec3::new(
+                0.,
+                BLOCK_SIZE / 2.,
+                0.,
+            )),
             ..default()
-        }),
-        transform: Transform::from_scale(Vec3::splat(100.0)).with_translation(Vec3::new(
-            0.,
-            BLOCK_SIZE / 2.,
-            0.,
-        )),
-        ..default()
-    });
+        },
+        Name::new("Ground"),
+    ));
 
     // Scene lights
     commands.insert_resource(AmbientLight {
@@ -136,41 +138,51 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
     // Get rules from rules.rs
     let (models_asset_paths, models, socket_collection) = rules_and_assets();
 
-    let rules = RulesBuilder::new_cartesian_3d(models, socket_collection)
-        .build()
-        .unwrap();
+    let rules = Arc::new(
+        RulesBuilder::new_cartesian_3d(models, socket_collection)
+            .build()
+            .unwrap(),
+    );
     let grid = GridDefinition::new_cartesian_3d(GRID_X, GRID_HEIGHT, GRID_Z, false, false, false);
-    let mut gen_builder = GeneratorBuilder::new()
-        .with_rules(rules)
+    let gen_builder = GeneratorBuilder::new()
+        // We share the Rules between all the generators
+        .with_shared_rules(rules.clone())
         .with_grid(grid.clone());
-    let observer = gen_builder.add_queued_observer();
-    let generator = gen_builder.build().unwrap();
 
     let models_assets: RulesModelsAssets<Handle<Scene>> =
         load_assets(&asset_server, models_asset_paths, "pillars", "glb#Scene0");
+    let asset_spawner = AssetSpawner::new(
+        models_assets,
+        NODE_SIZE,
+        // We spawn assets with a scale of 0 since we animate their scale in the examples
+        Vec3::ZERO,
+    );
 
-    commands.spawn((
-        GeneratorBundle {
-            spatial: SpatialBundle::from_transform(Transform::from_translation(Vec3 {
-                x: -(grid.size_x() as f32) / 2.,
-                y: 0.,
-                z: -(grid.size_z() as f32) / 2.,
-            })),
-            grid,
-            generator,
-            asset_spawner: AssetSpawner::new(
-                models_assets,
-                NODE_SIZE,
-                // We spawn assets with a scale of 0 since we animate their scale in the examples
-                Vec3::ZERO,
-            ),
-        },
-        observer,
-        DebugGridView3dBundle {
-            view: DebugGridView::new(false, true, Color::GRAY, NODE_SIZE),
-            ..default()
-        },
-    ));
+    for i in 0..=1 {
+        let mut gen_builder = gen_builder.clone();
+        let observer = gen_builder.add_queued_observer();
+        let generator = gen_builder.build().unwrap();
+
+        commands.spawn((
+            GeneratorBundle {
+                spatial: SpatialBundle::from_transform(Transform::from_translation(Vec3 {
+                    x: (grid.size_x() as f32) * (i as f32 - 1.),
+                    y: 0.,
+                    z: -(grid.size_z() as f32) * 0.5,
+                })),
+                grid: grid.clone(),
+                generator,
+                // We also share the RulesModelsAssets between all the generators
+                asset_spawner: asset_spawner.clone(),
+            },
+            observer,
+            DebugGridView3dBundle {
+                view: DebugGridView::new(false, true, Color::GRAY, NODE_SIZE),
+                ..default()
+            },
+            Name::new(format!("Grid_{}", i)),
+        ));
+    }
 }
 
 fn main() {
