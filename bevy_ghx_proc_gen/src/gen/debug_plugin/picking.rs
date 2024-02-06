@@ -154,7 +154,9 @@ pub fn picking_update_cursors_position<
             let picked_grid_entity = node_parent.get();
             let update_cursor = match cursor.deref_mut() {
                 Some(grid_cursor) => {
-                    if grid_cursor.grid != picked_grid_entity && grid_cursor.node_index != node.0 {
+                    if (grid_cursor.grid != picked_grid_entity)
+                        || (grid_cursor.node_index != node.0)
+                    {
                         marker_events.send(MarkerDespawnEvent::Marker(grid_cursor.marker));
                         true
                     } else {
