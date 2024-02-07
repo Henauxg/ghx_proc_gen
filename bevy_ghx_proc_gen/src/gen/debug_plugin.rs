@@ -216,7 +216,7 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
                     timer: Timer::new(Duration::from_millis(interval_ms), TimerMode::Repeating),
                 });
             }
-            GenerationViewMode::StepByStepPaused => {
+            GenerationViewMode::StepByStepManual => {
                 app.add_systems(
                     Update,
                     (
@@ -241,7 +241,7 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
 }
 
 /// Controls how the generation occurs.
-#[derive(Resource, Clone, Copy, PartialEq, Eq)]
+#[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GenerationViewMode {
     /// Generates steps by steps and waits at least the specified amount (in milliseconds) between each step.
     StepByStepTimed {
@@ -251,8 +251,9 @@ pub enum GenerationViewMode {
         interval_ms: u64,
     },
     /// Generates step by step and waits for a user input between each step.
-    StepByStepPaused,
+    StepByStepManual,
     /// Generates it all at once at the start
+    #[default]
     Final,
 }
 
