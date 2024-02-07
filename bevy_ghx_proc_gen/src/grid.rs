@@ -94,7 +94,7 @@ impl Default for DebugGridView2dBundle {
     }
 }
 
-/// Transform a [`GridPosition`] accompanied by a `node_size`, the size of a grid node in world units, into a position as a [`Vec3`] in world units (center of the grid node).
+/// Returns a position as a [`Vec3`] in world units (center of the grid node) from a [`GridPosition`] accompanied by a `node_size`, the size of a grid node in world units.
 #[inline]
 pub fn get_translation_from_grid_pos_3d(grid_pos: &GridPosition, node_size: &Vec3) -> Vec3 {
     Vec3 {
@@ -104,12 +104,31 @@ pub fn get_translation_from_grid_pos_3d(grid_pos: &GridPosition, node_size: &Vec
     }
 }
 
-/// Transform a [`GridPosition`] accompanied by a `node_size`, the size of a grid node in world units, into a position as a [`Vec2`] in world units (center of the grid node).
+/// Returns a position as a [`Vec3`] in world units (center of the grid node) from grid coordinates accompanied by a `node_size`, the size of a grid node in world units.
+#[inline]
+pub fn get_translation_from_grid_coords_3d(x: u32, y: u32, z: u32, node_size: &Vec3) -> Vec3 {
+    Vec3 {
+        x: (x as f32 + 0.5) * node_size.x,
+        y: (y as f32 + 0.5) * node_size.y,
+        z: (z as f32 + 0.5) * node_size.z,
+    }
+}
+
+/// Returns a position as a [`Vec2`] in world units (center of the grid node) from a [`GridPosition`] accompanied by a `node_size`, the size of a grid node in world units.
 #[inline]
 pub fn get_translation_from_grid_pos_2d(grid_pos: &GridPosition, node_size: &Vec2) -> Vec2 {
     Vec2 {
         x: (grid_pos.x as f32 + 0.5) * node_size.x,
         y: (grid_pos.y as f32 + 0.5) * node_size.y,
+    }
+}
+
+/// Returns a position as a [`Vec2`] in world units (center of the grid node) from grid coordinates accompanied by a `node_size`, the size of a grid node in world units.
+#[inline]
+pub fn get_translation_from_grid_coords_2d(x: u32, y: u32, node_size: &Vec2) -> Vec2 {
+    Vec2 {
+        x: (x as f32 + 0.5) * node_size.x,
+        y: (y as f32 + 0.5) * node_size.y,
     }
 }
 
