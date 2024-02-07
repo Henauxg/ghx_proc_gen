@@ -25,7 +25,7 @@ use bevy::{
 };
 use bevy_mod_picking::picking_core::Pickable;
 use ghx_proc_gen::{
-    generator::{rules::ModelInfo, Generator},
+    generator::{Generator, ModelVariations},
     grid::{
         direction::{CoordinateSystem, Direction},
         GridDefinition, GridPosition, NodeIndex,
@@ -69,7 +69,14 @@ pub struct Cursor(pub Option<GridCursor>);
 
 #[derive(Component, Default, Debug)]
 pub struct CursorInfo {
-    pub models: Vec<ModelInfo>,
+    pub total_models_count: u32,
+    pub models_variations: Vec<ModelVariations>,
+}
+impl CursorInfo {
+    pub fn clear(&mut self) {
+        self.total_models_count = 0;
+        self.models_variations.clear();
+    }
 }
 
 pub trait CursorBehavior: Component {
@@ -213,10 +220,13 @@ pub fn update_cursors_info_on_cursors_changes<C: CoordinateSystem>(
         match &cursor.0 {
             Some(grid_cursor) => {
                 if let Ok(generator) = generators.get(grid_cursor.grid) {
-                    cursor_info.models = generator.get_models_info_on(grid_cursor.node_index)
+                    (
+                        cursor_info.models_variations,
+                        cursor_info.total_models_count,
+                    ) = generator.get_models_variations_on(grid_cursor.node_index);
                 }
             }
-            None => cursor_info.models.clear(),
+            None => cursor_info.clear(),
         }
     }
 }
@@ -237,14 +247,20 @@ pub fn update_cursors_info_from_generation_events<C: CoordinateSystem>(
                     let Ok(generator) = generators.get(*grid_entity) else {
                         continue;
                     };
-                    cursor_info.models = generator.get_models_info_on(grid_cursor.node_index);
+                    (
+                        cursor_info.models_variations,
+                        cursor_info.total_models_count,
+                    ) = generator.get_models_variations_on(grid_cursor.node_index);
                 }
                 GenerationEvent::Updated(grid_entity, node_index) => {
                     let Ok(generator) = generators.get(*grid_entity) else {
                         continue;
                     };
                     if grid_cursor.node_index == *node_index {
-                        cursor_info.models = generator.get_models_info_on(grid_cursor.node_index);
+                        (
+                            cursor_info.models_variations,
+                            cursor_info.total_models_count,
+                        ) = generator.get_models_variations_on(grid_cursor.node_index);
                     }
                 }
             }
@@ -461,28 +477,34 @@ pub fn spawn_marker_and_create_cursor(
 }
 
 pub fn cursor_info_to_string(cursor: &GridCursor, cursor_info: &CursorInfo) -> String {
-    let text = if cursor_info.models.len() > 1 {
+    let text = if cursor_info.models_variations.len() > 1 {
         format!(
             "Grid: {{{}}}\n\
-            {} possible models:\n\
+            {} possible models, {} variations:\n\
             {{{}}}\n\
             {{{}}}\n\
-            ...\n",
+            {}",
             cursor,
-            cursor_info.models.len(),
-            cursor_info.models[0],
-            cursor_info.models[1],
+            cursor_info.models_variations.len(),
+            cursor_info.total_models_count,
+            cursor_info.models_variations[0],
+            cursor_info.models_variations[1],
+            if cursor_info.models_variations.len() > 2 {
+                "...\n"
+            } else {
+                ""
+            }
         )
-    } else if cursor_info.models.len() == 1 {
+    } else if cursor_info.models_variations.len() == 1 {
         format!(
             "Grid: {{{}}}\n\
             Model: {{{}}}\n",
-            cursor, cursor_info.models[0],
+            cursor, cursor_info.models_variations[0],
         )
     } else {
         format!(
             "Grid: {{{}}}\n\
-            No models\n",
+            No models possible\n",
             cursor,
         )
     };
