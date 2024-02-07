@@ -114,7 +114,7 @@ pub const DEFAULT_EXAMPLES_FONT_SIZE: f32 = 16.;
 pub struct ExamplesUiRoot;
 
 #[derive(Component)]
-pub struct GenerationControltext;
+pub struct GenerationControlText;
 
 pub fn setup_ui(mut commands: Commands, view_mode: Res<GenerationViewMode>) {
     let ui_root = commands
@@ -136,7 +136,7 @@ pub fn setup_ui(mut commands: Commands, view_mode: Res<GenerationViewMode>) {
        Selection: 'Esc' deselect | `Click` or `x/y/z`+`Left/Right` move selection | 'Tab' (switch active grid)\n"
             .to_string();
 
-    if *view_mode == GenerationViewMode::StepByStepPaused {
+    if *view_mode == GenerationViewMode::StepByStepManual {
         keybindings_text
             .push_str("Generation: 'Down' generate 1 step | 'Up' generates while pressed ");
     }
@@ -163,7 +163,7 @@ pub fn setup_ui(mut commands: Commands, view_mode: Res<GenerationViewMode>) {
     let status_ui = commands
         .spawn((
             Pickable::IGNORE,
-            GenerationControltext,
+            GenerationControlText,
             TextBundle {
                 style: Style {
                     position_type: PositionType::Absolute,
@@ -186,6 +186,13 @@ pub fn setup_ui(mut commands: Commands, view_mode: Res<GenerationViewMode>) {
                         font_size: DEFAULT_EXAMPLES_FONT_SIZE,
                         ..Default::default()
                     }),
+                    TextSection::new(
+                        format!("\nGenerationViewMode: {:?}", *view_mode),
+                        TextStyle {
+                            font_size: DEFAULT_EXAMPLES_FONT_SIZE,
+                            ..Default::default()
+                        },
+                    ),
                 ]),
                 ..default()
             },
@@ -196,21 +203,14 @@ pub fn setup_ui(mut commands: Commands, view_mode: Res<GenerationViewMode>) {
 }
 
 pub const GENERATION_CONTROL_STATUS_TEXT_SECTION_ID: usize = 1;
-pub const GENERATION_CONTROLTEXT_SECTION_ID: usize = 2;
+pub const GENERATION_CONTROL_TEXT_SECTION_ID: usize = 2;
+pub const GENERATION_VIEW_MODE_TEXT_SECTION_ID: usize = 3;
 
 pub fn update_generation_control_ui(
     generation_control: Res<GenerationControl>,
-    mut query: Query<&mut Text, With<GenerationControltext>>,
+    mut query: Query<&mut Text, With<GenerationControlText>>,
 ) {
     for mut text in &mut query {
-        let control_section = &mut text.sections[GENERATION_CONTROLTEXT_SECTION_ID];
-        control_section.value = format!(
-            "\nskip_void_nodes: {}, pause_when_done: {}, pause_on_error: {}",
-            generation_control.skip_void_nodes,
-            generation_control.pause_when_done,
-            generation_control.pause_on_error
-        );
-
         let status_section = &mut text.sections[GENERATION_CONTROL_STATUS_TEXT_SECTION_ID];
         (status_section.value, status_section.style.color) = match generation_control.status {
             GenerationControlStatus::Ongoing => ("Ongoing".into(), Color::GREEN),
@@ -218,5 +218,13 @@ pub fn update_generation_control_ui(
                 ("Paused ('Space' to unpause)".into(), Color::YELLOW_GREEN)
             }
         };
+
+        let control_section = &mut text.sections[GENERATION_CONTROL_TEXT_SECTION_ID];
+        control_section.value = format!(
+            "\nGenerationControl: skip_void_nodes: {}, pause_when_done: {}, pause_on_error: {}",
+            generation_control.skip_void_nodes,
+            generation_control.pause_when_done,
+            generation_control.pause_on_error
+        );
     }
 }
