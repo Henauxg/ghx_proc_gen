@@ -159,8 +159,6 @@ impl<C: CoordinateSystem> RulesBuilder<C> {
 #[cfg_attr(feature = "bevy", derive(Component, Default))]
 #[cfg_attr(feature = "reflect", derive(Reflect), reflect(Component))]
 pub struct ModelInfo {
-    /// Original [`Model`] instance
-    pub model: ModelInstance,
     /// Weight of the original [`Model`]
     pub weight: f32,
 
@@ -171,7 +169,7 @@ pub struct ModelInfo {
 
 impl fmt::Display for ModelInfo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}, w: {}", self.model, self.weight)?;
+        write!(f, "w: {}", self.weight)?;
         #[cfg(feature = "models-names")]
         write!(f, ", {}", self.name)
     }
@@ -333,7 +331,6 @@ impl<C: CoordinateSystem> Rules<C> {
 
     pub(crate) fn model_info(&self, model_index: ModelVariantIndex) -> ModelInfo {
         ModelInfo {
-            model: self.models[model_index].clone(),
             weight: self.weights[model_index],
 
             #[cfg(feature = "models-names")]

@@ -1,9 +1,10 @@
 use bitvec::{bitvec, vec::BitVec};
+use core::fmt;
 use ndarray::{Array, Ix3};
 use rand::{
     distributions::Distribution, distributions::WeightedIndex, rngs::StdRng, Rng, SeedableRng,
 };
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 #[cfg(feature = "debug-traces")]
 use tracing::{debug, info, trace};
@@ -21,7 +22,7 @@ use crate::{
 
 use self::{
     builder::{GeneratorBuilder, Unset},
-    model::{ModelInstance, ModelVariantIndex},
+    model::{ModelIndex, ModelInstance, ModelRotation, ModelVariantIndex},
     node_heuristic::{InternalNodeSelectionHeuristic, NodeSelectionHeuristic},
     observer::GenerationUpdate,
     rules::{ModelInfo, ModelVariantRef, Rules},
@@ -931,18 +932,60 @@ impl<C: CoordinateSystem> Generator<C> {
         models
     }
 
-    pub fn get_models_info_on(&self, node_index: NodeIndex) -> Vec<ModelInfo> {
-        let mut models = Vec::new();
+    pub fn get_models_variations_on(&self, node_index: NodeIndex) -> (Vec<ModelVariations>, u32) {
+        let mut model_variations = Vec::new();
+        let mut total_models_count = 0;
+
         if !self.is_valid_node_index(node_index) {
-            return models;
+            return (model_variations, total_models_count);
         }
+
+        let mut id_mapping = HashMap::new();
         for model_variant_index in self.nodes[node_index * self.rules.models_count()
             ..node_index * self.rules.models_count() + self.rules.models_count()]
             .iter_ones()
         {
-            models.push(self.rules.model_info(model_variant_index));
+            total_models_count += 1;
+            let model = self.rules.model(model_variant_index);
+            let group_id = id_mapping
+                .entry(model.model_index)
+                .or_insert(model_variations.len());
+            if *group_id == model_variations.len() {
+                model_variations.push(ModelVariations {
+                    index: model.model_index,
+                    info: self.rules.model_info(model_variant_index),
+                    rotations: vec![model.rotation],
+                });
+            } else {
+                model_variations[*group_id].rotations.push(model.rotation);
+            }
         }
 
-        models
+        (model_variations, total_models_count)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ModelVariations {
+    pub index: ModelIndex,
+    pub info: ModelInfo,
+    pub rotations: Vec<ModelRotation>,
+}
+
+impl fmt::Display for ModelVariations {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.rotations.len() == 1 {
+            write!(
+                f,
+                "id: {}, {}, rotation: {:?}",
+                self.index, self.info, self.rotations[0]
+            )
+        } else {
+            write!(
+                f,
+                "id: {}, {}, rotations: {:?}",
+                self.index, self.info, self.rotations
+            )
+        }
     }
 }
