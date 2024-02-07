@@ -10,7 +10,7 @@ use super::{
     node_heuristic::NodeSelectionHeuristic,
     observer::{GenerationUpdate, QueuedObserver, QueuedStatefulObserver},
     rules::{ModelVariantRef, Rules},
-    Collector, Generator, GridNode, ModelSelectionHeuristic, RngMode,
+    Collector, GeneratedNode, Generator, ModelSelectionHeuristic, RngMode,
 };
 
 /// Default retry count for the generator
@@ -266,7 +266,9 @@ impl<C: CoordinateSystem> GeneratorBuilder<Set, Set, C> {
     }
 
     /// Instantiates a [`Generator`] as specified by the various builder parameters and return the initially generated nodes if any
-    pub fn build_collected(self) -> Result<(Generator<C>, Vec<GridNode>), GeneratorBuilderError> {
+    pub fn build_collected(
+        self,
+    ) -> Result<(Generator<C>, Vec<GeneratedNode>), GeneratorBuilderError> {
         let mut generated_nodes = Vec::new();
         let res = self.internal_build(&mut Some(&mut generated_nodes))?;
         Ok((res, generated_nodes))

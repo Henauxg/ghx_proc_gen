@@ -1,6 +1,6 @@
 use crate::grid::{direction::CoordinateSystem, GridData, GridDefinition};
 
-use super::{model::ModelInstance, Generator, GridNode};
+use super::{model::ModelInstance, GeneratedNode, Generator};
 
 #[cfg(feature = "bevy")]
 use bevy::ecs::component::Component;
@@ -9,7 +9,7 @@ use bevy::ecs::component::Component;
 #[derive(Clone, Copy, Debug)]
 pub enum GenerationUpdate {
     /// A node has been generated
-    Generated(GridNode),
+    Generated(GeneratedNode),
     /// The generator is being reinitialized to its initial state, with a new seed.
     Reinitializing(u64),
     /// The generation failed due to a contradiction at the specified node_index
