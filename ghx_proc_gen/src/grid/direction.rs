@@ -6,7 +6,7 @@ use bevy::ecs::component::Component;
 use bevy::{ecs::reflect::ReflectComponent, reflect::Reflect};
 
 /// Represents an oriented axis of a coordinate system
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "bevy", derive(Component))]
 #[cfg_attr(feature = "reflect", derive(Reflect), reflect(Component))]
 pub enum Direction {
