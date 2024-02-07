@@ -16,6 +16,8 @@ use bevy::{
     utils::default,
 };
 
+use crate::plugin::DEFAULT_EXAMPLES_FONT_SIZE;
+
 /// Based on <https://bevy-cheatbook.github.io/cookbook/print-framerate.html>
 
 pub struct FpsDisplayPlugin;
@@ -76,7 +78,7 @@ pub fn setup_fps_counter(mut commands: Commands) {
                     TextSection {
                         value: "FPS: ".into(),
                         style: TextStyle {
-                            font_size: 16.0,
+                            font_size: DEFAULT_EXAMPLES_FONT_SIZE,
                             color: Color::WHITE,
                             // if you want to use your game's font asset,
                             // uncomment this and provide the handle:
@@ -87,7 +89,7 @@ pub fn setup_fps_counter(mut commands: Commands) {
                     TextSection {
                         value: " N/A".into(),
                         style: TextStyle {
-                            font_size: 16.0,
+                            font_size: DEFAULT_EXAMPLES_FONT_SIZE,
                             color: Color::WHITE,
                             // if you want to use your game's font asset,
                             // uncomment this and provide the handle:
