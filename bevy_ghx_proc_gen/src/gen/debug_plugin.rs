@@ -72,8 +72,8 @@ pub struct GridCursorsUiSettings {
 impl Default for GridCursorsUiSettings {
     fn default() -> Self {
         Self {
-            font_size: 15.0,
-            background_color: Color::BLACK.with_a(0.4),
+            font_size: 16.0,
+            background_color: Color::BLACK.with_a(0.45),
             text_color: Color::WHITE,
         }
     }

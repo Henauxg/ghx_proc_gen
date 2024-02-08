@@ -579,8 +579,8 @@ pub fn update_cursors_overlays(
             },
             style: Style {
                 position_type: PositionType::Absolute,
-                left: Val::Px(viewport_pos.x - 5.0),
-                top: Val::Px(viewport_pos.y - 5.0),
+                left: Val::Px(viewport_pos.x + 5.0),
+                top: Val::Px(viewport_pos.y + 5.0),
                 ..Default::default()
             },
             ..Default::default()
