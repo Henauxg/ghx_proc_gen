@@ -10,7 +10,7 @@ use bevy::{
     hierarchy::{BuildChildren, DespawnRecursiveExt, Parent},
     input::{keyboard::KeyCode, Input},
     math::{Vec2, Vec3},
-    pbr::{AlphaMode, PbrBundle, StandardMaterial},
+    pbr::{AlphaMode, NotShadowCaster, PbrBundle, StandardMaterial},
     prelude::{Deref, DerefMut},
     render::{
         color::Color,
@@ -423,6 +423,7 @@ pub fn spawn_cursor_targets_3d<C: CoordinateSystem>(
             .spawn((
                 GridNode(grid.index_from_coords(x, y, z)),
                 CursorTarget,
+                NotShadowCaster,
                 PbrBundle {
                     transform: Transform::from_translation(translation).with_scale(*node_size),
                     mesh: cursor_target_assets.target_mesh_3d.clone(),
