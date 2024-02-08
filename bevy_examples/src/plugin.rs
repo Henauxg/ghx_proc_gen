@@ -15,10 +15,10 @@ use bevy::{
     math::Vec3,
     prelude::default,
     render::color::Color,
-    text::{Text, TextSection, TextStyle},
+    text::{BreakLineOn, Text, TextSection, TextStyle},
     ui::{
         node_bundles::{NodeBundle, TextBundle},
-        PositionType, Style, Val,
+        PositionType, Style, UiRect, Val,
     },
 };
 use bevy_ghx_proc_gen::{
@@ -107,7 +107,7 @@ pub fn setup_gizmos_config(mut config: ResMut<GizmoConfig>) {
     config.depth_bias = -1.0;
 }
 
-pub const DEFAULT_EXAMPLES_FONT_SIZE: f32 = 16.;
+pub const DEFAULT_EXAMPLES_FONT_SIZE: f32 = 17.;
 
 /// Marker to find the container entity so we can show/hide the UI node
 #[derive(Component)]
@@ -131,31 +131,66 @@ pub fn setup_ui(mut commands: Commands, view_mode: Res<GenerationViewMode>) {
             Pickable::IGNORE,
         ))
         .id();
-    let mut keybindings_text =
-        "Toggles: `F1` ui | `F2` fps | `F3` grid | `F4` markers | `F5` camera rotation\n\
-       Selection: 'Esc' deselect | `Click` or `x/y/z`+`Left/Right` move selection | 'Tab' (switch active grid)\n"
-            .to_string();
+    let mut keybindings_text = "Toggles:\n\
+        'F1' Show/hide UI\n\
+        'F2' Show/hide fps\n\
+        'F3' Show/hide grid\n\
+        'F4' Show/hide markers\n\
+        'F5' Enable/disable camera rotation\n\
+        \n\
+        Selection:\n\
+       'Click' Select\n\
+       'x/y/z'+'Left/Right' Move selection\n\
+       'Esc' Deselect\n\
+       'Tab' Switch active grid\n"
+        .to_string();
 
     if *view_mode == GenerationViewMode::StepByStepManual {
-        keybindings_text
-            .push_str("Generation: 'Down' generate 1 step | 'Up' generates while pressed ");
+        keybindings_text.push_str(
+            "\nGeneration:\n\
+            'Down' Generate 1 step\n\
+            'Up' Generate while pressed",
+        );
     }
+    let keybindings_ui_background = commands
+        .spawn((
+            Pickable::IGNORE,
+            NodeBundle {
+                background_color: Color::BLACK.with_a(0.6).into(),
+                style: Style {
+                    position_type: PositionType::Absolute,
+                    top: Val::Percent(1.),
+                    padding: UiRect {
+                        left: Val::Px(6.),
+                        right: Val::Px(6.),
+                        top: Val::Px(6.),
+                        bottom: Val::Px(6.),
+                    },
+                    ..default()
+                },
+                ..default()
+            },
+        ))
+        .id();
     let keybindings_ui = commands
         .spawn((
             Pickable::IGNORE,
             TextBundle {
                 style: Style {
                     position_type: PositionType::Relative,
-                    top: Val::Percent(1.),
                     ..default()
                 },
-                text: Text::from_sections([TextSection::new(
-                    keybindings_text,
-                    TextStyle {
-                        font_size: DEFAULT_EXAMPLES_FONT_SIZE,
-                        ..Default::default()
-                    },
-                )]),
+                text: Text {
+                    sections: vec![TextSection::new(
+                        keybindings_text,
+                        TextStyle {
+                            font_size: DEFAULT_EXAMPLES_FONT_SIZE,
+                            ..Default::default()
+                        },
+                    )],
+                    linebreak_behavior: BreakLineOn::NoWrap,
+                    ..default()
+                },
                 ..default()
             },
         ))
@@ -170,35 +205,44 @@ pub fn setup_ui(mut commands: Commands, view_mode: Res<GenerationViewMode>) {
                     bottom: Val::Percent(1.),
                     ..default()
                 },
-                text: Text::from_sections([
-                    TextSection::new(
-                        "\nGeneration control status: ",
-                        TextStyle {
+                text: Text {
+                    sections: vec![
+                        TextSection::new(
+                            "\nGeneration control status: ",
+                            TextStyle {
+                                font_size: DEFAULT_EXAMPLES_FONT_SIZE,
+                                ..Default::default()
+                            },
+                        ),
+                        TextSection::from_style(TextStyle {
                             font_size: DEFAULT_EXAMPLES_FONT_SIZE,
                             ..Default::default()
-                        },
-                    ),
-                    TextSection::from_style(TextStyle {
-                        font_size: DEFAULT_EXAMPLES_FONT_SIZE,
-                        ..Default::default()
-                    }),
-                    TextSection::from_style(TextStyle {
-                        font_size: DEFAULT_EXAMPLES_FONT_SIZE,
-                        ..Default::default()
-                    }),
-                    TextSection::new(
-                        format!("\nGenerationViewMode: {:?}", *view_mode),
-                        TextStyle {
+                        }),
+                        TextSection::from_style(TextStyle {
                             font_size: DEFAULT_EXAMPLES_FONT_SIZE,
                             ..Default::default()
-                        },
-                    ),
-                ]),
+                        }),
+                        TextSection::new(
+                            format!("\nGenerationViewMode: {:?}", *view_mode),
+                            TextStyle {
+                                font_size: DEFAULT_EXAMPLES_FONT_SIZE,
+                                ..Default::default()
+                            },
+                        ),
+                    ],
+                    linebreak_behavior: BreakLineOn::NoWrap,
+                    ..default()
+                },
                 ..default()
             },
         ))
         .id();
-    commands.entity(ui_root).add_child(keybindings_ui);
+    commands
+        .entity(ui_root)
+        .add_child(keybindings_ui_background);
+    commands
+        .entity(keybindings_ui_background)
+        .add_child(keybindings_ui);
     commands.entity(ui_root).add_child(status_ui);
 }
 
