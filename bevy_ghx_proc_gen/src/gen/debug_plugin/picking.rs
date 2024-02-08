@@ -9,12 +9,14 @@ use bevy::{
     },
     hierarchy::{BuildChildren, DespawnRecursiveExt, Parent},
     input::{keyboard::KeyCode, Input},
-    pbr::{PbrBundle, StandardMaterial},
+    math::{Vec2, Vec3},
+    pbr::{AlphaMode, PbrBundle, StandardMaterial},
     prelude::{Deref, DerefMut},
     render::{
         color::Color,
         mesh::{shape, Mesh},
     },
+    sprite::{Sprite, SpriteBundle},
     text::Text,
     transform::components::Transform,
     utils::default,
@@ -23,6 +25,7 @@ use bevy::{
 use bevy_mod_picking::{
     events::Out,
     prelude::{Down, ListenerInput, On, Over, Pointer},
+    PickableBundle,
 };
 use ghx_proc_gen::{
     generator::Generator,
@@ -37,14 +40,14 @@ use crate::{
     grid::{
         get_translation_from_grid_coords_3d,
         markers::{GridMarker, MarkerDespawnEvent},
-        view::DebugGridView,
+        view::{DebugGridView, DebugGridView2d, DebugGridView3d},
     },
 };
 
 use super::{
     cursor::{
         cursor_info_to_string, Cursor, CursorBehavior, CursorInfo, CursorMarkerSettings,
-        CursorsPanelText, GridCursor, SelectCursor, OVER_CURSOR_SECTION_INDEX,
+        CursorsPanelText, SelectCursor, TargetedNode, OVER_CURSOR_SECTION_INDEX,
     },
     generation::{ActiveGeneration, GenerationEvent},
     ProcGenKeyBindings,
@@ -123,10 +126,10 @@ pub fn update_over_cursor_panel_text(
         for mut text in &mut cursors_panel_text {
             let ui_text = &mut text.sections[OVER_CURSOR_SECTION_INDEX].value;
             match &cursor.0 {
-                Some(grid_cursor) => {
+                Some(overed_node) => {
                     *ui_text = format!(
                         "Hovered:\n{}",
-                        cursor_info_to_string(grid_cursor, cursor_info)
+                        cursor_info_to_string(overed_node, cursor_info)
                     );
                 }
                 None => ui_text.clear(),
@@ -148,8 +151,8 @@ pub fn update_over_cursor_from_generation_events<C: CoordinateSystem>(
         match event {
             GenerationEvent::Reinitialized(_grid_entity) => {
                 // If there is an Over cursor, force despawn it, since we will despawn the underlying node there won't be any NodeOutEvent.
-                if let Some(grid_cursor) = &cursor.0 {
-                    marker_events.send(MarkerDespawnEvent::Marker(grid_cursor.marker));
+                if let Some(overed_node) = &cursor.0 {
+                    marker_events.send(MarkerDespawnEvent::Marker(overed_node.marker));
                     cursor.0 = None;
                 }
             }
@@ -183,9 +186,11 @@ pub fn picking_update_cursors_position<
 
         let picked_grid_entity = node_parent.get();
         let update_cursor = match &cursor.0 {
-            Some(grid_cursor) => {
-                if (grid_cursor.grid != picked_grid_entity) || (grid_cursor.node_index != node.0) {
-                    marker_events.send(MarkerDespawnEvent::Marker(grid_cursor.marker));
+            Some(targeted_node) => {
+                if (targeted_node.grid != picked_grid_entity)
+                    || (targeted_node.node_index != node.0)
+                {
+                    marker_events.send(MarkerDespawnEvent::Marker(targeted_node.marker));
                     true
                 } else {
                     false
@@ -207,7 +212,7 @@ pub fn picking_update_cursors_position<
                 .spawn(GridMarker::new(cursor_marker_settings.color(), position))
                 .id();
             commands.entity(picked_grid_entity).add_child(marker);
-            cursor.0 = Some(GridCursor {
+            cursor.0 = Some(TargetedNode {
                 grid: picked_grid_entity,
                 node_index: node.0,
                 position,
@@ -227,12 +232,12 @@ pub fn picking_remove_previous_over_cursor<C: CoordinateSystem>(
         let Ok(mut cursor) = over_cursor.get_single_mut() else {
             return;
         };
-        let Some(grid_cursor) = &cursor.0 else {
+        let Some(overed_node) = &cursor.0 else {
             return;
         };
         if let Ok(node) = nodes.get_mut(**event) {
-            if grid_cursor.node_index == node.0 {
-                marker_events.send(MarkerDespawnEvent::Marker(grid_cursor.marker));
+            if overed_node.node_index == node.0 {
+                marker_events.send(MarkerDespawnEvent::Marker(overed_node.marker));
                 cursor.0 = None;
             }
         }
@@ -241,17 +246,28 @@ pub fn picking_remove_previous_over_cursor<C: CoordinateSystem>(
 
 #[derive(Resource, Default)]
 pub struct CursorTargetAssets {
-    target_mesh: Handle<Mesh>,
-    target_mat: Handle<StandardMaterial>,
+    color: Color,
+    base_size: f32,
+    target_mesh_3d: Handle<Mesh>,
+    target_mat_3d: Handle<StandardMaterial>,
 }
 
 pub fn setup_picking_assets(
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut standard_materials: ResMut<Assets<StandardMaterial>>,
     mut cursor_target_assets: ResMut<CursorTargetAssets>,
 ) {
-    cursor_target_assets.target_mesh = meshes.add(Mesh::from(shape::Cube { size: 0.9 }));
-    cursor_target_assets.target_mat = materials.add(Color::WHITE.with_a(0.5).into());
+    cursor_target_assets.color = Color::WHITE.with_a(0.35);
+    cursor_target_assets.base_size = 0.75;
+    cursor_target_assets.target_mesh_3d = meshes.add(Mesh::from(shape::Cube {
+        size: cursor_target_assets.base_size,
+    }));
+    cursor_target_assets.target_mat_3d = standard_materials.add(StandardMaterial {
+        base_color: cursor_target_assets.color,
+        alpha_mode: AlphaMode::Blend,
+        unlit: true,
+        ..default()
+    });
 }
 
 #[derive(Component)]
@@ -267,15 +283,19 @@ pub fn update_cursor_targets_nodes<C: CoordinateSystem>(
     cursor_target_assets: Res<CursorTargetAssets>,
     proc_gen_key_bindings: Res<ProcGenKeyBindings>,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
-    mut selection_cursor: Query<&mut Cursor, With<SelectCursor>>,
+    mut selection_cursor: Query<&Cursor, With<SelectCursor>>,
     mut over_cursor: Query<&mut Cursor, (With<OverCursor>, Without<SelectCursor>)>,
-    grids: Query<(&GridDefinition<C>, &DebugGridView)>,
+    grids_with_cam3d: Query<(&GridDefinition<C>, &DebugGridView), With<DebugGridView3d>>,
+    grids_with_cam2d: Query<
+        (&GridDefinition<C>, &DebugGridView),
+        (With<DebugGridView2d>, Without<DebugGridView3d>),
+    >,
     cursor_targets: Query<Entity, With<CursorTarget>>,
 ) {
-    let Ok(mut selection_cursor) = selection_cursor.get_single_mut() else {
+    let Ok(selection_cursor) = selection_cursor.get_single() else {
         return;
     };
-    let Some(cursor) = &selection_cursor.0 else {
+    let Some(selected_node) = &selection_cursor.0 else {
         return;
     };
 
@@ -290,67 +310,33 @@ pub fn update_cursor_targets_nodes<C: CoordinateSystem>(
     };
 
     if let Some(axis) = axis_selection {
-        // Some targeting already active
+        // Some targeting already active, nothing to do
         if local_active_cursor_helper_direction.0.is_some() {
             return;
         }
         local_active_cursor_helper_direction.0 = Some(axis);
 
-        let Ok((grid, grid_view)) = grids.get(cursor.grid) else {
+        if let Ok((grid, grid_view)) = grids_with_cam3d.get(selected_node.grid) {
+            spawn_cursor_targets_3d(
+                &mut commands,
+                &cursor_target_assets,
+                axis,
+                selected_node,
+                grid,
+                &grid_view.node_size,
+            );
+        } else if let Ok((grid, grid_view)) = grids_with_cam2d.get(selected_node.grid) {
+            spawn_cursor_targets_2d(
+                &mut commands,
+                &cursor_target_assets,
+                axis,
+                selected_node,
+                grid,
+                &grid_view.node_size,
+            );
+        } else {
             return;
         };
-
-        let mut spawn_cursor_target = |x: u32, y: u32, z: u32| {
-            let translation = get_translation_from_grid_coords_3d(x, y, z, &grid_view.node_size);
-            let helper_node_entity = commands
-                .spawn((
-                    GridNode(grid.index_from_coords(x, y, z)),
-                    CursorTarget,
-                    PbrBundle {
-                        transform: Transform::from_translation(translation)
-                            .with_scale(grid_view.node_size),
-                        mesh: cursor_target_assets.target_mesh.clone(),
-                        material: cursor_target_assets.target_mat.clone(),
-                        ..default()
-                    },
-                ))
-                .id();
-            commands.entity(cursor.grid).add_child(helper_node_entity);
-        };
-
-        match axis {
-            Direction::XForward => {
-                for x in 0..grid.size_x() {
-                    spawn_cursor_target(x, cursor.position.y, cursor.position.z);
-                }
-                for y in 0..grid.size_y() {
-                    for z in 0..grid.size_z() {
-                        spawn_cursor_target(cursor.position.x, y, z);
-                    }
-                }
-            }
-            Direction::YForward => {
-                for y in 0..grid.size_y() {
-                    spawn_cursor_target(cursor.position.x, y, cursor.position.z);
-                }
-                for x in 0..grid.size_x() {
-                    for z in 0..grid.size_z() {
-                        spawn_cursor_target(x, cursor.position.y, z);
-                    }
-                }
-            }
-            Direction::ZForward => {
-                for z in 0..grid.size_z() {
-                    spawn_cursor_target(cursor.position.x, cursor.position.y, z);
-                }
-                for x in 0..grid.size_x() {
-                    for y in 0..grid.size_y() {
-                        spawn_cursor_target(x, y, cursor.position.z);
-                    }
-                }
-            }
-            _ => {}
-        }
     } else {
         if local_active_cursor_helper_direction.0.is_some() {
             local_active_cursor_helper_direction.0 = None;
@@ -366,5 +352,120 @@ pub fn update_cursor_targets_nodes<C: CoordinateSystem>(
                 over_cursor.0 = None;
             }
         }
+    }
+}
+
+pub fn spawn_cursor_targets_3d<C: CoordinateSystem>(
+    commands: &mut Commands,
+    cursor_target_assets: &Res<CursorTargetAssets>,
+    axis: Direction,
+    selected_node: &TargetedNode,
+    grid: &GridDefinition<C>,
+    node_size: &Vec3,
+) {
+    let mut spawn_cursor_target = |x: u32, y: u32, z: u32| {
+        let translation = get_translation_from_grid_coords_3d(x, y, z, node_size);
+        let helper_node_entity = commands
+            .spawn((
+                GridNode(grid.index_from_coords(x, y, z)),
+                CursorTarget,
+                PbrBundle {
+                    transform: Transform::from_translation(translation).with_scale(*node_size),
+                    mesh: cursor_target_assets.target_mesh_3d.clone(),
+                    material: cursor_target_assets.target_mat_3d.clone(),
+                    ..default()
+                },
+            ))
+            .id();
+        commands
+            .entity(selected_node.grid)
+            .add_child(helper_node_entity);
+    };
+
+    match axis {
+        Direction::XForward => {
+            for x in 0..grid.size_x() {
+                spawn_cursor_target(x, selected_node.position.y, selected_node.position.z);
+            }
+            for y in 0..grid.size_y() {
+                for z in 0..grid.size_z() {
+                    spawn_cursor_target(selected_node.position.x, y, z);
+                }
+            }
+        }
+        Direction::YForward => {
+            for y in 0..grid.size_y() {
+                spawn_cursor_target(selected_node.position.x, y, selected_node.position.z);
+            }
+            for x in 0..grid.size_x() {
+                for z in 0..grid.size_z() {
+                    spawn_cursor_target(x, selected_node.position.y, z);
+                }
+            }
+        }
+        Direction::ZForward => {
+            for z in 0..grid.size_z() {
+                spawn_cursor_target(selected_node.position.x, selected_node.position.y, z);
+            }
+            for x in 0..grid.size_x() {
+                for y in 0..grid.size_y() {
+                    spawn_cursor_target(x, y, selected_node.position.z);
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
+pub fn spawn_cursor_targets_2d<C: CoordinateSystem>(
+    commands: &mut Commands,
+    cursor_target_assets: &Res<CursorTargetAssets>,
+    axis: Direction,
+    selected_node: &TargetedNode,
+    grid: &GridDefinition<C>,
+    node_size: &Vec3,
+) {
+    let mut spawn_cursor_target = |x: u32, y: u32, z: u32| {
+        let mut translation = get_translation_from_grid_coords_3d(x, y, z, node_size);
+        translation.z += node_size.z;
+        let helper_node_entity = commands
+            .spawn((
+                GridNode(grid.index_from_coords(x, y, z)),
+                CursorTarget,
+                // TODO: Here MaterialMesh2dBundle + PickableBundle::default() did not interact with picking. Not sure why yet. Using Sprite instead.
+                SpriteBundle {
+                    transform: Transform::from_translation(translation).with_scale(*node_size),
+                    sprite: Sprite {
+                        color: cursor_target_assets.color,
+                        custom_size: Some(Vec2::splat(cursor_target_assets.base_size)),
+                        ..default()
+                    },
+                    ..default()
+                },
+                PickableBundle::default(),
+            ))
+            .id();
+        commands
+            .entity(selected_node.grid)
+            .add_child(helper_node_entity);
+    };
+
+    match axis {
+        Direction::XForward | Direction::YForward => {
+            for x in 0..grid.size_x() {
+                spawn_cursor_target(x, selected_node.position.y, selected_node.position.z);
+            }
+            for y in 0..grid.size_y() {
+                spawn_cursor_target(selected_node.position.x, y, selected_node.position.z);
+            }
+        }
+        Direction::ZForward => {
+            for x in 0..grid.size_x() {
+                for y in 0..grid.size_y() {
+                    spawn_cursor_target(x, y, selected_node.position.z);
+                }
+            }
+        }
+        _ => {}
     }
 }

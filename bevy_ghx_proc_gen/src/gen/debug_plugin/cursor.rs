@@ -52,20 +52,20 @@ pub struct CursorsOverlaysRoot;
 pub struct CursorsPanelText;
 
 #[derive(Debug)]
-pub struct GridCursor {
+pub struct TargetedNode {
     pub grid: Entity,
     pub node_index: NodeIndex,
     pub position: GridPosition,
     pub marker: Entity,
 }
-impl fmt::Display for GridCursor {
+impl fmt::Display for TargetedNode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}, index: {}", self.position, self.node_index)
     }
 }
 
 #[derive(Component, Default, Debug)]
-pub struct Cursor(pub Option<GridCursor>);
+pub struct Cursor(pub Option<TargetedNode>);
 
 #[derive(Component, Default, Debug)]
 pub struct CursorInfo {
@@ -466,9 +466,9 @@ pub fn spawn_marker_and_create_cursor(
     position: GridPosition,
     node_index: NodeIndex,
     color: Color,
-) -> GridCursor {
+) -> TargetedNode {
     let marker = spawn_marker(commands, grid_entity, color, position);
-    GridCursor {
+    TargetedNode {
         grid: grid_entity,
         node_index,
         position,
@@ -476,7 +476,7 @@ pub fn spawn_marker_and_create_cursor(
     }
 }
 
-pub fn cursor_info_to_string(cursor: &GridCursor, cursor_info: &CursorInfo) -> String {
+pub fn cursor_info_to_string(cursor: &TargetedNode, cursor_info: &CursorInfo) -> String {
     let text = if cursor_info.models_variations.len() > 1 {
         format!(
             "Grid: {{{}}}\n\
