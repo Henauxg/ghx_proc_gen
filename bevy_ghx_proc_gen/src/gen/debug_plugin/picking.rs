@@ -31,7 +31,7 @@ use ghx_proc_gen::{
     generator::Generator,
     grid::{
         direction::{CoordinateSystem, Direction},
-        GridDefinition,
+        GridDefinition, NodeIndex,
     },
 };
 
@@ -274,10 +274,13 @@ pub fn setup_picking_assets(
 pub struct CursorTarget;
 
 #[derive(Default)]
-pub struct ActiveCursorHelperDirection(pub Option<Direction>);
+pub struct ActiveCursorTargets {
+    pub axis: Direction,
+    pub from_node: NodeIndex,
+}
 
 pub fn update_cursor_targets_nodes<C: CoordinateSystem>(
-    mut local_active_cursor_helper_direction: Local<ActiveCursorHelperDirection>,
+    mut local_active_cursor_targets: Local<Option<ActiveCursorTargets>>,
     mut commands: Commands,
     keys: Res<Input<KeyCode>>,
     cursor_target_assets: Res<CursorTargetAssets>,
@@ -310,48 +313,99 @@ pub fn update_cursor_targets_nodes<C: CoordinateSystem>(
     };
 
     if let Some(axis) = axis_selection {
-        // Some targeting already active, nothing to do
-        if local_active_cursor_helper_direction.0.is_some() {
-            return;
-        }
-        local_active_cursor_helper_direction.0 = Some(axis);
+        if let Some(active_targets) = local_active_cursor_targets.as_mut() {
+            if selected_node.node_index != active_targets.from_node {
+                despawn_cursor_targets(
+                    &mut commands,
+                    &mut marker_events,
+                    &cursor_targets,
+                    &mut over_cursor,
+                );
+                spawn_cursor_targets(
+                    &mut commands,
+                    &cursor_target_assets,
+                    selected_node,
+                    axis,
+                    &grids_with_cam3d,
+                    &grids_with_cam2d,
+                );
 
-        if let Ok((grid, grid_view)) = grids_with_cam3d.get(selected_node.grid) {
-            spawn_cursor_targets_3d(
-                &mut commands,
-                &cursor_target_assets,
-                axis,
-                selected_node,
-                grid,
-                &grid_view.node_size,
-            );
-        } else if let Ok((grid, grid_view)) = grids_with_cam2d.get(selected_node.grid) {
-            spawn_cursor_targets_2d(
-                &mut commands,
-                &cursor_target_assets,
-                axis,
-                selected_node,
-                grid,
-                &grid_view.node_size,
-            );
+                active_targets.from_node = selected_node.node_index;
+                active_targets.axis = axis;
+            }
         } else {
-            return;
-        };
-    } else {
-        if local_active_cursor_helper_direction.0.is_some() {
-            local_active_cursor_helper_direction.0 = None;
-            for cursor_target in cursor_targets.iter() {
-                commands.entity(cursor_target).despawn_recursive();
-            }
-            let Ok(mut over_cursor) = over_cursor.get_single_mut() else {
-                return;
-            };
-            // If there is an Over cursor, force despawn it, since we will despawn the underlying node there won't be any NodeOutEvent.
-            if let Some(grid_cursor) = &over_cursor.0 {
-                marker_events.send(MarkerDespawnEvent::Marker(grid_cursor.marker));
-                over_cursor.0 = None;
-            }
+            spawn_cursor_targets(
+                &mut commands,
+                &cursor_target_assets,
+                selected_node,
+                axis,
+                &grids_with_cam3d,
+                &grids_with_cam2d,
+            );
+
+            *local_active_cursor_targets = Some(ActiveCursorTargets {
+                axis,
+                from_node: selected_node.node_index,
+            });
         }
+    } else if local_active_cursor_targets.is_some() {
+        *local_active_cursor_targets = None;
+        despawn_cursor_targets(
+            &mut commands,
+            &mut marker_events,
+            &cursor_targets,
+            &mut over_cursor,
+        );
+    }
+}
+
+pub fn despawn_cursor_targets(
+    commands: &mut Commands,
+    mut marker_events: &mut EventWriter<MarkerDespawnEvent>,
+    cursor_targets: &Query<Entity, With<CursorTarget>>,
+    mut over_cursor: &mut Query<&mut Cursor, (With<OverCursor>, Without<SelectCursor>)>,
+) {
+    for cursor_target in cursor_targets.iter() {
+        commands.entity(cursor_target).despawn_recursive();
+    }
+    if let Ok(mut over_cursor) = over_cursor.get_single_mut() {
+        // If there is an Over cursor, force despawn it, since we will despawn the underlying node there won't be any NodeOutEvent.
+        if let Some(grid_cursor) = &over_cursor.0 {
+            marker_events.send(MarkerDespawnEvent::Marker(grid_cursor.marker));
+            over_cursor.0 = None;
+        }
+    };
+}
+
+pub fn spawn_cursor_targets<C: CoordinateSystem>(
+    commands: &mut Commands,
+    cursor_target_assets: &Res<CursorTargetAssets>,
+    selected_node: &TargetedNode,
+    axis: Direction,
+    grids_with_cam3d: &Query<(&GridDefinition<C>, &DebugGridView), With<DebugGridView3d>>,
+    grids_with_cam2d: &Query<
+        (&GridDefinition<C>, &DebugGridView),
+        (With<DebugGridView2d>, Without<DebugGridView3d>),
+    >,
+) {
+    if let Ok((grid, grid_view)) = grids_with_cam3d.get(selected_node.grid) {
+        spawn_cursor_targets_3d(
+            commands,
+            &cursor_target_assets,
+            axis,
+            selected_node,
+            grid,
+            &grid_view.node_size,
+        );
+    } else if let Ok((grid, grid_view)) = grids_with_cam2d.get(selected_node.grid) {
+        spawn_cursor_targets_2d(
+            commands,
+            &cursor_target_assets,
+            axis,
+            selected_node,
+            grid,
+            &grid_view.node_size,
+        );
     }
 }
 
