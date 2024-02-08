@@ -307,7 +307,8 @@ pub fn update_cursor_targets_nodes<C: CoordinateSystem>(
                     GridNode(grid.index_from_coords(x, y, z)),
                     CursorTarget,
                     PbrBundle {
-                        transform: Transform::from_translation(translation),
+                        transform: Transform::from_translation(translation)
+                            .with_scale(grid_view.node_size),
                         mesh: cursor_target_assets.target_mesh.clone(),
                         material: cursor_target_assets.target_mat.clone(),
                         ..default()
