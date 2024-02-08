@@ -14,8 +14,8 @@ use ghx_proc_gen::grid::{direction::CoordinateSystem, GridPosition};
 
 use self::{
     markers::{
-        draw_debug_markers_2d, draw_debug_markers_3d, insert_transform_on_new_markers,
-        update_debug_markers, MarkerDespawnEvent,
+        despawn_debug_markers, draw_debug_markers_2d, draw_debug_markers_3d,
+        insert_transform_on_new_markers, MarkerDespawnEvent,
     },
     view::{
         draw_debug_grids_2d, draw_debug_grids_3d, DebugGridView, DebugGridView2d, DebugGridView3d,
@@ -47,11 +47,14 @@ impl<C: CoordinateSystem> Plugin for GridDebugPlugin<C> {
             .add_systems(
                 PostUpdate,
                 (
-                    (update_debug_markers, apply_deferred)
-                        .chain()
-                        .before(insert_transform_on_new_markers),
-                    ((insert_transform_on_new_markers, apply_deferred).chain())
-                        .before(TransformSystem::TransformPropagate),
+                    ((
+                        despawn_debug_markers,
+                        apply_deferred,
+                        insert_transform_on_new_markers,
+                        apply_deferred,
+                    )
+                        .chain())
+                    .before(TransformSystem::TransformPropagate),
                     (draw_debug_markers_3d, draw_debug_markers_2d)
                         .after(TransformSystem::TransformPropagate),
                 ),
