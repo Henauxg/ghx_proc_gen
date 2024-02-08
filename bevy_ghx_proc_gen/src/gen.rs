@@ -32,9 +32,12 @@ pub mod simple_plugin;
 #[cfg(feature = "default-assets-bundle-spawners")]
 pub mod default_bundles;
 
-/// Marker for nodes spawned by a [`ghx_proc_gen::generator::Generator`]
 #[derive(Component)]
-pub struct SpawnedNode(NodeIndex);
+pub struct GridNode(NodeIndex);
+
+/// Flag for nodes spawned by a [`ghx_proc_gen::generator::Generator`]
+#[derive(Component)]
+pub struct SpawnedNode;
 
 /// Utility system. Adds a [`Bundle`] (or a [`Component`]) to every [`Entity`] that has [`SpawnedNode`] Component (this is the case of nodes spawned by the `spawn_node` system). The `Bundle` will have its default value.
 ///
@@ -142,7 +145,7 @@ pub fn spawn_node<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawn
             translation.z += asset_spawner.node_size.z * (1. - pos.y as f32 / grid.size_y() as f32);
         }
 
-        let node_entity = commands.spawn(SpawnedNode(node_index)).id();
+        let node_entity = commands.spawn((GridNode(node_index), SpawnedNode)).id();
 
         let node_entity_commands = &mut commands.entity(node_entity);
         node_asset.assets_bundle.insert_bundle(

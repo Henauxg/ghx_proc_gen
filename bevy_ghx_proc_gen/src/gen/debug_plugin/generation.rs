@@ -5,7 +5,7 @@ use bevy::{
         component::Component,
         entity::Entity,
         event::{Event, EventWriter},
-        query::{Added, With, Without},
+        query::{With, Without},
         system::{Commands, Query, Res, ResMut, Resource},
     },
     hierarchy::{Children, DespawnRecursiveExt},
@@ -25,11 +25,14 @@ use ghx_proc_gen::{
     GeneratorError,
 };
 
-use crate::grid::markers::{spawn_marker, MarkerDespawnEvent};
+use crate::{
+    gen::SpawnedNode,
+    grid::markers::{spawn_marker, MarkerDespawnEvent},
+};
 
 use super::{
     spawn_node, AssetSpawner, AssetsBundleSpawner, ComponentSpawner, GenerationControl,
-    GenerationControlStatus, ProcGenKeyBindings, SpawnedNode, StepByStepTimed,
+    GenerationControlStatus, ProcGenKeyBindings, StepByStepTimed,
 };
 
 /// Component used to store model indexes of models with no assets, just to be able to skip their generation when stepping

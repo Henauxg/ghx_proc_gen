@@ -2,7 +2,10 @@ use std::{marker::PhantomData, time::Duration};
 
 use bevy::{
     app::{App, Plugin, PostStartup, PostUpdate, PreUpdate, Startup, Update},
-    ecs::{schedule::IntoSystemConfigs, system::Resource},
+    ecs::{
+        schedule::{apply_deferred, IntoSystemConfigs},
+        system::Resource,
+    },
     input::keyboard::KeyCode,
     render::color::Color,
     time::{Timer, TimerMode},
@@ -24,13 +27,14 @@ use self::{
         ActiveGeneration, GenerationEvent,
     },
     picking::{
-        picking_remove_previous_over_cursor, update_over_cursor_panel_text, NodeOutEvent,
-        OverCursor, OverCursorMarkerSettings,
+        picking_remove_previous_over_cursor, setup_picking_assets, update_cursor_targets_nodes,
+        update_over_cursor_from_generation_events, update_over_cursor_panel_text,
+        CursorTargetAssets, NodeOutEvent, OverCursor, OverCursorMarkerSettings,
     },
 };
 use super::{
     assets::NoComponents, insert_default_bundle_to_spawned_nodes, spawn_node, AssetSpawner,
-    AssetsBundleSpawner, ComponentSpawner, SpawnedNode,
+    AssetsBundleSpawner, ComponentSpawner,
 };
 
 #[cfg(feature = "picking")]
@@ -38,8 +42,8 @@ use bevy_mod_picking::PickableBundle;
 
 #[cfg(feature = "picking")]
 use self::picking::{
-    insert_grid_cursor_picking_handlers_to_spawned_nodes, picking_update_cursors_position,
-    NodeOverEvent, NodeSelectedEvent,
+    insert_cursor_picking_handlers_to_grid_nodes, picking_update_cursors_position, NodeOverEvent,
+    NodeSelectedEvent,
 };
 
 #[cfg(feature = "picking")]
@@ -106,6 +110,7 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
 {
     fn build(&self, app: &mut App) {
         app.insert_resource(self.generation_view_mode);
+        app.insert_resource(ActiveGeneration::default());
 
         // If the resources already exists, nothing happens, else, add them with default values.
         app.init_resource::<ProcGenKeyBindings>();
@@ -119,10 +124,10 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
                 app.init_resource::<GridCursorsUiSettings>();
             }
         }
-        app.insert_resource(ActiveGeneration::default());
+        #[cfg(feature = "picking")]
+        app.init_resource::<CursorTargetAssets>();
 
         app.add_event::<GenerationEvent>();
-
         #[cfg(feature = "picking")]
         app.add_event::<NodeOverEvent>()
             .add_event::<NodeOutEvent>()
@@ -151,16 +156,19 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
             .add_systems(PostUpdate, update_cursors_info_from_generation_events::<C>);
 
         #[cfg(feature = "picking")]
-        app
+        app.add_systems(Startup, setup_picking_assets)
             // PostStartup to wait for setup_cursors_overlays to be applied.
             .add_systems(PostStartup, setup_cursor::<C, OverCursor>)
             .add_systems(
                 Update,
                 (
+                    insert_default_bundle_to_spawned_nodes::<PickableBundle>,
                     (
-                        insert_grid_cursor_picking_handlers_to_spawned_nodes::<C>,
-                        insert_default_bundle_to_spawned_nodes::<PickableBundle>,
-                    ),
+                        update_cursor_targets_nodes::<C>,
+                        apply_deferred,
+                        insert_cursor_picking_handlers_to_grid_nodes::<C>,
+                    )
+                        .chain(),
                     (
                         picking_remove_previous_over_cursor::<C>,
                         picking_update_cursors_position::<
@@ -178,6 +186,11 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
                     )
                         .chain(),
                 ),
+            )
+            .add_systems(
+                PostUpdate,
+                update_over_cursor_from_generation_events::<C>
+                    .before(update_cursors_info_from_generation_events::<C>),
             );
 
         match self.cursor_ui_mode {
