@@ -11,7 +11,7 @@ use bevy_examples::{
 use bevy_ghx_proc_gen::{
     gen::{
         assets::AssetSpawner,
-        debug_plugin::{GenerationControl, GenerationViewMode},
+        debug_plugin::{GenerationControl, GenerationControlStatus, GenerationViewMode},
     },
     grid::{view::DebugGridView, DebugGridView3dBundle},
     proc_gen::{
@@ -32,18 +32,15 @@ mod rules;
 
 // --------------------------------------------
 /// Change this value to change the way the generation is visualized
-const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::StepByStepTimed {
-    steps_count: 10,
-    interval_ms: 5,
-};
+const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::Final;
 
 /// Change to visualize void nodes with a transparent asset
 const SEE_VOID_NODES: bool = false;
 
 /// Change this to change the map size.
-const GRID_HEIGHT: u32 = 5;
-const GRID_X: u32 = 40;
-const GRID_Z: u32 = 40;
+const GRID_HEIGHT: u32 = 6;
+const GRID_X: u32 = 30;
+const GRID_Z: u32 = 30;
 // --------------------------------------------
 
 const ASSETS_PATH: &str = "canyon";
@@ -108,7 +105,15 @@ fn setup_scene(mut commands: Commands) {
 }
 
 fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let (assets_definitions, models, socket_collection) = rules_and_assets();
+    let (
+        void_instance,
+        sand_instance,
+        water_instance,
+        bridge_instance,
+        assets_definitions,
+        models,
+        socket_collection,
+    ) = rules_and_assets();
 
     // Create generator
     let rules = RulesBuilder::new_cartesian_3d(models, socket_collection)
@@ -116,13 +121,44 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         .unwrap();
     let grid = GridDefinition::new_cartesian_3d(GRID_X, GRID_HEIGHT, GRID_Z, false, false, false);
 
+    let mut initial_constraints = grid.new_grid_data(None);
+    // Force void nodes on the upmost layer
+    let void_ref = Some(void_instance);
+    initial_constraints.set_all_y(GRID_HEIGHT - 1, void_ref);
+    // Force void nodes on the grid's "borders"
+    initial_constraints.set_all_x(0, void_ref);
+    initial_constraints.set_all_x(GRID_X - 1, void_ref);
+    initial_constraints.set_all_z(0, void_ref);
+    initial_constraints.set_all_z(GRID_Z - 1, void_ref);
+    // Force sand nodes on the grid's "borders" ground
+    let sand_ref = Some(sand_instance);
+    initial_constraints.set_all_xy(0, 0, sand_ref);
+    initial_constraints.set_all_xy(GRID_X - 1, 0, sand_ref);
+    initial_constraints.set_all_yz(0, 0, sand_ref);
+    initial_constraints.set_all_yz(0, GRID_Z - 1, sand_ref);
+    // Let's force a small lake at the center
+    let water_ref = Some(water_instance);
+    for x in 2 * GRID_X / 5..3 * GRID_X / 5 {
+        for z in 2 * GRID_Z / 5..3 * GRID_Z / 5 {
+            initial_constraints.set((x, 0, z), water_ref);
+        }
+    }
+    // We could hope for a water bridge, or force one !
+    initial_constraints.set(
+        (GRID_X / 2, GRID_HEIGHT / 2, GRID_Z / 2),
+        Some(bridge_instance),
+    );
+
     let mut gen_builder = GeneratorBuilder::new()
         .with_rules(rules)
         .with_grid(grid.clone())
         .with_max_retry_count(50)
         .with_rng(RngMode::RandomSeed)
         .with_node_heuristic(NodeSelectionHeuristic::MinimumEntropy)
-        .with_model_heuristic(ModelSelectionHeuristic::WeightedProbability);
+        .with_model_heuristic(ModelSelectionHeuristic::WeightedProbability)
+        // There are other methods to initialize the generation. See with_initial_nodes
+        .with_initial_grid(initial_constraints)
+        .unwrap();
     let observer = gen_builder.add_queued_observer();
     let generator = gen_builder.build().unwrap();
 
@@ -157,7 +193,12 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         },
     ));
 
-    commands.insert_resource(GenerationControl::new(true, true, false));
+    commands.insert_resource(GenerationControl {
+        status: GenerationControlStatus::Paused,
+        skip_void_nodes: true,
+        pause_when_done: true,
+        pause_on_error: false,
+    });
 }
 
 fn main() {

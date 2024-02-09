@@ -4,7 +4,7 @@ use bevy_ghx_proc_gen::{
     gen::assets::ComponentSpawner,
     proc_gen::{
         generator::{
-            model::{ModelCollection, ModelRotation, ModelTemplate},
+            model::{ModelCollection, ModelInstance, ModelRotation},
             socket::{Socket, SocketCollection, SocketsCartesian3D},
         },
         grid::direction::{Cartesian3D, GridDelta},
@@ -14,6 +14,10 @@ use bevy_ghx_proc_gen::{
 use crate::{BLOCK_SIZE, SEE_VOID_NODES};
 
 pub(crate) fn rules_and_assets() -> (
+    ModelInstance,
+    ModelInstance,
+    ModelInstance,
+    ModelInstance,
     Vec<Vec<AssetDef<CustomComponents>>>,
     ModelCollection<Cartesian3D>,
     SocketCollection,
@@ -47,65 +51,53 @@ pub(crate) fn rules_and_assets() -> (
 
     // Utility functions to declare assets & models
     let asset = |str| -> Vec<AssetDef<CustomComponents>> { vec![AssetDef::new(str)] };
-    let mut define_model = |model_assets: Vec<AssetDef<CustomComponents>>,
-                            template: ModelTemplate<Cartesian3D>| {
-        // For models, we add a debug name from to them their first asset
-        models.create(template).with_name(
-            model_assets
-                .first()
-                .unwrap_or(&AssetDef::new("void"))
-                .path(),
-        );
-        assets.push(model_assets);
-    };
 
-    define_model(
-        match SEE_VOID_NODES {
-            true => asset("void"),
-            false => vec![],
-        },
-        SocketsCartesian3D::Simple {
+    let void_instance = models
+        .create(SocketsCartesian3D::Simple {
             x_pos: void,
             x_neg: void,
             z_pos: void,
             z_neg: void,
             y_pos: void_top,
             y_neg: void_bottom,
-        }
-        .to_template()
-        .with_weight(10.),
-    );
-    define_model(
-        asset("water_poly"),
-        SocketsCartesian3D::Multiple {
+        })
+        .with_weight(10.)
+        .instance();
+    assets.push(match SEE_VOID_NODES {
+        true => asset("void"),
+        false => vec![],
+    });
+
+    let water_instance = models
+        .create(SocketsCartesian3D::Multiple {
             x_pos: vec![water],
             x_neg: vec![water, water_border],
             z_pos: vec![water],
             z_neg: vec![water, water_border],
             y_pos: vec![water_top],
             y_neg: vec![water_bottom],
-        }
-        .to_template()
+        })
         .with_all_rotations()
-        .with_weight(20.0),
-    );
-    define_model(
-        asset("sand"),
-        SocketsCartesian3D::Multiple {
+        .with_weight(350.0)
+        .instance();
+    assets.push(asset("water_poly"));
+
+    let sand_instance = models
+        .create(SocketsCartesian3D::Multiple {
             x_pos: vec![sand],
             x_neg: vec![sand, sand_border],
             z_pos: vec![sand],
             z_neg: vec![sand, sand_border],
             y_pos: vec![sand_top],
             y_neg: vec![sand_bottom],
-        }
-        .to_template()
-        .with_weight(5.0),
-    );
+        })
+        .with_weight(5.0)
+        .instance();
+    assets.push(asset("sand"));
 
     const GROUND_ROCKS_WEIGHT: f32 = 0.5;
     const ROCKS_WEIGHT: f32 = 0.05;
-    // Here we define a model that we'll reuse multiple times
+    // Here we define a model template that we'll reuse multiple times
     let rock_corner = SocketsCartesian3D::Simple {
         x_pos: rock_border,
         x_neg: other_to_rock,
@@ -118,93 +110,90 @@ pub(crate) fn rules_and_assets() -> (
     .with_all_rotations()
     .with_weight(ROCKS_WEIGHT);
 
-    define_model(
-        asset("ground_rock_corner_in"),
-        SocketsCartesian3D::Simple {
+    models
+        .create(SocketsCartesian3D::Simple {
             x_pos: ground_rock_border,
             x_neg: other_to_ground_rock,
             z_pos: ground_rock_border,
             z_neg: ground_rock_to_other,
             y_pos: ground_rock_border_top,
             y_neg: ground_rock_border_bottom,
-        }
-        .to_template()
+        })
         .with_all_rotations()
-        .with_weight(GROUND_ROCKS_WEIGHT),
-    );
-    define_model(
-        asset("ground_rock_side"),
-        SocketsCartesian3D::Simple {
+        .with_weight(GROUND_ROCKS_WEIGHT);
+    assets.push(asset("ground_rock_corner_in"));
+
+    models
+        .create(SocketsCartesian3D::Simple {
             x_pos: ground_rock_border,
             x_neg: rock,
             z_pos: other_to_ground_rock,
             z_neg: ground_rock_to_other,
             y_pos: ground_rock_border_top,
             y_neg: ground_rock_border_bottom,
-        }
-        .to_template()
+        })
         .with_all_rotations()
-        .with_weight(GROUND_ROCKS_WEIGHT),
-    );
+        .with_weight(GROUND_ROCKS_WEIGHT);
+    assets.push(asset("ground_rock_side"));
 
     // Here we reuse the same model to create variations. (We could also have 1 model, and 2 assets, with the spawner picking one of the assets at random)
-    define_model(asset("rock_corner_in_1"), rock_corner.clone());
-    define_model(asset("rock_corner_in_2"), rock_corner.clone());
-    define_model(
-        asset("rock_side_1"),
-        SocketsCartesian3D::Simple {
+    models.create(rock_corner.clone());
+    assets.push(asset("rock_corner_in_1"));
+
+    models.create(rock_corner.clone());
+    assets.push(asset("rock_corner_in_2"));
+
+    models
+        .create(SocketsCartesian3D::Simple {
             x_pos: rock_border,
             x_neg: rock,
             z_pos: other_to_rock,
             z_neg: rock_to_other,
             y_pos: rock_border_top,
             y_neg: rock_border_bottom,
-        }
-        .to_template()
+        })
         .with_all_rotations()
-        .with_weight(ROCKS_WEIGHT),
-    );
-    define_model(
-        asset("rock"),
-        SocketsCartesian3D::Simple {
+        .with_weight(ROCKS_WEIGHT);
+    assets.push(asset("rock_side_1"));
+
+    models
+        .create(SocketsCartesian3D::Simple {
             x_pos: rock,
             x_neg: rock,
             z_pos: rock,
             z_neg: rock,
             y_pos: rock_top,
             y_neg: rock_bottom,
-        }
-        .to_template()
-        .with_weight(ROCKS_WEIGHT),
-    );
-    define_model(
-        asset("bridge_start"),
-        SocketsCartesian3D::Simple {
+        })
+        .with_weight(ROCKS_WEIGHT);
+    assets.push(asset("rock"));
+
+    models
+        .create(SocketsCartesian3D::Simple {
             x_pos: bridge_side,
             x_neg: bridge_side,
             z_pos: bridge_start_out,
             z_neg: bridge_start_in,
             y_pos: bridge_top,
             y_neg: bridge_start_bottom,
-        }
-        .to_template()
+        })
         .with_all_rotations()
-        .with_weight(0.05),
-    );
-    define_model(
-        asset("bridge"),
-        SocketsCartesian3D::Simple {
+        .with_weight(0.05);
+    assets.push(asset("bridge_start"));
+
+    let bridge_instance = models
+        .create(SocketsCartesian3D::Simple {
             x_pos: bridge_side,
             x_neg: bridge_side,
             z_pos: bridge,
             z_neg: bridge,
             y_pos: bridge_top,
             y_neg: bridge_bottom,
-        }
-        .to_template()
+        })
         .with_all_rotations()
-        .with_weight(0.05),
-    );
+        .with_weight(0.05)
+        .instance();
+    assets.push(asset("bridge"));
 
     // Small rocks and cactuses
     let sand_prop = SocketsCartesian3D::Simple {
@@ -219,55 +208,49 @@ pub(crate) fn rules_and_assets() -> (
     .with_all_rotations()
     .with_weight(0.25);
 
-    define_model(
-        vec![AssetDef::new("cactus")
-            .with_grid_offset(GridDelta::new(0, -1, 0))
-            .with_component(CustomComponents::ScaleRdm(ScaleRandomizer))
-            .with_component(CustomComponents::RotRdm(RotationRandomizer))],
-        sand_prop.clone(),
-    );
-    define_model(
-        vec![AssetDef::new("small_rock")
-            .with_grid_offset(GridDelta::new(0, -1, 0))
-            .with_component(CustomComponents::ScaleRdm(ScaleRandomizer))
-            .with_component(CustomComponents::RotRdm(RotationRandomizer))],
-        sand_prop.clone().with_weight(0.4),
-    );
+    models.create(sand_prop.clone());
+    assets.push(vec![AssetDef::new("cactus")
+        .with_grid_offset(GridDelta::new(0, -1, 0))
+        .with_component(CustomComponents::ScaleRdm(ScaleRandomizer))
+        .with_component(CustomComponents::RotRdm(RotationRandomizer))]);
+
+    models.create(sand_prop.clone().with_weight(0.4));
+    assets.push(vec![AssetDef::new("small_rock")
+        .with_grid_offset(GridDelta::new(0, -1, 0))
+        .with_component(CustomComponents::ScaleRdm(ScaleRandomizer))
+        .with_component(CustomComponents::RotRdm(RotationRandomizer))]);
 
     const WINDMILLS_WEIGHT: f32 = 0.005;
-    define_model(
-        asset("windmill_base"),
-        SocketsCartesian3D::Simple {
+    models
+        .create(SocketsCartesian3D::Simple {
             x_pos: windmill_side,
             x_neg: windmill_side,
             z_pos: windmill_side,
             z_neg: windmill_side,
             y_pos: windmill_base_top,
             y_neg: windmill_base_bottom,
-        }
-        .to_template()
+        })
         .with_all_rotations()
-        .with_weight(WINDMILLS_WEIGHT),
-    );
-    define_model(
-        vec![
-            AssetDef::new("windmill_top"),
-            AssetDef::new("windmill_vane"),
-            AssetDef::new("windmill_blades")
-                .with_offset(Vec3::new(0., 0.7 * BLOCK_SIZE, 0.))
-                .with_component(CustomComponents::Rot(WindRotation)),
-        ],
-        SocketsCartesian3D::Simple {
+        .with_weight(WINDMILLS_WEIGHT);
+    assets.push(asset("windmill_base"));
+
+    models
+        .create(SocketsCartesian3D::Simple {
             x_pos: windmill_side,
             x_neg: windmill_side,
             z_pos: windmill_side,
             z_neg: windmill_side,
             y_pos: windmill_cap_top,
             y_neg: windmill_cap_bottom,
-        }
-        .to_template()
-        .with_weight(WINDMILLS_WEIGHT),
-    );
+        })
+        .with_weight(WINDMILLS_WEIGHT);
+    assets.push(vec![
+        AssetDef::new("windmill_top"),
+        AssetDef::new("windmill_vane"),
+        AssetDef::new("windmill_blades")
+            .with_offset(Vec3::new(0., 0.7 * BLOCK_SIZE, 0.))
+            .with_component(CustomComponents::Rot(WindRotation)),
+    ]);
 
     // For this generation, our rotation axis is Y+, so we define connection on the Y axis with `add_rotated_connection` for sockets that still need to be compatible when rotated.
     sockets
@@ -325,7 +308,25 @@ pub(crate) fn rules_and_assets() -> (
             (windmill_cap_top, vec![void_bottom]),
         ]);
 
-    (assets, models, sockets)
+    // We add a debug name to the models from their first asset name
+    for model in models.models_mut() {
+        model.with_name(
+            assets[model.index()]
+                .first()
+                .unwrap_or(&AssetDef::new("void"))
+                .path(),
+        );
+    }
+
+    (
+        void_instance,
+        sand_instance,
+        water_instance,
+        bridge_instance,
+        assets,
+        models,
+        sockets,
+    )
 }
 
 #[derive(Component, Clone)]
