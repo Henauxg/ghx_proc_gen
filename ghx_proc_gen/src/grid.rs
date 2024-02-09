@@ -194,6 +194,7 @@ impl<C: CoordinateSystem> GridDefinition<C> {
     /// Returns the index from a grid position.
     ///
     /// NO CHECK is done to verify that the given `grid_position` is a valid position for this grid.
+    #[inline]
     pub fn index_from_pos(&self, grid_position: &GridPosition) -> NodeIndex {
         self.index_from_coords(grid_position.x, grid_position.y, grid_position.z)
     }
@@ -201,6 +202,7 @@ impl<C: CoordinateSystem> GridDefinition<C> {
     /// Returns a [`GridPosition`] from the index of a node in this [`GridDefinition`].
     ///
     /// Panics if the index is not a valid index.
+    #[inline]
     pub fn pos_from_index(&self, grid_index: NodeIndex) -> GridPosition {
         let index = u32::try_from(grid_index).unwrap();
         GridPosition {
@@ -385,7 +387,6 @@ impl<C: CoordinateSystem, D: Clone> GridData<C, D> {
                 self.data[index as usize] = value.clone();
                 index += self.grid.size_x;
             }
-            index += self.grid.size_xy;
         }
     }
 
@@ -397,7 +398,7 @@ impl<C: CoordinateSystem, D: Clone> GridData<C, D> {
                 self.data[index as usize] = value.clone();
                 index += 1;
             }
-            index += self.grid.size_xy;
+            index += self.grid.size_xy - self.grid.size_x;
         }
     }
     /// Sets all nodes of the grix with z=`z` to `value`
@@ -408,7 +409,6 @@ impl<C: CoordinateSystem, D: Clone> GridData<C, D> {
                 self.data[index as usize] = value.clone();
                 index += 1;
             }
-            index += self.grid.size_x;
         }
     }
 
