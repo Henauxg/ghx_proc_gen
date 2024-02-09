@@ -24,7 +24,7 @@ pub type ModelVariantIndex = usize;
 /// Default weight of [`Model`] and [`ModelTemplate`]
 pub const DEFAULT_MODEL_WEIGHT: f32 = 1.0;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 /// Most of the information about a [`Model`] (but notably without any [`ModelIndex`]).
 ///
 /// Can be used to create common shared templates before creating real models through a [`ModelCollection`]
@@ -176,6 +176,7 @@ impl<C> ModelTemplate<C> {
 }
 
 /// Used to create one or more [`Model`]. Created models can then be used in a [`super::rules::RulesBuilder`]
+#[derive(Clone)]
 pub struct ModelCollection<C: CoordinateSystem> {
     models: Vec<Model<C>>,
 }
@@ -198,6 +199,22 @@ impl<C: CoordinateSystem> ModelCollection<C> {
     /// Returns how many [`Model`] are in this collection
     pub fn models_count(&self) -> usize {
         self.models.len()
+    }
+
+    pub fn models(&self) -> std::slice::Iter<'_, Model<C>> {
+        self.models.iter()
+    }
+
+    pub fn models_mut(&mut self) -> std::slice::IterMut<'_, Model<C>> {
+        self.models.iter_mut()
+    }
+
+    pub fn last(&self) -> Option<&Model<C>> {
+        self.models.last()
+    }
+
+    pub fn last_mut(&mut self) -> Option<&mut Model<C>> {
+        self.models.last_mut()
     }
 
     pub(crate) fn create_variations(&self, rotation_axis: Direction) -> Vec<ModelVariation> {
@@ -226,7 +243,7 @@ impl<C: CoordinateSystem> ModelCollection<C> {
 }
 
 /// Represents a model to be used by a [`crate::generator::Generator`] as a "building-block" to fill out the generated area.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Model<C: CoordinateSystem> {
     index: ModelIndex,
     template: ModelTemplate<C>,
@@ -331,6 +348,17 @@ impl<C: CoordinateSystem> Model<C> {
             }
         }
         ModelRotation::Rot0
+    }
+
+    pub fn var_ref(&self) -> (ModelIndex, ModelRotation) {
+        (self.index, self.first_rot())
+    }
+
+    pub fn instance(&self) -> ModelInstance {
+        ModelInstance {
+            model_index: self.index,
+            rotation: self.first_rot(),
+        }
     }
 }
 impl<C: CoordinateSystem> Into<ModelTemplate<C>> for Model<C> {
