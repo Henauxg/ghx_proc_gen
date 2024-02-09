@@ -346,8 +346,15 @@ impl<C: CoordinateSystem, D> GridData<C, D> {
     /// Sets the value of the element at `index` in the grid.
     ///
     /// NO CHECK is done to verify that the given index is a valid index for this grid.
-    pub fn set(&mut self, index: NodeIndex, value: D) {
+    pub fn set_raw(&mut self, index: NodeIndex, value: D) {
         self.data[index] = value;
+    }
+
+    /// Sets the value of the element at `index_ref` in the grid.
+    ///
+    /// NO CHECK is done to verify that the given index is a valid index for this grid.
+    pub fn set<N: NodeRef<C>>(&mut self, index_ref: N, value: D) {
+        self.data[index_ref.to_index(&self.grid)] = value;
     }
 
     /// Returns a reference to the element at this index.
@@ -487,7 +494,18 @@ impl<C: CoordinateSystem> NodeRef<C> for GridPosition {
         grid.index_from_pos(self)
     }
 }
+impl<C: CoordinateSystem> NodeRef<C> for (u32, u32, u32) {
+    fn to_index(&self, grid: &GridDefinition<C>) -> NodeIndex {
+        grid.index_from_coords(self.0, self.1, self.2)
+    }
+}
+impl<C: CoordinateSystem> NodeRef<C> for &(u32, u32, u32) {
+    fn to_index(&self, grid: &GridDefinition<C>) -> NodeIndex {
+        grid.index_from_coords(self.0, self.1, self.2)
+    }
+}
 impl<C: CoordinateSystem> NodeRef<C> for NodeIndex {
+    #[inline]
     fn to_index(&self, _grid: &GridDefinition<C>) -> NodeIndex {
         *self
     }
