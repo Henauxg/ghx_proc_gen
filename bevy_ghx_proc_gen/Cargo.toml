@@ -16,6 +16,7 @@ default = [
     "simple-plugin",
     "debug-plugin",
     "picking",
+    "egui-edit",
     "default-assets-bundle-spawners",
 ]
 # Enables some reflect derives in ghx_proc_gen
@@ -30,6 +31,8 @@ simple-plugin = []
 debug-plugin = ["grid-debug-plugin", "ghx_proc_gen/models-names"]
 # Enables picking through bevy_mod_picking. Used by the debug-plugin if enabled.
 picking = ["dep:bevy_mod_picking"]
+
+egui-edit = ["dep:bevy_egui"]
 # Adds some default assets bundle spawners for basic types: Handle<Image>, Handle<Scene>, MaterialMesh and PbrMesh
 default-assets-bundle-spawners = [
     "bevy/bevy_scene",  # Scenes management
@@ -50,3 +53,6 @@ bevy = { version = "0.12.0", default-features = false, features = [
 
 # Only enabled when the "picking" feature is enabled
 bevy_mod_picking = { version = "0.17.0", optional = true, default-features = false }
+bevy_egui = { version = "0.24.0", optional = true, default-features = false, features = [
+    "default_fonts",
+] }
