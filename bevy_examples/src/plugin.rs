@@ -22,6 +22,7 @@ use bevy::{
     },
 };
 use bevy_ghx_proc_gen::{
+    bevy_egui::EguiPlugin,
     gen::{
         assets::{AssetsBundleSpawner, ComponentSpawner, NoComponents},
         debug_plugin::{
@@ -74,6 +75,7 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
             FpsDisplayPlugin,
             GridDebugPlugin::<C>::new(),
             DefaultPickingPlugins,
+            EguiPlugin,
             ProcGenDebugPlugin::<C, A, T>::new(self.generation_view_mode, CursorUiMode::Overlay),
         ));
         app.insert_resource(SpawningScaleAnimation::new(
