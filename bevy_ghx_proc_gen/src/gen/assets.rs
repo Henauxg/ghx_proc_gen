@@ -57,7 +57,7 @@ pub struct ModelAsset<A: AssetsBundleSpawner, T: ComponentSpawner = NoComponents
     pub offset: Vec3,
 }
 
-/// Defines a map which links a `Model` via its [`ModelIndex`] to his spawnable [`ModelAsset`]
+/// Defines a map which links a `Model` via its [`ModelIndex`] to his spawnable(s) [`ModelAsset`]
 #[derive(Debug)]
 pub struct RulesModelsAssets<A: AssetsBundleSpawner, T: ComponentSpawner = NoComponents> {
     /// Only contains a ModelIndex if there are some assets for it. One model may have multiple [`ModelAsset`].

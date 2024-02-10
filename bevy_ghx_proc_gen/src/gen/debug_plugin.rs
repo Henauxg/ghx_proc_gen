@@ -49,6 +49,12 @@ use self::picking::{
 #[cfg(feature = "picking")]
 pub mod picking;
 
+#[cfg(feature = "egui-edit")]
+use self::egui_editor::draw_edit_window;
+
+#[cfg(feature = "egui-edit")]
+pub mod egui_editor;
+
 pub mod cursor;
 pub mod generation;
 
@@ -192,6 +198,9 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
                 update_over_cursor_from_generation_events::<C>
                     .before(update_cursors_info_from_generation_events::<C>),
             );
+
+        #[cfg(feature = "egui-edit")]
+        app.add_systems(Update, draw_edit_window::<C>);
 
         match self.cursor_ui_mode {
             CursorUiMode::None => (),

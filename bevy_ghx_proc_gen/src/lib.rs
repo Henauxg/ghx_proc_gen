@@ -14,6 +14,9 @@ pub use ghx_proc_gen as proc_gen;
 #[cfg(feature = "picking")]
 pub use bevy_mod_picking;
 
+#[cfg(feature = "egui-edit")]
+pub use bevy_egui;
+
 use bevy::{ecs::bundle::Bundle, prelude::SpatialBundle};
 use gen::assets::{AssetSpawner, AssetsBundleSpawner, ComponentSpawner};
 use proc_gen::{
