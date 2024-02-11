@@ -86,6 +86,7 @@ pub fn draw_edit_window<C: CoordinateSystem>(
                                     model_group.rotations[0],
                                     &mut generations,
                                 );
+                                *local_selected_model_index = None;
                             } else {
                                 *local_selected_model_index = Some(model_group.index);
                             }
