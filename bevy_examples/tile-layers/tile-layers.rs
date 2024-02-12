@@ -27,7 +27,7 @@ mod rules;
 // --------------------------------------------
 /// Change this to change the map size.
 const GRID_X: u32 = 25;
-const GRID_Y: u32 = 20;
+const GRID_Y: u32 = 18;
 
 /// Change this value to change the way the generation is visualized
 const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::StepByStepTimed {
@@ -89,12 +89,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         },
         observer,
         DebugGridView2dBundle {
-            view: DebugGridView::new(
-                false,
-                true,
-                Color::WHITE,
-                Vec3::new(TILE_SIZE, TILE_SIZE, 0.),
-            ),
+            view: DebugGridView::new(false, true, Color::WHITE, NODE_SIZE),
             ..default()
         },
     ));
