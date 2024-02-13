@@ -96,7 +96,7 @@ pub fn update_active_generation<C: CoordinateSystem>(
     }
 }
 
-/// This system unpauses the [`GenerationControlStatus`] in the [`GenerationControl`] `Resource` on a keypress.
+/// This system pauses/unpauses the [`GenerationControlStatus`] in the [`GenerationControl`] `Resource` on a keypress.
 ///
 /// The keybind is read from the [`ProcGenKeyBindings`] `Resource`
 pub fn update_generation_control(
@@ -104,10 +104,11 @@ pub fn update_generation_control(
     proc_gen_key_bindings: Res<ProcGenKeyBindings>,
     mut generation_control: ResMut<GenerationControl>,
 ) {
-    if generation_control.status == GenerationControlStatus::Paused {
-        if keys.just_pressed(proc_gen_key_bindings.unpause) {
-            generation_control.status = GenerationControlStatus::Ongoing;
-        }
+    if keys.just_pressed(proc_gen_key_bindings.pause_toggle) {
+        generation_control.status = match generation_control.status {
+            GenerationControlStatus::Ongoing => GenerationControlStatus::Paused,
+            GenerationControlStatus::Paused => GenerationControlStatus::Ongoing,
+        };
     }
 }
 

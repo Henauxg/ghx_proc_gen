@@ -259,7 +259,7 @@ pub fn update_generation_control_ui(
     for mut text in &mut query {
         let status_section = &mut text.sections[GENERATION_CONTROL_STATUS_TEXT_SECTION_ID];
         (status_section.value, status_section.style.color) = match generation_control.status {
-            GenerationControlStatus::Ongoing => ("Ongoing".into(), Color::GREEN),
+            GenerationControlStatus::Ongoing => ("Ongoing ('Space' to pause)".into(), Color::GREEN),
             GenerationControlStatus::Paused => {
                 ("Paused ('Space' to unpause)".into(), Color::YELLOW_GREEN)
             }

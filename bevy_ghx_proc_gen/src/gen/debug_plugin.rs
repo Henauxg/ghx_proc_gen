@@ -344,8 +344,8 @@ pub struct ProcGenKeyBindings {
     pub deselect: KeyCode,
     pub switch_grid: KeyCode,
 
-    /// Key to unpause the current [`GenerationControlStatus`]
-    pub unpause: KeyCode,
+    /// Key to pause/unpause the current [`GenerationControlStatus`]
+    pub pause_toggle: KeyCode,
     /// Key used only with [`GenerationViewMode::StepByStepPaused`] to step once per press
     pub step: KeyCode,
     /// Key used only with [`GenerationViewMode::StepByStepPaused`] to step continuously as long as pressed
@@ -362,7 +362,7 @@ impl Default for ProcGenKeyBindings {
             cursor_z_axis: KeyCode::Z,
             deselect: KeyCode::Escape,
             switch_grid: KeyCode::Tab,
-            unpause: KeyCode::Space,
+            pause_toggle: KeyCode::Space,
             step: KeyCode::Down,
             continuous_step: KeyCode::Up,
         }
