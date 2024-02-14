@@ -121,7 +121,7 @@ pub fn generate_node<C: CoordinateSystem>(
         return;
     };
     if let Err(err) =
-        generator.set_and_propagate(selected_node.node_index, (model_index, model_rot))
+        generator.set_and_propagate(selected_node.node_index, (model_index, model_rot), true)
     {
         warn!(
             "Failed to generate model {} rotation {} on node {}: {}",
