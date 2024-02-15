@@ -50,7 +50,7 @@ use self::picking::{
 pub mod picking;
 
 #[cfg(feature = "egui-edit")]
-use self::egui_editor::draw_edit_window;
+use self::egui_editor::{draw_cursor_edit_window, paint, update_painting_state, EditorContext};
 
 #[cfg(feature = "egui-edit")]
 pub mod egui_editor;
@@ -130,6 +130,8 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
                 app.init_resource::<GridCursorsUiSettings>();
             }
         }
+        #[cfg(feature = "egui-edit")]
+        app.init_resource::<EditorContext>();
         #[cfg(feature = "picking")]
         app.init_resource::<CursorTargetAssets>();
 
@@ -200,7 +202,13 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
             );
 
         #[cfg(feature = "egui-edit")]
-        app.add_systems(Update, draw_edit_window::<C>);
+        app.add_systems(
+            Update,
+            (
+                draw_cursor_edit_window::<C>,
+                (update_painting_state, paint::<C>).chain(),
+            ),
+        );
 
         match self.cursor_ui_mode {
             CursorUiMode::None => (),

@@ -318,7 +318,7 @@ fn step_generation<C: CoordinateSystem>(
             }
         }
 
-        // If we want to skip over void nodes, we eep looping until we spawn a non-void
+        // If we want to skip over void nodes, we keep looping until we spawn a non-void
         if non_void_spawned | !generation_control.skip_void_nodes {
             break;
         }
