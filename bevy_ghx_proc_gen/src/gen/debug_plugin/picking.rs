@@ -257,8 +257,8 @@ pub fn setup_picking_assets(
     mut standard_materials: ResMut<Assets<StandardMaterial>>,
     mut cursor_target_assets: ResMut<CursorTargetAssets>,
 ) {
-    cursor_target_assets.color = Color::WHITE.with_a(0.35);
-    cursor_target_assets.base_size = 0.75;
+    cursor_target_assets.color = Color::WHITE.with_a(0.15);
+    cursor_target_assets.base_size = 0.9;
     cursor_target_assets.target_mesh_3d = meshes.add(Mesh::from(shape::Cube {
         size: cursor_target_assets.base_size,
     }));
