@@ -44,6 +44,7 @@ bevy_mod_picking = { version = "0.17.0", default-features = false, features = [
 	"backend_raycast",
 	"backend_bevy_ui",
 	"backend_sprite",
+	"backend_egui",
 ] }
 
 
