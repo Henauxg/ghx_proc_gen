@@ -17,8 +17,8 @@ use self::{
         deselect_from_keybinds, move_selection_from_keybinds, setup_cursor, setup_cursors_overlays,
         setup_cursors_panel, switch_generation_selection_from_keybinds,
         update_cursors_info_from_generation_events, update_cursors_info_on_cursors_changes,
-        update_cursors_overlays, update_selection_cursor_panel_text, CursorKeyboardMoveCooldown,
-        SelectCursor, SelectionCursorMarkerSettings,
+        update_cursors_overlays, update_selection_cursor_panel_text, CursorKeyboardMovement,
+        CursorKeyboardMovementSettings, SelectCursor, SelectionCursorMarkerSettings,
     },
     generation::{
         generate_all, insert_error_markers_to_new_generations,
@@ -57,8 +57,6 @@ pub mod egui_editor;
 
 pub mod cursor;
 pub mod generation;
-
-const CURSOR_KEYS_MOVEMENT_COOLDOWN_MS: u64 = 55;
 
 #[derive(Default, Debug, PartialEq, Eq)]
 pub enum CursorUiMode {
@@ -119,11 +117,12 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
         app.insert_resource(ActiveGeneration::default());
 
         // If the resources already exists, nothing happens, else, add them with default values.
-        app.init_resource::<ProcGenKeyBindings>();
-        app.init_resource::<GenerationControl>();
-        app.init_resource::<OverCursorMarkerSettings>();
-        app.init_resource::<SelectionCursorMarkerSettings>();
-        app.init_resource::<CursorKeyboardMoveCooldown>();
+        app.init_resource::<ProcGenKeyBindings>()
+            .init_resource::<GenerationControl>()
+            .init_resource::<OverCursorMarkerSettings>()
+            .init_resource::<SelectionCursorMarkerSettings>()
+            .init_resource::<CursorKeyboardMovement>()
+            .init_resource::<CursorKeyboardMovementSettings>();
         match self.cursor_ui_mode {
             CursorUiMode::None => (),
             _ => {

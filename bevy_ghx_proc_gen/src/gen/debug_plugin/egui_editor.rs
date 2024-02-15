@@ -47,6 +47,7 @@ pub fn draw_cursor_edit_window<C: CoordinateSystem>(
     };
 
     egui::Window::new("Debug-editor")
+        .title_bar(false)
         // TODO Init all those values with viewport size
         .default_pos(Pos2::new(10., 250.))
         .show(contexts.ctx_mut(), |ui| {

@@ -12,7 +12,6 @@ use bevy::{
     hierarchy::BuildChildren,
     input::{keyboard::KeyCode, Input},
     log::warn,
-    prelude::{Deref, DerefMut},
     render::{camera::Camera, color::Color},
     text::{BreakLineOn, Text, TextSection, TextStyle},
     time::{Time, Timer, TimerMode},
@@ -36,7 +35,7 @@ use crate::grid::markers::{spawn_marker, GridMarker, MarkerDespawnEvent};
 
 use super::{
     generation::{ActiveGeneration, GenerationEvent},
-    GridCursorsUiSettings, ProcGenKeyBindings, CURSOR_KEYS_MOVEMENT_COOLDOWN_MS,
+    GridCursorsUiSettings, ProcGenKeyBindings,
 };
 
 #[derive(Component)]
@@ -363,15 +362,44 @@ pub fn switch_generation_selection_from_keybinds<C: CoordinateSystem>(
     }
 }
 
-#[derive(Resource, Deref, DerefMut)]
-pub struct CursorKeyboardMoveCooldown(pub Timer);
+const CURSOR_KEYS_MOVEMENT_COOLDOWN_MS: u64 = 140;
+const CURSOR_KEYS_MOVEMENT_SHORT_COOLDOWN_MS: u64 = 45;
 
-impl Default for CursorKeyboardMoveCooldown {
+#[derive(Resource)]
+pub struct CursorKeyboardMovementSettings {
+    pub default_cooldown_ms: u64,
+    pub short_cooldown_ms: u64,
+}
+
+impl Default for CursorKeyboardMovementSettings {
     fn default() -> Self {
-        Self(Timer::new(
-            Duration::from_millis(CURSOR_KEYS_MOVEMENT_COOLDOWN_MS),
-            TimerMode::Once,
-        ))
+        Self {
+            default_cooldown_ms: CURSOR_KEYS_MOVEMENT_COOLDOWN_MS,
+            short_cooldown_ms: CURSOR_KEYS_MOVEMENT_SHORT_COOLDOWN_MS,
+        }
+    }
+}
+
+const CURSOR_KEYS_MOVEMENT_SPEED_UP_DELAY_MS: u64 = 350;
+
+#[derive(Resource)]
+pub struct CursorKeyboardMovement {
+    pub cooldown: Timer,
+    pub speed_up_timer: Timer,
+}
+
+impl Default for CursorKeyboardMovement {
+    fn default() -> Self {
+        Self {
+            cooldown: Timer::new(
+                Duration::from_millis(CURSOR_KEYS_MOVEMENT_COOLDOWN_MS),
+                TimerMode::Once,
+            ),
+            speed_up_timer: Timer::new(
+                Duration::from_millis(CURSOR_KEYS_MOVEMENT_SPEED_UP_DELAY_MS),
+                TimerMode::Once,
+            ),
+        }
     }
 }
 
@@ -382,7 +410,8 @@ pub fn move_selection_from_keybinds<C: CoordinateSystem>(
     selection_marker_settings: Res<SelectionCursorMarkerSettings>,
     proc_gen_key_bindings: Res<ProcGenKeyBindings>,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
-    mut move_cooldown: ResMut<CursorKeyboardMoveCooldown>,
+    mut key_mvmt_values: Res<CursorKeyboardMovementSettings>,
+    mut key_mvmt: ResMut<CursorKeyboardMovement>,
     mut selection_cursor: Query<&mut Cursor, With<SelectCursor>>,
     grids: Query<(Entity, &GridDefinition<C>)>,
 ) {
@@ -401,22 +430,57 @@ pub fn move_selection_from_keybinds<C: CoordinateSystem>(
     };
 
     if let Some(axis) = axis_selection {
-        move_cooldown.tick(time.delta());
-        let cursor_movement = match move_cooldown.finished() {
-            true => {
-                if keys.pressed(proc_gen_key_bindings.prev_node) {
-                    Some(-1)
-                } else if keys.pressed(proc_gen_key_bindings.next_node) {
-                    Some(1)
-                } else {
-                    None
+        // Just pressed => moves
+        // Pressed => moves with default cooldown
+        // Pressed for a while => speeds up, shorter cooldown
+        // Sped up & no press => resets to default cooldown
+        let cursor_movement = if keys.just_pressed(proc_gen_key_bindings.prev_node) {
+            Some(-1)
+        } else if keys.just_pressed(proc_gen_key_bindings.next_node) {
+            Some(1)
+        } else {
+            let (movement, pressed) = match key_mvmt.cooldown.finished() {
+                true => {
+                    if keys.pressed(proc_gen_key_bindings.prev_node) {
+                        (Some(-1), true)
+                    } else if keys.pressed(proc_gen_key_bindings.next_node) {
+                        (Some(1), true)
+                    } else {
+                        (None, false)
+                    }
                 }
+                false => {
+                    if keys.pressed(proc_gen_key_bindings.prev_node)
+                        || keys.pressed(proc_gen_key_bindings.next_node)
+                    {
+                        (None, true)
+                    } else {
+                        (None, false)
+                    }
+                }
+            };
+            if pressed {
+                key_mvmt.cooldown.tick(time.delta());
+                if !key_mvmt.speed_up_timer.finished() {
+                    key_mvmt.speed_up_timer.tick(time.delta());
+                } else if key_mvmt.speed_up_timer.just_finished() {
+                    key_mvmt
+                        .cooldown
+                        .set_duration(Duration::from_millis(key_mvmt_values.short_cooldown_ms));
+                }
+            } else {
+                if key_mvmt.speed_up_timer.finished() {
+                    key_mvmt
+                        .cooldown
+                        .set_duration(Duration::from_millis(key_mvmt_values.default_cooldown_ms));
+                }
+                key_mvmt.speed_up_timer.reset();
             }
-            false => None,
+            movement
         };
 
         if let Some(movement) = cursor_movement {
-            move_cooldown.reset();
+            key_mvmt.cooldown.reset();
 
             let update_cursor = match &cursor.0 {
                 Some(grid_cursor) => {
