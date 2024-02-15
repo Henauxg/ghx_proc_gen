@@ -180,7 +180,7 @@ pub fn picking_update_cursors_position<
         let Ok(mut cursor) = cursor.get_single_mut() else {
             return;
         };
-        let Ok((node, node_parent)) = grid_nodes.get_mut(*event.deref()) else {
+        let Ok((node, node_parent)) = grid_nodes.get(*event.deref()) else {
             return;
         };
 
