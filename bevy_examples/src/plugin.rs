@@ -1,17 +1,23 @@
 use std::marker::PhantomData;
 
 use bevy::{
-    app::{App, Plugin, Startup, Update},
+    app::{App, Plugin, PreUpdate, Startup, Update},
     diagnostic::FrameTimeDiagnosticsPlugin,
     ecs::{
         component::Component,
+        event::Events,
         query::With,
         schedule::IntoSystemConfigs,
         system::{Commands, Query, Res, ResMut},
     },
     gizmos::GizmoConfig,
     hierarchy::BuildChildren,
-    input::{common_conditions::input_just_pressed, keyboard::KeyCode},
+    input::{
+        common_conditions::input_just_pressed,
+        keyboard::KeyCode,
+        mouse::{MouseButton, MouseWheel},
+        Input,
+    },
     math::Vec3,
     prelude::default,
     render::color::Color,
@@ -22,7 +28,7 @@ use bevy::{
     },
 };
 use bevy_ghx_proc_gen::{
-    bevy_egui::EguiPlugin,
+    bevy_egui::{self, EguiPlugin},
     gen::{
         assets::{AssetsBundleSpawner, ComponentSpawner, NoComponents},
         debug_plugin::{
@@ -101,6 +107,13 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
                 toggle_auto_orbit.run_if(input_just_pressed(KeyCode::F5)),
                 update_generation_control_ui,
             ),
+        );
+        // Quick & dirty: silence bevy events when using an egui window
+        app.add_systems(
+            PreUpdate,
+            absorb_egui_inputs
+                .after(bevy_egui::systems::process_input_system)
+                .before(bevy_egui::EguiSet::BeginFrame),
         );
     }
 }
@@ -273,5 +286,18 @@ pub fn update_generation_control_ui(
             gen_control.pause_on_error,
             gen_control.pause_on_reinitialize
         );
+    }
+}
+
+// Quick & dirty: silence bevy events when using an egui window
+fn absorb_egui_inputs(
+    mut contexts: bevy_egui::EguiContexts,
+    mut mouse: ResMut<Input<MouseButton>>,
+    mut mouse_wheel: ResMut<Events<MouseWheel>>,
+) {
+    let ctx = contexts.ctx_mut();
+    if ctx.wants_pointer_input() || ctx.is_pointer_over_area() {
+        mouse.reset_all();
+        mouse_wheel.clear();
     }
 }
