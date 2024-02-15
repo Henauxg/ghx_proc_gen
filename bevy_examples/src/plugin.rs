@@ -33,6 +33,7 @@ use bevy_ghx_proc_gen::{
         assets::{AssetsBundleSpawner, ComponentSpawner, NoComponents},
         debug_plugin::{
             cursor::{CursorsOverlaysRoot, CursorsPanelRoot},
+            egui_editor::{paint, update_painting_state, EditorContext},
             CursorUiMode, GenerationControl, GenerationControlStatus, GenerationViewMode,
             ProcGenDebugPlugin,
         },
@@ -72,6 +73,9 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner>
     }
 }
 
+const DEFAULT_SPAWN_ANIMATION_DURATION: f32 = 0.6;
+const FAST_SPAWN_ANIMATION_DURATION: f32 = 0.1;
+
 impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
     for ProcGenExamplesPlugin<C, A, T>
 {
@@ -85,7 +89,7 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
             ProcGenDebugPlugin::<C, A, T>::new(self.generation_view_mode, CursorUiMode::Overlay),
         ));
         app.insert_resource(SpawningScaleAnimation::new(
-            0.8,
+            DEFAULT_SPAWN_ANIMATION_DURATION,
             self.assets_scale,
             ease_in_cubic,
         ));
@@ -106,6 +110,10 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
                 toggle_grid_markers_visibilities.run_if(input_just_pressed(KeyCode::F4)),
                 toggle_auto_orbit.run_if(input_just_pressed(KeyCode::F5)),
                 update_generation_control_ui,
+                // Quick adjust of the slowish spawn animation to be more snappy when painting
+                adjust_spawn_animation_when_painting
+                    .after(update_painting_state)
+                    .before(paint::<C>),
             ),
         );
         // Quick & dirty: silence bevy events when using an egui window
@@ -120,6 +128,17 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
 
 pub fn setup_gizmos_config(mut config: ResMut<GizmoConfig>) {
     config.depth_bias = -1.0;
+}
+
+pub fn adjust_spawn_animation_when_painting(
+    editor_contex: Res<EditorContext>,
+    mut spawn_animation: ResMut<SpawningScaleAnimation>,
+) {
+    if editor_contex.painting {
+        spawn_animation.duration_sec = FAST_SPAWN_ANIMATION_DURATION;
+    } else {
+        spawn_animation.duration_sec = DEFAULT_SPAWN_ANIMATION_DURATION;
+    }
 }
 
 pub const DEFAULT_EXAMPLES_FONT_SIZE: f32 = 17.;
