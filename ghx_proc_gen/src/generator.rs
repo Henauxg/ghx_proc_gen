@@ -1,9 +1,6 @@
 use core::fmt;
 use std::{collections::HashMap, sync::Arc};
 
-#[cfg(feature = "debug-traces")]
-use tracing::{debug, info, trace};
-
 #[cfg(feature = "bevy")]
 use bevy::ecs::component::Component;
 

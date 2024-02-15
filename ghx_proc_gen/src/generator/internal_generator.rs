@@ -8,6 +8,9 @@ use rand::{
     Rng, SeedableRng,
 };
 
+#[cfg(feature = "debug-traces")]
+use tracing::{debug, info, trace};
+
 use crate::{
     grid::{direction::CoordinateSystem, GridData, GridDefinition, NodeIndex},
     GeneratorError, NodeSetError,
@@ -433,7 +436,7 @@ impl<C: CoordinateSystem> InternalGenerator<C> {
             self.rules.model(model_variant_index),
             self.rules.name_unchecked_str(model_variant_index),
             node_index,
-            self.grid.get_position(node_index)
+            self.grid.pos_from_index(node_index)
         );
 
         if !self.observers.is_empty() {
@@ -474,7 +477,7 @@ impl<C: CoordinateSystem> InternalGenerator<C> {
             self.rules.model(selected_model_index),
             self.rules.name_unchecked_str(selected_model_index),
             node_index,
-            self.grid.get_position(node_index)
+            self.grid.pos_from_index(node_index)
         );
         if !self.observers.is_empty() || collector.is_some() {
             self.signal_selection(collector, node_index, selected_model_index);
@@ -577,7 +580,7 @@ impl<C: CoordinateSystem> InternalGenerator<C> {
             self.rules.model(model),
             self.rules.name_unchecked_str(model),
             node_index,
-            self.grid.get_position(node_index),
+            self.grid.pos_from_index(node_index),
             number_of_models_left
         );
 
@@ -592,7 +595,7 @@ impl<C: CoordinateSystem> InternalGenerator<C> {
                         self.rules.model(forced_model),
                         self.rules.name_unchecked_str(model),
                         node_index,
-                        self.grid.get_position(node_index)
+                        self.grid.pos_from_index(node_index)
                     );
                 }
 

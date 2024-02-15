@@ -1,7 +1,7 @@
 use std::{borrow::Cow, collections::HashSet, fmt, marker::PhantomData};
 
 #[cfg(feature = "debug-traces")]
-use {core::fmt, tracing::warn};
+use tracing::warn;
 
 #[cfg(feature = "bevy")]
 use bevy::ecs::component::Component;
