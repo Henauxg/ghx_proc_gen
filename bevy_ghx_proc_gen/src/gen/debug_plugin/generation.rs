@@ -112,39 +112,110 @@ pub fn update_generation_control(
     }
 }
 
+/// - reinitializes the generator if needed
+/// - returns `true` if the generation operation should continue, and `false` if it should stop
+pub fn handle_reinitialization_and_continue<C: CoordinateSystem>(
+    generation_control: &mut ResMut<GenerationControl>,
+    generator: &mut Generator<C>,
+) -> bool {
+    if generation_control.need_reinit {
+        generation_control.need_reinit = false;
+        match generator.reinitialize() {
+            GenerationStatus::Ongoing => (),
+            GenerationStatus::Done => {
+                info!(
+                    "Generation done, seed: {}; grid: {}",
+                    generator.seed(),
+                    generator.grid()
+                );
+                if generation_control.pause_when_done {
+                    generation_control.status = GenerationControlStatus::Paused;
+                }
+                generation_control.need_reinit = true;
+                return false;
+            }
+        }
+        if generation_control.pause_on_reinitialize {
+            generation_control.status = GenerationControlStatus::Paused;
+            return false;
+        }
+    }
+    return true;
+}
+
+pub fn handle_generation_done<C: CoordinateSystem>(
+    generation_control: &mut ResMut<GenerationControl>,
+    generator: &mut Generator<C>,
+    gen_entity: Entity,
+    try_count: u32,
+) {
+    info!(
+        "Generation done {:?}, try_count: {}, seed: {}; grid: {}",
+        gen_entity,
+        try_count,
+        generator.seed(),
+        generator.grid()
+    );
+    generation_control.need_reinit = true;
+    if generation_control.pause_when_done {
+        generation_control.status = GenerationControlStatus::Paused;
+    }
+}
+
+pub fn handle_generation_error<C: CoordinateSystem>(
+    generation_control: &mut ResMut<GenerationControl>,
+    generator: &mut Generator<C>,
+    gen_entity: Entity,
+    node_index: NodeIndex,
+) {
+    warn!(
+        "Generation Failed {:?} at node {}, seed: {}; grid: {}",
+        gen_entity,
+        node_index,
+        generator.seed(),
+        generator.grid()
+    );
+    generation_control.need_reinit = true;
+    if generation_control.pause_on_error {
+        generation_control.status = GenerationControlStatus::Paused;
+    }
+}
+
 /// This system request the full generation to a [`Generator`] component, if it is observed through a [`QueuedObserver`] component, if the current control status is [`GenerationControlStatus::Ongoing`] and if it is currently the [`ActiveGeneration`]
 pub fn generate_all<C: CoordinateSystem>(
     mut generation_control: ResMut<GenerationControl>,
     active_generation: Res<ActiveGeneration>,
-    mut observed_generations: Query<&mut Generator<C>, With<QueuedObserver>>,
+    mut observed_generatiors: Query<&mut Generator<C>, With<QueuedObserver>>,
 ) {
     let Some(active_generation) = active_generation.0 else {
         return;
     };
+    let Ok(mut generator) = observed_generatiors.get_mut(active_generation) else {
+        return;
+    };
 
     if generation_control.status == GenerationControlStatus::Ongoing {
-        if let Ok(mut generation) = observed_generations.get_mut(active_generation) {
-            match generation.generate() {
-                Ok(gen_info) => {
-                    info!(
-                        "Generation done {:?}, try_count: {}, seed: {}; grid: {}",
-                        active_generation,
-                        gen_info.try_count,
-                        generation.seed(),
-                        generation.grid()
-                    );
-                }
-                Err(GeneratorError { node_index }) => {
-                    warn!(
-                        "Generation Failed {:?} at node {}, seed: {}; grid: {}",
-                        active_generation,
-                        node_index,
-                        generation.seed(),
-                        generation.grid()
-                    );
-                }
+        if !handle_reinitialization_and_continue(&mut generation_control, &mut generator) {
+            return;
+        }
+
+        match generator.generate() {
+            Ok(gen_info) => {
+                handle_generation_done(
+                    &mut generation_control,
+                    &mut generator,
+                    active_generation,
+                    gen_info.try_count,
+                );
             }
-            generation_control.status = GenerationControlStatus::Paused;
+            Err(GeneratorError { node_index }) => {
+                handle_generation_error(
+                    &mut generation_control,
+                    &mut generator,
+                    active_generation,
+                    node_index,
+                );
+            }
         }
     }
 }
@@ -168,7 +239,12 @@ pub fn step_by_step_input_update<C: CoordinateSystem>(
             || keys.pressed(proc_gen_key_bindings.continuous_step))
     {
         if let Ok((mut generation, void_nodes)) = observed_generations.get_mut(active_generation) {
-            step_generation(&mut generation, void_nodes, &mut generation_control);
+            step_generation(
+                &mut generation,
+                active_generation,
+                void_nodes,
+                &mut generation_control,
+            );
         }
     }
 }
@@ -191,7 +267,12 @@ pub fn step_by_step_timed_update<C: CoordinateSystem>(
     {
         if let Ok((mut generation, void_nodes)) = observed_generations.get_mut(active_generation) {
             for _ in 0..steps_and_timer.steps_count {
-                step_generation(&mut generation, void_nodes, &mut generation_control);
+                step_generation(
+                    &mut generation,
+                    active_generation,
+                    void_nodes,
+                    &mut generation_control,
+                );
                 if generation_control.status != GenerationControlStatus::Ongoing {
                     return;
                 }
@@ -275,13 +356,18 @@ pub fn update_generation_view<C: CoordinateSystem, A: AssetsBundleSpawner, T: Co
 }
 
 fn step_generation<C: CoordinateSystem>(
-    generation: &mut Generator<C>,
+    generator: &mut Generator<C>,
+    gen_entity: Entity,
     void_nodes: &VoidNodes,
     generation_control: &mut ResMut<GenerationControl>,
 ) {
     loop {
+        if !handle_reinitialization_and_continue(generation_control, generator) {
+            break;
+        }
+
         let mut non_void_spawned = false;
-        match generation.select_and_propagate_collected() {
+        match generator.select_and_propagate_collected() {
             Ok((status, nodes_to_spawn)) => {
                 for grid_node in nodes_to_spawn {
                     // We still collect the generated nodes here even though we don't really use them to spawn entities. We just check them for void nodes (for visualization purposes)
@@ -292,28 +378,13 @@ fn step_generation<C: CoordinateSystem>(
                 match status {
                     GenerationStatus::Ongoing => {}
                     GenerationStatus::Done => {
-                        info!(
-                            "Generation done, seed: {}; grid: {}",
-                            generation.seed(),
-                            generation.grid()
-                        );
-                        if generation_control.pause_when_done {
-                            generation_control.status = GenerationControlStatus::Paused;
-                        }
+                        handle_generation_done(generation_control, generator, gen_entity, 1);
                         break;
                     }
                 }
             }
             Err(GeneratorError { node_index }) => {
-                warn!(
-                    "Generation Failed at node {}, seed: {}; grid: {}",
-                    node_index,
-                    generation.seed(),
-                    generation.grid()
-                );
-                if generation_control.pause_on_error {
-                    generation_control.status = GenerationControlStatus::Paused;
-                }
+                handle_generation_error(generation_control, generator, gen_entity, node_index);
                 break;
             }
         }

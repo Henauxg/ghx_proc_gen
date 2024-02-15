@@ -301,33 +301,35 @@ pub enum GenerationControlStatus {
 pub struct GenerationControl {
     /// Current status of the generation
     pub status: GenerationControlStatus,
+    /// Indicates whether or not the generator needs to be reinitialized before calling generation operations.
+    ///
+    /// When using [`GenerationViewMode::Final`], this only controls the first reinitialization per try pool.
+    pub need_reinit: bool,
     /// Whether or not the spawning systems do one more generation step when nodes without assets are generated.
+    ///
+    /// Not used when using [`GenerationViewMode::Final`].
     pub skip_void_nodes: bool,
     /// Whether or not the generation should pause when successful
     pub pause_when_done: bool,
-    /// Whether or not the generation should pause when it fails
+    /// Whether or not the generation should pause when it fails.
+    ///
+    /// When using [`GenerationViewMode::Final`], this only pauses on the last error of a try pool.
     pub pause_on_error: bool,
+    /// Whether or not the generation should pause when it reinitializes
+    ///
+    /// When using [`GenerationViewMode::Final`], this only pauses on the first reinitialization of a try pool.
+    pub pause_on_reinitialize: bool,
 }
 
 impl Default for GenerationControl {
     fn default() -> Self {
         Self {
-            status: GenerationControlStatus::Ongoing,
+            status: GenerationControlStatus::Paused,
+            need_reinit: false,
             skip_void_nodes: true,
             pause_when_done: true,
             pause_on_error: true,
-        }
-    }
-}
-
-impl GenerationControl {
-    /// Create a new `GenerationControl` with the status set to [`GenerationControlStatus::Ongoing`]
-    pub fn new(skip_void_nodes: bool, pause_when_done: bool, pause_on_error: bool) -> Self {
-        Self {
-            status: GenerationControlStatus::Ongoing,
-            skip_void_nodes,
-            pause_on_error,
-            pause_when_done,
+            pause_on_reinitialize: true,
         }
     }
 }
