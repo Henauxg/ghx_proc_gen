@@ -149,24 +149,6 @@ impl<C: CoordinateSystem> InternalGenerator<C> {
         }
     }
 
-    /// - reinitializes the generator if needed
-    /// - returns `true` if the generation is [`GenerationStatus::Ongoing`] and the operation should continue, and `false` if the generation is [`GenerationStatus::Done`] and the operation should stop
-    fn auto_reinitialize_and_continue(
-        &mut self,
-        collector: &mut Collector,
-        initial_nodes: &Vec<(NodeIndex, ModelVariantIndex)>,
-    ) -> bool {
-        match self.status {
-            InternalGeneratorStatus::Ongoing => true,
-            InternalGeneratorStatus::Done | InternalGeneratorStatus::Failed(_) => {
-                match self.reinitialize(collector, initial_nodes) {
-                    GenerationStatus::Ongoing => true,
-                    GenerationStatus::Done => false,
-                }
-            }
-        }
-    }
-
     fn reset_with_seed(&mut self, seed: u64) {
         self.seed = seed;
         self.rng = StdRng::seed_from_u64(seed);
@@ -368,15 +350,17 @@ impl<C: CoordinateSystem> InternalGenerator<C> {
         Err(last_error.unwrap()) // We know that last_err is Some
     }
 
-    /// Top-level handler of public API calls. Calls [`InternalGenerator::auto_reinitialize_and_continue`]
+    /// Top-level handler of public API calls.
     fn generate_remaining_nodes(
         &mut self,
         collector: &mut Collector,
         initial_nodes: &Vec<(NodeIndex, ModelVariantIndex)>,
     ) -> Result<(), GeneratorError> {
-        if !self.auto_reinitialize_and_continue(collector, initial_nodes) {
-            return Ok(());
-        };
+        match self.status {
+            InternalGeneratorStatus::Ongoing => (),
+            InternalGeneratorStatus::Done => return Ok(()),
+            InternalGeneratorStatus::Failed(err) => return Err(err),
+        }
 
         // `nodes_left_to_generate` is an upper limit to the number of iterations. We avoid an unnecessary while loop.
         for _i in 0..self.nodes_left_to_generate {
@@ -389,7 +373,7 @@ impl<C: CoordinateSystem> InternalGenerator<C> {
         Ok(())
     }
 
-    /// Top-level handler of public API calls. Calls [`InternalGenerator::auto_reinitialize_and_continue`]
+    /// Top-level handler of public API calls.
     pub(crate) fn set_and_propagate(
         &mut self,
         node_index: NodeIndex,
@@ -397,9 +381,11 @@ impl<C: CoordinateSystem> InternalGenerator<C> {
         collector: &mut Collector,
         initial_nodes: &Vec<(NodeIndex, ModelVariantIndex)>,
     ) -> Result<GenerationStatus, NodeSetError> {
-        if !self.auto_reinitialize_and_continue(collector, initial_nodes) {
-            return Ok(GenerationStatus::Done);
-        };
+        match self.status {
+            InternalGeneratorStatus::Ongoing => (),
+            InternalGeneratorStatus::Done => return Ok(GenerationStatus::Done),
+            InternalGeneratorStatus::Failed(err) => return Err(err.into()),
+        }
 
         match self.check_set_and_propagate_parameters(node_index, model_variant_index)? {
             NodeSetStatus::AlreadySet => {
@@ -412,15 +398,17 @@ impl<C: CoordinateSystem> InternalGenerator<C> {
         Ok(self.unchecked_set_and_propagate(node_index, model_variant_index, collector)?)
     }
 
-    /// Top-level handler of public API calls. Calls [`Generator::auto_reinitialize_and_continue`]
+    /// Top-level handler of public API calls.
     pub(crate) fn select_and_propagate(
         &mut self,
         collector: &mut Collector,
         initial_nodes: &Vec<(NodeIndex, ModelVariantIndex)>,
     ) -> Result<GenerationStatus, GeneratorError> {
-        if !self.auto_reinitialize_and_continue(collector, initial_nodes) {
-            return Ok(GenerationStatus::Done);
-        };
+        match self.status {
+            InternalGeneratorStatus::Ongoing => (),
+            InternalGeneratorStatus::Done => return Ok(GenerationStatus::Done),
+            InternalGeneratorStatus::Failed(err) => return Err(err),
+        }
 
         self.unchecked_select_and_propagate(collector)
     }
