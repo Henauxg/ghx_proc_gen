@@ -30,9 +30,9 @@ use super::{
 
 #[derive(Resource, Default)]
 pub struct EditorContext {
-    selected_model: Option<ModelInstance>,
-    paint_mode_enabled: bool,
-    painting: bool,
+    pub selected_model: Option<ModelInstance>,
+    pub paint_mode_enabled: bool,
+    pub painting: bool,
 }
 
 pub fn draw_cursor_edit_window<C: CoordinateSystem>(
