@@ -11,7 +11,7 @@ use bevy_examples::{
 use bevy_ghx_proc_gen::{
     gen::{
         assets::AssetSpawner,
-        debug_plugin::{GenerationControl, GenerationControlStatus, GenerationViewMode},
+        debug_plugin::{GenerationControl, GenerationViewMode},
     },
     grid::{view::DebugGridView, DebugGridView3dBundle},
     proc_gen::{
@@ -194,10 +194,8 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
     ));
 
     commands.insert_resource(GenerationControl {
-        status: GenerationControlStatus::Paused,
-        skip_void_nodes: true,
-        pause_when_done: true,
         pause_on_error: false,
+        ..Default::default()
     });
 }
 
