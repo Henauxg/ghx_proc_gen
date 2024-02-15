@@ -253,12 +253,12 @@ pub const GENERATION_CONTROL_TEXT_SECTION_ID: usize = 2;
 pub const GENERATION_VIEW_MODE_TEXT_SECTION_ID: usize = 3;
 
 pub fn update_generation_control_ui(
-    generation_control: Res<GenerationControl>,
+    gen_control: Res<GenerationControl>,
     mut query: Query<&mut Text, With<GenerationControlText>>,
 ) {
     for mut text in &mut query {
         let status_section = &mut text.sections[GENERATION_CONTROL_STATUS_TEXT_SECTION_ID];
-        (status_section.value, status_section.style.color) = match generation_control.status {
+        (status_section.value, status_section.style.color) = match gen_control.status {
             GenerationControlStatus::Ongoing => ("Ongoing ('Space' to pause)".into(), Color::GREEN),
             GenerationControlStatus::Paused => {
                 ("Paused ('Space' to unpause)".into(), Color::YELLOW_GREEN)
@@ -267,10 +267,11 @@ pub fn update_generation_control_ui(
 
         let control_section = &mut text.sections[GENERATION_CONTROL_TEXT_SECTION_ID];
         control_section.value = format!(
-            "\nGenerationControl: skip_void_nodes: {}, pause_when_done: {}, pause_on_error: {}",
-            generation_control.skip_void_nodes,
-            generation_control.pause_when_done,
-            generation_control.pause_on_error
+            "\nGenerationControl: skip_void_nodes: {}, pause_when_done: {}, pause_on_error: {}, pause_on_reinitialize: {}",
+            gen_control.skip_void_nodes,
+            gen_control.pause_when_done,
+            gen_control.pause_on_error,
+            gen_control.pause_on_reinitialize
         );
     }
 }
