@@ -336,7 +336,20 @@ impl<C: CoordinateSystem> InternalGenerator<C> {
             if let Some(collector) = collector {
                 collector.clear();
             }
-            match self.generate_remaining_nodes(collector, initial_nodes) {
+            match self.status {
+                InternalGeneratorStatus::Ongoing => (),
+                InternalGeneratorStatus::Done | InternalGeneratorStatus::Failed(_) => {
+                    match self.reinitialize(collector, initial_nodes) {
+                        GenerationStatus::Ongoing => (),
+                        GenerationStatus::Done => {
+                            return Ok(GenInfo {
+                                try_count: try_index + 1,
+                            })
+                        }
+                    }
+                }
+            }
+            match self.generate_remaining_nodes(collector) {
                 Ok(_) => {
                     return Ok(GenInfo {
                         try_count: try_index + 1,
@@ -354,14 +367,7 @@ impl<C: CoordinateSystem> InternalGenerator<C> {
     fn generate_remaining_nodes(
         &mut self,
         collector: &mut Collector,
-        initial_nodes: &Vec<(NodeIndex, ModelVariantIndex)>,
     ) -> Result<(), GeneratorError> {
-        match self.status {
-            InternalGeneratorStatus::Ongoing => (),
-            InternalGeneratorStatus::Done => return Ok(()),
-            InternalGeneratorStatus::Failed(err) => return Err(err),
-        }
-
         // `nodes_left_to_generate` is an upper limit to the number of iterations. We avoid an unnecessary while loop.
         for _i in 0..self.nodes_left_to_generate {
             match self.unchecked_select_and_propagate(collector) {
@@ -379,7 +385,6 @@ impl<C: CoordinateSystem> InternalGenerator<C> {
         node_index: NodeIndex,
         model_variant_index: ModelVariantIndex,
         collector: &mut Collector,
-        initial_nodes: &Vec<(NodeIndex, ModelVariantIndex)>,
     ) -> Result<GenerationStatus, NodeSetError> {
         match self.status {
             InternalGeneratorStatus::Ongoing => (),
@@ -402,7 +407,6 @@ impl<C: CoordinateSystem> InternalGenerator<C> {
     pub(crate) fn select_and_propagate(
         &mut self,
         collector: &mut Collector,
-        initial_nodes: &Vec<(NodeIndex, ModelVariantIndex)>,
     ) -> Result<GenerationStatus, GeneratorError> {
         match self.status {
             InternalGeneratorStatus::Ongoing => (),
