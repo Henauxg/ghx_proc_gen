@@ -42,11 +42,11 @@ use bevy_ghx_proc_gen::{
     grid::{toggle_debug_grids_visibilities, toggle_grid_markers_visibilities, GridDebugPlugin},
     proc_gen::grid::direction::CoordinateSystem,
 };
+use bevy_ghx_utils::camera::toggle_auto_orbit;
 use bevy_mod_picking::{picking_core::Pickable, DefaultPickingPlugins};
 
 use crate::{
     anim::{animate_scale, ease_in_cubic, SpawningScaleAnimation},
-    camera::toggle_auto_orbit,
     fps::{FpsDisplayPlugin, FpsRoot},
     utils::toggle_visibility,
 };

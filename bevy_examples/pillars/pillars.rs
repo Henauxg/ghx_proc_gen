@@ -2,11 +2,7 @@ use std::{f32::consts::PI, sync::Arc};
 
 use bevy::{log::LogPlugin, pbr::DirectionalLightShadowMap, prelude::*};
 
-use bevy_examples::{
-    camera::{pan_orbit_camera, PanOrbitCamera},
-    plugin::ProcGenExamplesPlugin,
-    utils::load_assets,
-};
+use bevy_examples::{plugin::ProcGenExamplesPlugin, utils::load_assets};
 use bevy_ghx_proc_gen::{
     gen::{
         assets::{AssetSpawner, RulesModelsAssets},
@@ -19,6 +15,7 @@ use bevy_ghx_proc_gen::{
     },
     GeneratorBundle,
 };
+use bevy_ghx_utils::camera::{pan_orbit_camera, PanOrbitCamera};
 
 use crate::rules::rules_and_assets;
 

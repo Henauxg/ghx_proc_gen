@@ -3,10 +3,7 @@ use std::f32::consts::PI;
 use bevy::{log::LogPlugin, pbr::DirectionalLightShadowMap, prelude::*};
 
 use bevy_examples::{
-    anim::SpawningScaleAnimation,
-    camera::{pan_orbit_camera, PanOrbitCamera},
-    plugin::ProcGenExamplesPlugin,
-    utils::load_assets,
+    anim::SpawningScaleAnimation, plugin::ProcGenExamplesPlugin, utils::load_assets,
 };
 use bevy_ghx_proc_gen::{
     gen::{
@@ -23,6 +20,8 @@ use bevy_ghx_proc_gen::{
     },
     GeneratorBundle,
 };
+use bevy_ghx_utils::camera::{pan_orbit_camera, PanOrbitCamera};
+
 use rand::Rng;
 use rules::{CustomComponents, RotationRandomizer, ScaleRandomizer, WindRotation};
 

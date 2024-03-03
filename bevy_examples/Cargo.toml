@@ -7,6 +7,7 @@ exclude = ["assets/"]
 
 [dependencies]
 bevy_ghx_proc_gen = { path = "../bevy_ghx_proc_gen", default-features = true }
+bevy_ghx_utils = { version = "0.1.0", default-features = true }
 
 tracing-subscriber = "0.3.18"
 rand = "0.8.5"
