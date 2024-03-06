@@ -10,7 +10,7 @@ use bevy::{
         system::{Commands, Local, Query, Res, ResMut, Resource},
     },
     hierarchy::BuildChildren,
-    input::{keyboard::KeyCode, Input},
+    input::{keyboard::KeyCode, ButtonInput},
     log::warn,
     render::{camera::Camera, color::Color},
     text::{BreakLineOn, Text, TextSection, TextStyle},
@@ -291,7 +291,7 @@ pub fn update_selection_cursor_panel_text(
 }
 
 pub fn deselect_from_keybinds(
-    keys: Res<Input<KeyCode>>,
+    keys: Res<ButtonInput<KeyCode>>,
     proc_gen_key_bindings: Res<ProcGenKeyBindings>,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
     mut selection_cursor: Query<&mut Cursor, With<SelectCursor>>,
@@ -335,7 +335,7 @@ pub fn switch_generation_selection_from_keybinds<C: CoordinateSystem>(
     mut local_grid_cycler: Local<EntityProvider>,
     mut commands: Commands,
     mut active_generation: ResMut<ActiveGeneration>,
-    keys: Res<Input<KeyCode>>,
+    keys: Res<ButtonInput<KeyCode>>,
     selection_marker_settings: Res<SelectionCursorMarkerSettings>,
     proc_gen_key_bindings: Res<ProcGenKeyBindings>,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
@@ -408,7 +408,7 @@ impl Default for CursorKeyboardMovement {
 
 pub fn move_selection_from_keybinds<C: CoordinateSystem>(
     mut commands: Commands,
-    keys: Res<Input<KeyCode>>,
+    keys: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
     selection_marker_settings: Res<SelectionCursorMarkerSettings>,
     proc_gen_key_bindings: Res<ProcGenKeyBindings>,

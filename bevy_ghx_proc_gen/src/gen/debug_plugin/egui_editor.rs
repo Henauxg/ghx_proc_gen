@@ -5,7 +5,7 @@ use bevy::{
         query::With,
         system::{Query, Res, ResMut, Resource},
     },
-    input::{keyboard::KeyCode, mouse::MouseButton, Input},
+    input::{keyboard::KeyCode, mouse::MouseButton, ButtonInput},
     log::{info, warn},
 };
 use bevy_egui::{
@@ -211,7 +211,7 @@ pub fn draw_cursor_edit_window<C: CoordinateSystem>(
 
 pub fn update_painting_state(
     mut editor_context: ResMut<EditorContext>,
-    buttons: Res<Input<MouseButton>>,
+    buttons: Res<ButtonInput<MouseButton>>,
     mut node_select_events: EventReader<NodeSelectedEvent>,
     cursor_targets: Query<(), With<CursorTarget>>,
 ) {
@@ -234,7 +234,7 @@ pub fn update_painting_state(
 
 pub fn paint<C: CoordinateSystem>(
     mut editor_context: ResMut<EditorContext>,
-    keys: Res<Input<KeyCode>>,
+    keys: Res<ButtonInput<KeyCode>>,
     active_generation: Res<ActiveGeneration>,
     mut node_over_events: EventReader<NodeOverEvent>,
     mut generations: Query<&mut Generator<C>>,

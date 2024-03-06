@@ -364,16 +364,16 @@ pub struct ProcGenKeyBindings {
 impl Default for ProcGenKeyBindings {
     fn default() -> Self {
         Self {
-            prev_node: KeyCode::Left,
-            next_node: KeyCode::Right,
-            cursor_x_axis: KeyCode::X,
-            cursor_y_axis: KeyCode::Y,
-            cursor_z_axis: KeyCode::Z,
+            prev_node: KeyCode::ArrowLeft,
+            next_node: KeyCode::ArrowRight,
+            cursor_x_axis: KeyCode::KeyX,
+            cursor_y_axis: KeyCode::KeyY,
+            cursor_z_axis: KeyCode::KeyZ,
             deselect: KeyCode::Escape,
             switch_grid: KeyCode::Tab,
             pause_toggle: KeyCode::Space,
-            step: KeyCode::Down,
-            continuous_step: KeyCode::Up,
+            step: KeyCode::ArrowDown,
+            continuous_step: KeyCode::ArrowUp,
         }
     }
 }

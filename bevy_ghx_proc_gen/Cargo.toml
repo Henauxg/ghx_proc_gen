@@ -43,15 +43,15 @@ ghx_proc_gen = { path = "../ghx_proc_gen", version = "0.2.0-dev", features = [
 ] }
 
 # External dependencies
-bevy = { version = "0.12.0", default-features = false, features = [
+bevy = { version = "0.13.0", default-features = false, features = [
     "bevy_render", # Rendering framework core
 ] }
 
 # Optional dependencies
-bevy_ghx_grid = { version = "0.1.0", optional = true, features = [] }
+bevy_ghx_grid = { version = "0.2.0", optional = true, features = [] }
 # Only enabled when the "picking" feature is enabled
-bevy_mod_picking = { version = "0.17.0", optional = true, default-features = false }
+bevy_mod_picking = { version = "0.18.0", optional = true, default-features = false }
 # Bevy_mod_picking depends on this version of bevy_egui
-bevy_egui = { version = "0.23.0", optional = true, default-features = false, features = [
+bevy_egui = { version = "0.25.0", optional = true, default-features = false, features = [
     "default_fonts",
 ] }

@@ -9,7 +9,7 @@ use bevy::{
         system::{Commands, Query, Res, ResMut, Resource},
     },
     hierarchy::{Children, DespawnRecursiveExt},
-    input::{keyboard::KeyCode, Input},
+    input::{keyboard::KeyCode, ButtonInput},
     log::{info, warn},
     prelude::{Deref, DerefMut},
     render::color::Color,
@@ -100,7 +100,7 @@ pub fn update_active_generation<C: CoordinateSystem>(
 ///
 /// The keybind is read from the [`ProcGenKeyBindings`] `Resource`
 pub fn update_generation_control(
-    keys: Res<Input<KeyCode>>,
+    keys: Res<ButtonInput<KeyCode>>,
     proc_gen_key_bindings: Res<ProcGenKeyBindings>,
     mut generation_control: ResMut<GenerationControl>,
 ) {
@@ -224,7 +224,7 @@ pub fn generate_all<C: CoordinateSystem>(
 ///
 /// The keybinds are read from the [`ProcGenKeyBindings`] `Resource`
 pub fn step_by_step_input_update<C: CoordinateSystem>(
-    keys: Res<Input<KeyCode>>,
+    keys: Res<ButtonInput<KeyCode>>,
     proc_gen_key_bindings: Res<ProcGenKeyBindings>,
     mut generation_control: ResMut<GenerationControl>,
     active_generation: Res<ActiveGeneration>,

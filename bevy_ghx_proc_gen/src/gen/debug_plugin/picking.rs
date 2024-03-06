@@ -8,14 +8,11 @@ use bevy::{
         system::{Commands, Local, Query, Res, ResMut, Resource},
     },
     hierarchy::{BuildChildren, DespawnRecursiveExt, Parent},
-    input::{keyboard::KeyCode, Input},
-    math::{Vec2, Vec3},
+    input::{keyboard::KeyCode, ButtonInput},
+    math::{primitives::Cuboid, Vec2, Vec3},
     pbr::{AlphaMode, NotShadowCaster, PbrBundle, StandardMaterial},
     prelude::{Deref, DerefMut},
-    render::{
-        color::Color,
-        mesh::{shape, Mesh},
-    },
+    render::{color::Color, mesh::Mesh},
     sprite::{Sprite, SpriteBundle},
     text::Text,
     transform::components::Transform,
@@ -254,8 +251,8 @@ pub fn setup_picking_assets(
 ) {
     cursor_target_assets.color = Color::WHITE.with_a(0.15);
     cursor_target_assets.base_size = 0.9;
-    cursor_target_assets.target_mesh_3d = meshes.add(Mesh::from(shape::Cube {
-        size: cursor_target_assets.base_size,
+    cursor_target_assets.target_mesh_3d = meshes.add(Mesh::from(Cuboid {
+        half_size: Vec3::splat(cursor_target_assets.base_size / 2.),
     }));
     cursor_target_assets.target_mat_3d = standard_materials.add(StandardMaterial {
         base_color: cursor_target_assets.color,
@@ -277,7 +274,7 @@ pub struct ActiveCursorTargets {
 pub fn update_cursor_targets_nodes<C: CoordinateSystem>(
     mut local_active_cursor_targets: Local<Option<ActiveCursorTargets>>,
     mut commands: Commands,
-    keys: Res<Input<KeyCode>>,
+    keys: Res<ButtonInput<KeyCode>>,
     cursor_target_assets: Res<CursorTargetAssets>,
     proc_gen_key_bindings: Res<ProcGenKeyBindings>,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
