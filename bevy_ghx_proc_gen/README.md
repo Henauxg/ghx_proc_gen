@@ -92,9 +92,8 @@ Both of those `plugins` start their work when you insert the components from a `
 *Find the list and description in [Cargo.toml](Cargo.toml)*
 
 - `default-assets-bundle-spawners`: This feature compiles simple `AssetBundleSpawner impl` for a few basic types. Disable the feature if you don't need them, or want to customize their implementation.
-- `grid-debug-plugin` compiles the grid debug plugin and its systems.
 - `simple-plugin` compiles the simple plugin and its systems.
-- `debug-plugin` compiles the debug plugin and its systems.
+- `debug-plugin` compiles the debug plugin, the grid debug plugin and their systems.
 
 *See also the [main crate](../README.md#cargo-features) cargo features*
 
