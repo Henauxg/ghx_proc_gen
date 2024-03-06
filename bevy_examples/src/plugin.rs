@@ -27,6 +27,12 @@ use bevy::{
         PositionType, Style, UiRect, Val,
     },
 };
+use bevy_ghx_grid::{
+    debug_plugin::{
+        toggle_debug_grids_visibilities, toggle_grid_markers_visibilities, GridDebugPlugin,
+    },
+    ghx_grid::coordinate_system::CoordinateSystem,
+};
 use bevy_ghx_proc_gen::{
     bevy_egui::{self, EguiPlugin},
     gen::{
@@ -39,8 +45,6 @@ use bevy_ghx_proc_gen::{
         },
         insert_bundle_from_resource_to_spawned_nodes,
     },
-    grid::{toggle_debug_grids_visibilities, toggle_grid_markers_visibilities, GridDebugPlugin},
-    proc_gen::grid::direction::CoordinateSystem,
 };
 use bevy_ghx_utils::camera::toggle_auto_orbit;
 use bevy_mod_picking::{picking_core::Pickable, DefaultPickingPlugins};

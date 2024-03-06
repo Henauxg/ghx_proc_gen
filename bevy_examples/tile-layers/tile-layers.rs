@@ -1,21 +1,33 @@
-use bevy::{app::PluginGroup, log::LogPlugin, prelude::*};
+use bevy::{
+    app::{App, PluginGroup, Startup},
+    asset::{AssetServer, Handle},
+    core_pipeline::core_2d::Camera2dBundle,
+    ecs::system::{Commands, Res},
+    log::LogPlugin,
+    math::Vec3,
+    prelude::SpatialBundle,
+    render::{
+        color::Color,
+        texture::{Image, ImagePlugin},
+    },
+    transform::components::Transform,
+    utils::default,
+    DefaultPlugins,
+};
 
 use bevy_examples::{plugin::ProcGenExamplesPlugin, utils::load_assets};
+use bevy_ghx_grid::{
+    debug_plugin::{view::DebugGridView, DebugGridView2dBundle},
+    ghx_grid::{coordinate_system::Cartesian3D, direction::Direction, grid::GridDefinition},
+};
 use bevy_ghx_proc_gen::{
     gen::{
         assets::{AssetSpawner, RulesModelsAssets},
         debug_plugin::GenerationViewMode,
     },
-    grid::{view::DebugGridView, DebugGridView2dBundle},
-    proc_gen::{
-        generator::{
-            builder::GeneratorBuilder, node_heuristic::NodeSelectionHeuristic, rules::RulesBuilder,
-            ModelSelectionHeuristic, RngMode,
-        },
-        grid::{
-            direction::{Cartesian3D, Direction},
-            GridDefinition,
-        },
+    proc_gen::generator::{
+        builder::GeneratorBuilder, node_heuristic::NodeSelectionHeuristic, rules::RulesBuilder,
+        ModelSelectionHeuristic, RngMode,
     },
     GeneratorBundle,
 };

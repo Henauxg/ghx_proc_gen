@@ -8,11 +8,9 @@ use bevy::{
     math::Vec3,
     render::view::Visibility,
 };
-use bevy_ghx_proc_gen::{
-    gen::assets::{
-        AssetsBundleSpawner, ComponentSpawner, ModelAsset, NoComponents, RulesModelsAssets,
-    },
-    proc_gen::grid::direction::GridDelta,
+use bevy_ghx_grid::ghx_grid::direction::GridDelta;
+use bevy_ghx_proc_gen::gen::assets::{
+    AssetsBundleSpawner, ComponentSpawner, ModelAsset, NoComponents, RulesModelsAssets,
 };
 
 /// Used to define an asset (not yet loaded) for a model: via an asset path, and an optionnal grid offset when spawned in Bevy

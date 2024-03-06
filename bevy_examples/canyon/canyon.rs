@@ -5,18 +5,18 @@ use bevy::{log::LogPlugin, pbr::DirectionalLightShadowMap, prelude::*};
 use bevy_examples::{
     anim::SpawningScaleAnimation, plugin::ProcGenExamplesPlugin, utils::load_assets,
 };
+use bevy_ghx_grid::{
+    debug_plugin::{view::DebugGridView, DebugGridView3dBundle},
+    ghx_grid::{coordinate_system::Cartesian3D, grid::GridDefinition},
+};
 use bevy_ghx_proc_gen::{
     gen::{
         assets::AssetSpawner,
         debug_plugin::{GenerationControl, GenerationViewMode},
     },
-    grid::{view::DebugGridView, DebugGridView3dBundle},
-    proc_gen::{
-        generator::{
-            builder::GeneratorBuilder, node_heuristic::NodeSelectionHeuristic, rules::RulesBuilder,
-            ModelSelectionHeuristic, RngMode,
-        },
-        grid::{direction::Cartesian3D, GridDefinition},
+    proc_gen::generator::{
+        builder::GeneratorBuilder, node_heuristic::NodeSelectionHeuristic, rules::RulesBuilder,
+        ModelSelectionHeuristic, RngMode,
     },
     GeneratorBundle,
 };

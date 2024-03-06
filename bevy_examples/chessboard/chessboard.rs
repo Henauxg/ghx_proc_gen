@@ -1,19 +1,20 @@
 use bevy::prelude::*;
 
+use bevy_ghx_grid::ghx_grid::{
+    coordinate_system::Cartesian2D,
+    grid::{GridDefinition, GridPosition},
+};
 use bevy_ghx_proc_gen::{
     gen::{
         assets::{AssetSpawner, RulesModelsAssets},
         default_bundles::PbrMesh,
         simple_plugin::ProcGenSimplePlugin,
     },
-    proc_gen::{
-        generator::{
-            builder::GeneratorBuilder,
-            model::ModelCollection,
-            rules::RulesBuilder,
-            socket::{SocketCollection, SocketsCartesian2D},
-        },
-        grid::{direction::Cartesian2D, GridDefinition, GridPosition},
+    proc_gen::generator::{
+        builder::GeneratorBuilder,
+        model::ModelCollection,
+        rules::RulesBuilder,
+        socket::{SocketCollection, SocketsCartesian2D},
     },
     GeneratorBundle,
 };
