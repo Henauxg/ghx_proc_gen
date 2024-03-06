@@ -11,7 +11,8 @@ use bevy::{
     log::{info, warn},
     utils::HashSet,
 };
-use ghx_proc_gen::{generator::Generator, grid::direction::CoordinateSystem, GeneratorError};
+use bevy_ghx_grid::ghx_grid::coordinate_system::CoordinateSystem;
+use ghx_proc_gen::{generator::Generator, GeneratorError};
 
 use crate::gen::spawn_node;
 

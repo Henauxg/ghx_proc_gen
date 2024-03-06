@@ -15,20 +15,20 @@ use bevy::{
     render::color::Color,
     time::Time,
 };
+use bevy_ghx_grid::{
+    debug_plugin::markers::{spawn_marker, MarkerDespawnEvent},
+    ghx_grid::{coordinate_system::CoordinateSystem, grid::GridDefinition},
+};
 use ghx_proc_gen::{
     generator::{
         model::ModelIndex,
         observer::{GenerationUpdate, QueuedObserver},
         GenerationStatus, Generator,
     },
-    grid::{direction::CoordinateSystem, GridDefinition, NodeIndex},
-    GeneratorError,
+    GeneratorError, NodeIndex,
 };
 
-use crate::{
-    gen::SpawnedNode,
-    grid::markers::{spawn_marker, MarkerDespawnEvent},
-};
+use crate::gen::SpawnedNode;
 
 use super::{
     spawn_node, AssetSpawner, AssetsBundleSpawner, ComponentSpawner, GenerationControl,

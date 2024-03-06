@@ -5,9 +5,6 @@
 
 /// Utilities & debug tools/plugins for using the ghx_proc_gen generator
 pub mod gen;
-/// Utilities & debug tools/plugins for manipulating grids
-#[cfg(feature = "grid-debug-plugin")]
-pub mod grid;
 
 pub use ghx_proc_gen as proc_gen;
 
@@ -18,11 +15,9 @@ pub use bevy_mod_picking;
 pub use bevy_egui;
 
 use bevy::{ecs::bundle::Bundle, prelude::SpatialBundle};
+use bevy_ghx_grid::ghx_grid::{coordinate_system::CoordinateSystem, grid::GridDefinition};
 use gen::assets::{AssetSpawner, AssetsBundleSpawner, ComponentSpawner};
-use proc_gen::{
-    generator::Generator,
-    grid::{direction::CoordinateSystem, GridDefinition},
-};
+use proc_gen::generator::Generator;
 
 /// Utility [`Bundle`] to have everything necessary for generating a grid and spawning assets.
 ///

@@ -22,27 +22,22 @@ use bevy::{
     utils::default,
 };
 
+use bevy_ghx_grid::{
+    debug_plugin::{
+        get_translation_from_grid_coords_3d,
+        markers::{GridMarker, MarkerDespawnEvent},
+        view::{DebugGridView, DebugGridView2d, DebugGridView3d},
+    },
+    ghx_grid::{coordinate_system::CoordinateSystem, direction::Direction, grid::GridDefinition},
+};
 use bevy_mod_picking::{
     events::Out,
     prelude::{Down, ListenerInput, On, Over, Pointer},
     PickableBundle,
 };
-use ghx_proc_gen::{
-    generator::Generator,
-    grid::{
-        direction::{CoordinateSystem, Direction},
-        GridDefinition, NodeIndex,
-    },
-};
+use ghx_proc_gen::{generator::Generator, NodeIndex};
 
-use crate::{
-    gen::GridNode,
-    grid::{
-        get_translation_from_grid_coords_3d,
-        markers::{GridMarker, MarkerDespawnEvent},
-        view::{DebugGridView, DebugGridView2d, DebugGridView3d},
-    },
-};
+use crate::gen::GridNode;
 
 use super::{
     cursor::{

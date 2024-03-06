@@ -10,7 +10,7 @@ use bevy::{
     render::color::Color,
     time::{Timer, TimerMode},
 };
-use ghx_proc_gen::grid::direction::CoordinateSystem;
+use bevy_ghx_grid::ghx_grid::coordinate_system::CoordinateSystem;
 
 use self::{
     cursor::{

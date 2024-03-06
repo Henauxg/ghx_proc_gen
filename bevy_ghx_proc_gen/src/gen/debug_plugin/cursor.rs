@@ -22,16 +22,19 @@ use bevy::{
     },
     utils::default,
 };
+use bevy_ghx_grid::{
+    debug_plugin::markers::{spawn_marker, GridMarker, MarkerDespawnEvent},
+    ghx_grid::{
+        coordinate_system::CoordinateSystem,
+        direction::Direction,
+        grid::{GridDefinition, GridPosition},
+    },
+};
 use bevy_mod_picking::picking_core::Pickable;
 use ghx_proc_gen::{
     generator::{Generator, ModelVariations},
-    grid::{
-        direction::{CoordinateSystem, Direction},
-        GridDefinition, GridPosition, NodeIndex,
-    },
+    NodeIndex,
 };
-
-use crate::grid::markers::{spawn_marker, GridMarker, MarkerDespawnEvent};
 
 use super::{
     generation::{ActiveGeneration, GenerationEvent},

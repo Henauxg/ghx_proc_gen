@@ -73,19 +73,11 @@ For more information, check out the `bevy_ghx_proc_gen` [crate documentation](ht
 
 # Bevy plugins
 
-## Grid plugin
-
-`GridDebugPlugin` provides debug utilities for the grid-types bundlded within `ghx_proc_gen`:
-  - Can draw a debug view of any 2d/3d grid
-  - Can draw debug markers on any cells of a grid (controlled via bevy events)
-
-Use it by inserting a `DebugGridView3d` bundle on your `Grid` entity (or `DebugGridView2d`, depending on your Bevy Camera).
+Check out the `GridDebugPlugin` from [`bevy_ghx_grid`](https://github.com/Henauxg/ghx_grid/tree/main/bevy_ghx_grid) which provides debug utilities for the grid-types used by `ghx_proc_gen`.
 
 <p align="center">
   <img alt="bevy_chess_board_pattern" src="../docs/assets/debug_grid_and_markers.png" width="60%">
 </p>
-
-## ProcGen plugins
 
 `ghx_proc_gen` **does not need** a plugin to work, but if you want a really quick way to get started, or are in need of some debug utilities for your generations, there are some ready-made plugins for this:
 

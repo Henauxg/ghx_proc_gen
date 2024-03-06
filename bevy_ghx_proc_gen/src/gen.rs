@@ -9,10 +9,8 @@ use bevy::{
     hierarchy::BuildChildren,
     math::Vec3,
 };
-use ghx_proc_gen::{
-    generator::model::ModelInstance,
-    grid::{direction::CoordinateSystem, GridDefinition, NodeIndex},
-};
+use bevy_ghx_grid::ghx_grid::{coordinate_system::CoordinateSystem, grid::GridDefinition};
+use ghx_proc_gen::{generator::model::ModelInstance, NodeIndex};
 
 use self::assets::{AssetSpawner, AssetsBundleSpawner, ComponentSpawner};
 

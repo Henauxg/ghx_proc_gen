@@ -8,10 +8,8 @@ use bevy::{
     ecs::{component::Component, system::EntityCommands},
     math::Vec3,
 };
-use ghx_proc_gen::{
-    generator::model::{ModelIndex, ModelRotation},
-    grid::direction::GridDelta,
-};
+use bevy_ghx_grid::ghx_grid::direction::GridDelta;
+use ghx_proc_gen::generator::model::{ModelIndex, ModelRotation};
 
 /// Defines a struct which can spawn an assets [`bevy::prelude::Bundle`] (for example, a [`bevy::prelude::SpriteBundle`], a [`bevy::prelude::PbrBundle`], a [`bevy::prelude::SceneBundle`], ...).
 pub trait AssetsBundleSpawner: Sync + Send + 'static {

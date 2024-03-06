@@ -12,12 +12,10 @@ use bevy_egui::{
     egui::{self, Pos2},
     EguiContexts,
 };
-use ghx_proc_gen::{
-    generator::{
-        model::{ModelIndex, ModelInstance, ModelRotation},
-        Generator,
-    },
-    grid::direction::CoordinateSystem,
+use bevy_ghx_grid::ghx_grid::coordinate_system::CoordinateSystem;
+use ghx_proc_gen::generator::{
+    model::{ModelIndex, ModelInstance, ModelRotation},
+    Generator,
 };
 
 use crate::gen::GridNode;
