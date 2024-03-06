@@ -1,15 +1,16 @@
 use std::error::Error;
 
-use ghx_proc_gen::{
-    generator::{
-        model::ModelCollection,
-        rules::RulesBuilder,
-        socket::{SocketCollection, SocketsCartesian2D},
-    },
-    grid::{direction::Cartesian2D, GridPosition},
+use ghx_grid::{
+    coordinate_system::Cartesian2D,
+    grid::{GridDefinition, GridPosition},
+};
+use ghx_proc_gen::generator::{
+    model::ModelCollection,
+    rules::RulesBuilder,
+    socket::{SocketCollection, SocketsCartesian2D},
 };
 
-use {ghx_proc_gen::generator::builder::GeneratorBuilder, ghx_proc_gen::grid::GridDefinition};
+use ghx_proc_gen::generator::builder::GeneratorBuilder;
 
 fn main() -> Result<(), Box<dyn Error>> {
     // A SocketCollection is what we use to create sockets and define their connections

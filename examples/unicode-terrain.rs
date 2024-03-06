@@ -3,22 +3,20 @@ use std::{
     thread, time,
 };
 
-use ghx_proc_gen::{
-    generator::{
-        model::{ModelCollection, ModelInstance},
-        node_heuristic::NodeSelectionHeuristic,
-        observer::QueuedStatefulObserver,
-        rules::RulesBuilder,
-        socket::{SocketCollection, SocketsCartesian2D},
-        GenerationStatus, ModelSelectionHeuristic,
-    },
-    grid::{direction::Cartesian2D, GridData},
+use ghx_grid::{
+    coordinate_system::Cartesian2D,
+    grid::{GridData, GridDefinition},
+};
+use ghx_proc_gen::generator::{
+    model::{ModelCollection, ModelInstance},
+    node_heuristic::NodeSelectionHeuristic,
+    observer::QueuedStatefulObserver,
+    rules::RulesBuilder,
+    socket::{SocketCollection, SocketsCartesian2D},
+    GenerationStatus, ModelSelectionHeuristic,
 };
 
-use {
-    ghx_proc_gen::generator::{builder::GeneratorBuilder, RngMode},
-    ghx_proc_gen::grid::GridDefinition,
-};
+use ghx_proc_gen::generator::{builder::GeneratorBuilder, RngMode};
 
 pub enum GenerationViewMode {
     /// The parameter is the number of milliseconds to wait between each step.
