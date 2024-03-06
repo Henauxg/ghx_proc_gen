@@ -1,6 +1,7 @@
+use ghx_grid::coordinate_system::CoordinateSystem;
 use rand::{rngs::StdRng, Rng};
 
-use crate::grid::{direction::CoordinateSystem, NodeIndex};
+use crate::NodeIndex;
 
 use super::rules::Rules;
 

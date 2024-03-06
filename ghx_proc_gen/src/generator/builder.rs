@@ -1,9 +1,11 @@
 use std::{marker::PhantomData, sync::Arc};
 
-use crate::{
-    grid::{direction::CoordinateSystem, GridData, GridDefinition, NodeIndex, NodeRef},
-    GeneratorBuilderError,
+use ghx_grid::{
+    coordinate_system::CoordinateSystem,
+    grid::{GridData, GridDefinition, NodeRef},
 };
+
+use crate::{GeneratorBuilderError, NodeIndex};
 
 use super::{
     model::ModelVariantIndex,

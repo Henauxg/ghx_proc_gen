@@ -1,9 +1,11 @@
-use crate::grid::{direction::CoordinateSystem, GridData, GridDefinition};
-
 use super::{model::ModelInstance, GeneratedNode, Generator};
 
 #[cfg(feature = "bevy")]
 use bevy::ecs::component::Component;
+use ghx_grid::{
+    coordinate_system::CoordinateSystem,
+    grid::{GridData, GridDefinition},
+};
 
 /// Update sent by a [`crate::generator::Generator`]
 #[derive(Clone, Copy, Debug)]

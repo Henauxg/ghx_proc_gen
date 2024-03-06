@@ -4,6 +4,10 @@ use std::{
     marker::PhantomData,
 };
 
+use ghx_grid::{
+    coordinate_system::{Cartesian2D, Cartesian3D, CoordinateSystem},
+    direction::Direction,
+};
 use ndarray::{Array, Ix1, Ix2};
 
 #[cfg(feature = "models-names")]
@@ -24,10 +28,7 @@ use super::{
     },
     socket::SocketCollection,
 };
-use crate::{
-    grid::direction::{Cartesian2D, Cartesian3D, CoordinateSystem, Direction},
-    NodeSetError, RulesBuilderError,
-};
+use crate::{NodeSetError, RulesBuilderError};
 
 /// Rotation axis in a 2D cartesian coordinate system
 pub const CARTESIAN_2D_ROTATION_AXIS: Direction = Direction::ZForward;

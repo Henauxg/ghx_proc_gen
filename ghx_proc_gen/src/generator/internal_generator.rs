@@ -1,6 +1,10 @@
 use std::sync::Arc;
 
 use bitvec::{bitvec, order::LocalBits, slice::IterOnes, vec::BitVec};
+use ghx_grid::{
+    coordinate_system::CoordinateSystem,
+    grid::{GridData, GridDefinition},
+};
 use ndarray::{Array, Ix3};
 use rand::{
     distributions::{Distribution, WeightedIndex},
@@ -11,10 +15,7 @@ use rand::{
 #[cfg(feature = "debug-traces")]
 use tracing::{debug, info, trace};
 
-use crate::{
-    grid::{direction::CoordinateSystem, GridData, GridDefinition, NodeIndex},
-    GeneratorError, NodeSetError,
-};
+use crate::{GeneratorError, NodeIndex, NodeSetError};
 
 use super::{
     model::{ModelInstance, ModelVariantIndex},

@@ -4,12 +4,13 @@
 //! Also provide grid utilities to manipulate 2d & 3d grid data.
 
 use generator::model::{ModelIndex, ModelRotation, ModelVariantIndex};
-use grid::NodeIndex;
+use ghx_grid::grid::GridIndex;
 
 /// Model synthesis/Wave function Collapse generator
 pub mod generator;
-/// Grid utilities
-pub mod grid;
+
+/// Our grid elements are called Nodes
+pub type NodeIndex = GridIndex;
 
 /// Error returned by a [`generator::Generator`] when a generation fails
 #[derive(thiserror::Error, Debug, Clone, Copy)]

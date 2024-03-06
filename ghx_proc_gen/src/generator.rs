@@ -4,13 +4,12 @@ use std::{collections::HashMap, sync::Arc};
 #[cfg(feature = "bevy")]
 use bevy::ecs::component::Component;
 
-use crate::{
-    grid::{
-        direction::{Cartesian2D, CoordinateSystem},
-        GridData, GridDefinition, NodeIndex, NodeRef,
-    },
-    GeneratorError, NodeSetError,
+use ghx_grid::{
+    coordinate_system::{Cartesian2D, CoordinateSystem},
+    grid::{GridData, GridDefinition, NodeRef},
 };
+
+use crate::{GeneratorError, NodeIndex, NodeSetError};
 
 use self::{
     builder::{GeneratorBuilder, Unset},

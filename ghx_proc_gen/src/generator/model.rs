@@ -1,5 +1,9 @@
 use std::{borrow::Cow, collections::HashSet, fmt, marker::PhantomData};
 
+use ghx_grid::{
+    coordinate_system::{Cartesian2D, Cartesian3D, CoordinateSystem},
+    direction::Direction,
+};
 #[cfg(feature = "debug-traces")]
 use tracing::warn;
 
@@ -7,8 +11,6 @@ use tracing::warn;
 use bevy::ecs::component::Component;
 #[cfg(feature = "reflect")]
 use bevy::{ecs::reflect::ReflectComponent, reflect::Reflect};
-
-use crate::grid::direction::{Cartesian2D, Cartesian3D, CoordinateSystem, Direction};
 
 use super::{
     rules::CARTESIAN_2D_ROTATION_AXIS,
