@@ -6,7 +6,7 @@ edition = "2021"
 
 [dev-dependencies]
 ghx_proc_gen = { path = "../ghx_proc_gen" }
-ghx_grid = { version = "0.1.0", features = [] }
+ghx_grid = { version = "0.2.0", features = [] }
 
 tracing-subscriber = "0.3.18"
 tracing = "0.1.40"

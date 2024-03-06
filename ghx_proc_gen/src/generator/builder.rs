@@ -33,7 +33,8 @@ pub struct Unset;
 ///
 /// Create a `Generator` from a `GeneratorBuilder`.
 /// ```
-/// use ghx_proc_gen::{grid::GridDefinition, generator::{builder::GeneratorBuilder, rules::{Rules, RulesBuilder}, socket::{SocketsCartesian2D, SocketCollection}, model::ModelCollection}};
+/// use ghx_proc_gen::{generator::{builder::GeneratorBuilder, rules::{Rules, RulesBuilder}, socket::{SocketsCartesian2D, SocketCollection}, model::ModelCollection}};
+/// use ghx_grid::grid::GridDefinition;
 ///
 /// let mut sockets = SocketCollection::new();
 /// let a = sockets.create();
