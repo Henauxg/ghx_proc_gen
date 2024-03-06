@@ -112,7 +112,7 @@ pub fn fps_text_update_system(
     for mut text in &mut query {
         // try to get a "smoothed" FPS value from Bevy
         if let Some(value) = diagnostics
-            .get(FrameTimeDiagnosticsPlugin::FPS)
+            .get(&FrameTimeDiagnosticsPlugin::FPS)
             .and_then(|fps| fps.smoothed())
         {
             // Format the number as to leave space for 4 digits, just in case,

@@ -10,13 +10,12 @@ use bevy::{
         schedule::IntoSystemConfigs,
         system::{Commands, Query, Res, ResMut},
     },
-    gizmos::GizmoConfig,
     hierarchy::BuildChildren,
     input::{
         common_conditions::input_just_pressed,
         keyboard::KeyCode,
         mouse::{MouseButton, MouseWheel},
-        Input,
+        ButtonInput,
     },
     math::Vec3,
     prelude::default,
@@ -97,7 +96,7 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
             self.assets_scale,
             ease_in_cubic,
         ));
-        app.add_systems(Startup, (setup_gizmos_config, setup_ui));
+        app.add_systems(Startup, setup_ui);
         app.add_systems(
             Update,
             (
@@ -128,10 +127,6 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
                 .before(bevy_egui::EguiSet::BeginFrame),
         );
     }
-}
-
-pub fn setup_gizmos_config(mut config: ResMut<GizmoConfig>) {
-    config.depth_bias = -1.0;
 }
 
 pub fn adjust_spawn_animation_when_painting(
@@ -315,7 +310,7 @@ pub fn update_generation_control_ui(
 // Quick & dirty: silence bevy events when using an egui window
 fn absorb_egui_inputs(
     mut contexts: bevy_egui::EguiContexts,
-    mut mouse: ResMut<Input<MouseButton>>,
+    mut mouse: ResMut<ButtonInput<MouseButton>>,
     mut mouse_wheel: ResMut<Events<MouseWheel>>,
 ) {
     let ctx = contexts.ctx_mut();

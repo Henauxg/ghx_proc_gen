@@ -78,9 +78,11 @@ fn setup_generator(
         .unwrap();
 
     // Create our assets. We define them in a separate collection for the sake of simplicity
-    let cube_mesh = meshes.add(Mesh::from(shape::Cube { size: CUBE_SIZE }));
-    let white_mat = materials.add(Color::WHITE.into());
-    let black_mat = materials.add(Color::BLACK.into());
+    let cube_mesh = meshes.add(Mesh::from(Cuboid {
+        half_size: Vec3::splat(CUBE_SIZE / 2.),
+    }));
+    let white_mat = materials.add(Color::WHITE);
+    let black_mat = materials.add(Color::BLACK);
     let mut models_assets = RulesModelsAssets::<PbrMesh>::new();
     models_assets.add_asset(
         0,

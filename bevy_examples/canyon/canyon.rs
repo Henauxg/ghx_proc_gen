@@ -205,6 +205,7 @@ fn main() {
         DefaultPlugins.set(LogPlugin {
             filter: "info,wgpu_core=warn,wgpu_hal=warn,ghx_proc_gen=debug".into(),
             level: bevy::log::Level::DEBUG,
+            ..default()
         }),
         ProcGenExamplesPlugin::<Cartesian3D, Handle<Scene>, CustomComponents>::new(
             GENERATION_VIEW_MODE,

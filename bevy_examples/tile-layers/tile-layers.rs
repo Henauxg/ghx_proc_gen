@@ -114,6 +114,7 @@ fn main() {
             .set(LogPlugin {
                 filter: "info,wgpu_core=warn,wgpu_hal=warn,ghx_proc_gen=debug".into(),
                 level: bevy::log::Level::DEBUG,
+                ..default()
             })
             .set(ImagePlugin::default_nearest()),
         ProcGenExamplesPlugin::<Cartesian3D, Handle<Image>>::new(
