@@ -48,7 +48,8 @@ bevy = { version = "0.13.0", default-features = false, features = [
 ] }
 
 # Optional dependencies
-bevy_ghx_grid = { version = "0.2.0", optional = true, features = [] }
+bevy_ghx_grid = { git = "https://github.com/Henauxg/bevy_ghx_grid.git", rev = "165b3b9", version = "0.3.0-dev", optional = true, features = [
+] }
 # Only enabled when the "picking" feature is enabled
 bevy_mod_picking = { version = "0.18.0", optional = true, default-features = false }
 # Bevy_mod_picking depends on this version of bevy_egui
