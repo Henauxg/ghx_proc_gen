@@ -6,6 +6,7 @@
 /// Utilities & debug tools/plugins for using the ghx_proc_gen generator
 pub mod gen;
 
+pub use bevy_ghx_grid;
 pub use ghx_proc_gen as proc_gen;
 
 #[cfg(feature = "picking")]
