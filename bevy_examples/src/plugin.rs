@@ -45,13 +45,12 @@ use bevy_ghx_proc_gen::{
         insert_bundle_from_resource_to_spawned_nodes,
     },
 };
-use bevy_ghx_utils::camera::toggle_auto_orbit;
+use bevy_ghx_utils::{camera::toggle_auto_orbit, systems::toggle_visibility};
 use bevy_mod_picking::{picking_core::Pickable, DefaultPickingPlugins};
 
 use crate::{
     anim::{animate_scale, ease_in_cubic, SpawningScaleAnimation},
     fps::{FpsDisplayPlugin, FpsRoot},
-    utils::toggle_visibility,
 };
 
 pub struct ProcGenExamplesPlugin<

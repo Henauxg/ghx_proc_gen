@@ -20,7 +20,7 @@ use bevy_ghx_proc_gen::{
     },
     GeneratorBundle,
 };
-use bevy_ghx_utils::camera::{pan_orbit_camera, PanOrbitCamera};
+use bevy_ghx_utils::camera::{update_pan_orbit_camera, PanOrbitCamera};
 
 use rand::Rng;
 use rules::{CustomComponents, RotationRandomizer, ScaleRandomizer, WindRotation};
@@ -216,7 +216,7 @@ fn main() {
         .add_systems(
             Update,
             (
-                pan_orbit_camera,
+                update_pan_orbit_camera,
                 apply_wind,
                 randomize_spawn_scale,
                 randomize_spawn_rotation,

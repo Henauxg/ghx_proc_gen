@@ -15,7 +15,7 @@ use bevy_ghx_proc_gen::{
     proc_gen::generator::{builder::GeneratorBuilder, rules::RulesBuilder},
     GeneratorBundle,
 };
-use bevy_ghx_utils::camera::{pan_orbit_camera, PanOrbitCamera};
+use bevy_ghx_utils::camera::{update_pan_orbit_camera, PanOrbitCamera};
 
 use crate::rules::rules_and_assets;
 
@@ -197,7 +197,7 @@ fn main() {
         ),
     ));
     app.add_systems(Startup, (setup_generator, setup_scene))
-        .add_systems(Update, pan_orbit_camera);
+        .add_systems(Update, update_pan_orbit_camera);
 
     app.run();
 }

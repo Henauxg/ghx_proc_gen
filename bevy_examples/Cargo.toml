@@ -9,7 +9,7 @@ exclude = ["assets/"]
 # Internal dependencies
 bevy_ghx_proc_gen = { path = "../bevy_ghx_proc_gen", default-features = true }
 bevy_ghx_grid = { version = "0.2.0", default-features = true }
-bevy_ghx_utils = { version = "0.2.0", default-features = true }
+bevy_ghx_utils = { path = "../../bevy_ghx_utils", version = "0.3.0-dev", default-features = true }
 
 # External dependencies
 tracing-subscriber = "0.3.18"
