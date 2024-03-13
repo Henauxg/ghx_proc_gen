@@ -1,20 +1,21 @@
 use bevy::{
     ecs::{
         entity::Entity,
-        event::EventReader,
+        event::{Event, EventReader, EventWriter},
         query::With,
         system::{Query, Res, ResMut, Resource},
     },
     input::{keyboard::KeyCode, mouse::MouseButton, ButtonInput},
-    log::{info, warn},
+    log::warn,
 };
 use bevy_egui::{
-    egui::{self, Pos2},
+    egui::{self, Color32, Pos2},
     EguiContexts,
 };
 use bevy_ghx_grid::ghx_grid::coordinate_system::CoordinateSystem;
 use ghx_proc_gen::generator::{
     model::{ModelIndex, ModelInstance, ModelRotation},
+    rules::ModelInfo,
     Generator,
 };
 
@@ -28,185 +29,170 @@ use super::{
 
 #[derive(Resource, Default)]
 pub struct EditorContext {
-    pub selected_model: Option<ModelInstance>,
-    pub paint_mode_enabled: bool,
+    pub model_brush: Option<ModelBrush>,
     pub painting: bool,
 }
 
-pub fn draw_cursor_edit_window<C: CoordinateSystem>(
+#[derive(Clone)]
+pub struct ModelBrush {
+    info: ModelInfo,
+    instance: ModelInstance,
+}
+
+#[derive(Event)]
+pub enum BrushEvent {
+    ClearBrush,
+    UpdateBrush(ModelBrush),
+    UpdateRotation(ModelRotation),
+}
+
+pub fn draw_edition_panel<C: CoordinateSystem>(
     mut editor_context: ResMut<EditorContext>,
     mut contexts: EguiContexts,
     active_generation: Res<ActiveGeneration>,
+    mut brush_events: EventWriter<BrushEvent>,
     mut generations: Query<&mut Generator<C>>,
     selection_cursor: Query<(&Cursor, &CursorInfo), With<SelectCursor>>,
 ) {
     let Some(active_generation) = active_generation.0 else {
         return;
     };
+    let Ok(generator) = generations.get(active_generation) else {
+        return;
+    };
+    let Ok((cursor, cursor_info)) = selection_cursor.get_single() else {
+        return;
+    };
 
-    egui::Window::new("Debug-editor")
-        .title_bar(false)
+    // TODO Cache ? rules models groups
+    egui::Window::new("Edition panel")
+        .title_bar(true)
         // TODO Init all those values with viewport size
-        .default_pos(Pos2::new(10., 250.))
+        .default_pos(Pos2::new(10., 300.))
         .show(contexts.ctx_mut(), |ui| {
-            ui.checkbox(&mut editor_context.paint_mode_enabled, "🖊 Painting");
-            ui.separator();
-            match editor_context.paint_mode_enabled {
-                true => {
-                    let Ok(generator) = generations.get(active_generation) else {
-                        return;
-                    };
-                    ui.label(format!(
-                        "rules: {} models ({} variations)",
+            ui.horizontal_wrapped(|ui| {
+                // TODO A rules models display
+                ui.label(format!("📖 Rules:",));
+                ui.colored_label(
+                    Color32::WHITE,
+                    format!(
+                        "{} models ({} variations)",
                         generator.rules().original_models_count(),
                         generator.rules().models_count(),
-                    ));
-                    ui.separator();
-                    // TODO Cache all this info ? original_models_count, models_count, rules models groups
-                    //------ temporary
-                    let Ok((_cursor, cursor_info)) = selection_cursor.get_single() else {
-                        return;
+                    ),
+                );
+            });
+
+            match &cursor.0 {
+                Some(targeted_node) => {
+                    ui.horizontal_wrapped(|ui| {
+                        ui.label("⭕ Selected node: ");
+                        ui.colored_label(
+                            Color32::WHITE,
+                            format!(
+                                "{{{}}}, {} possible models ({} variations)",
+                                targeted_node.position,
+                                cursor_info.models_variations.len(),
+                                cursor_info.total_models_count,
+                            ),
+                        );
+                    });
+                }
+                None => {
+                    ui.label("⭕ No selected node");
+                }
+            };
+
+            ui.separator();
+            match &editor_context.model_brush {
+                Some(model) => {
+                    ui.horizontal(|ui| {
+                        ui.label("🖊 Current brush: ");
+                        ui.colored_label(
+                            Color32::WHITE,
+                            format!("{}, {}", model.info.name, model.instance),
+                        );
+                        if ui.button("Clear").clicked() {
+                            brush_events.send(BrushEvent::ClearBrush);
+                        }
+                    });
+                }
+                None => {
+                    ui.label("🖊 No brush selected");
+                }
+            };
+            ui.separator();
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                for model_group in cursor_info.models_variations.iter() {
+                    let selected = match &editor_context.model_brush {
+                        Some(model) => model_group.index == model.instance.model_index,
+                        None => false,
                     };
-                    ui.label(format!(
-                        "selected: {} possible models ({} variations)",
-                        cursor_info.models_variations.len(),
-                        cursor_info.total_models_count,
-                    ));
-                    ui.separator();
-                    egui::ScrollArea::vertical().show(ui, |ui| {
-                        for model_group in cursor_info.models_variations.iter() {
-                            let selected = match editor_context.selected_model {
-                                Some(instance) => model_group.index == instance.model_index,
-                                None => false,
-                            };
-                            ui.horizontal(|ui| {
-                                let rot_count_tag = if model_group.rotations.len() != 1 {
-                                    format!(" ({})", model_group.rotations.len())
-                                } else {
-                                    "".to_owned()
+                    ui.horizontal(|ui| {
+                        let rot_count_tag = if model_group.rotations.len() != 1 {
+                            format!(" ({})", model_group.rotations.len())
+                        } else {
+                            "".to_owned()
+                        };
+                        if ui
+                            .selectable_label(
+                                selected,
+                                format!("▶ {}{}", model_group.info.name, rot_count_tag,),
+                            )
+                            .on_hover_ui(|ui| {
+                                ui.label(format!(
+                                    "{} possible rotations, weight: {}",
+                                    model_group.rotations.len(),
+                                    model_group.info.weight
+                                ));
+                            })
+                            .clicked()
+                        {
+                            brush_events.send(BrushEvent::UpdateBrush(ModelBrush {
+                                info: model_group.info.clone(),
+                                instance: ModelInstance {
+                                    model_index: model_group.index,
+                                    rotation: model_group.rotations[0],
+                                },
+                            }));
+                        }
+                        if selected {
+                            for rotation in model_group.rotations.iter() {
+                                let is_selected = match &editor_context.model_brush {
+                                    Some(model) => *rotation == model.instance.rotation,
+                                    None => false,
                                 };
                                 if ui
-                                    .selectable_label(
-                                        selected,
-                                        format!("{}{}", model_group.info.name, rot_count_tag,),
-                                    )
-                                    .on_hover_ui(|ui| {
-                                        ui.label(format!(
-                                            "{} possible rotations, weight: {}",
-                                            model_group.rotations.len(),
-                                            model_group.info.weight
-                                        ));
-                                    })
+                                    .selectable_label(is_selected, format!("{}°", rotation.value()))
                                     .clicked()
                                 {
-                                    editor_context.selected_model = Some(ModelInstance {
-                                        model_index: model_group.index,
-                                        rotation: model_group.rotations[0],
-                                    });
+                                    brush_events.send(BrushEvent::UpdateRotation(*rotation));
                                 }
-                                if selected {
-                                    for rotation in model_group.rotations.iter() {
-                                        let is_selected = match editor_context.selected_model {
-                                            Some(instance) => *rotation == instance.rotation,
-                                            None => false,
-                                        };
-                                        if ui
-                                            .selectable_label(
-                                                is_selected,
-                                                format!("{}°", rotation.value()),
-                                            )
-                                            .clicked()
-                                        {
-                                            editor_context
-                                                .selected_model
-                                                .as_mut()
-                                                .unwrap()
-                                                .rotation = *rotation;
-                                        }
-                                    }
-                                }
-                            });
+                            }
                         }
                     });
-                    //------ temporary
                 }
-                false => {
-                    let Ok((cursor, cursor_info)) = selection_cursor.get_single() else {
-                        return;
-                    };
-                    let Some(selected_node) = &cursor.0 else {
-                        return;
-                    };
-                    if cursor_info.total_models_count <= 1 {
-                        return;
-                    }
-                    ui.label(format!(
-                        "selected: {} possible models ({} variations)",
-                        cursor_info.models_variations.len(),
-                        cursor_info.total_models_count,
-                    ));
-                    ui.separator();
-                    egui::ScrollArea::vertical().show(ui, |ui| {
-                        for model_group in cursor_info.models_variations.iter() {
-                            let selected = match editor_context.selected_model {
-                                Some(instance) => model_group.index == instance.model_index,
-                                None => false,
-                            };
-                            ui.horizontal(|ui| {
-                                if ui
-                                    .selectable_label(
-                                        selected,
-                                        format!(
-                                            "[{}] {}",
-                                            model_group.rotations.len(),
-                                            model_group.info.name
-                                        ),
-                                    )
-                                    .on_hover_ui(|ui| {
-                                        ui.label(format!(
-                                            "{} possible rotations, weight: {}",
-                                            model_group.rotations.len(),
-                                            model_group.info.weight
-                                        ));
-                                    })
-                                    .clicked()
-                                {
-                                    if model_group.rotations.len() == 1 {
-                                        generate_node(
-                                            active_generation,
-                                            selected_node,
-                                            model_group.index,
-                                            model_group.rotations[0],
-                                            &mut generations,
-                                        );
-                                        editor_context.selected_model = None;
-                                    } else {
-                                        //TODO Meh. May need to split model & rot again for cursor mode
-                                        editor_context.selected_model = Some(ModelInstance {
-                                            model_index: model_group.index,
-                                            rotation: model_group.rotations[0],
-                                        });
-                                    }
-                                }
-                                if selected {
-                                    for rot in model_group.rotations.iter() {
-                                        if ui.button(format!("{}°", rot.value())).clicked() {
-                                            generate_node(
-                                                active_generation,
-                                                selected_node,
-                                                model_group.index,
-                                                *rot,
-                                                &mut generations,
-                                            );
-                                        }
-                                    }
-                                }
-                            });
-                        }
-                    });
+            });
+        });
+}
+
+pub fn update_brush(
+    mut editor_context: ResMut<EditorContext>,
+    mut brush_events: EventReader<BrushEvent>,
+) {
+    for event in brush_events.read() {
+        match event {
+            BrushEvent::ClearBrush => editor_context.model_brush = None,
+            BrushEvent::UpdateBrush(new_brush) => {
+                editor_context.model_brush = Some(new_brush.clone())
+            }
+            BrushEvent::UpdateRotation(new_rot) => {
+                if let Some(brush) = editor_context.model_brush.as_mut() {
+                    brush.instance.rotation = *new_rot;
                 }
             }
-        });
+        }
+    }
 }
 
 pub fn update_painting_state(
@@ -215,20 +201,17 @@ pub fn update_painting_state(
     mut node_select_events: EventReader<NodeSelectedEvent>,
     cursor_targets: Query<(), With<CursorTarget>>,
 ) {
-    if !editor_context.paint_mode_enabled {
-        node_select_events.clear();
+    if editor_context.model_brush.is_none() {
         editor_context.painting = false;
         return;
     }
     if let Some(ev) = node_select_events.read().last() {
         if let Ok(_) = cursor_targets.get(ev.0) {
             editor_context.painting = true;
-            info!(" editor_context.painting = true;",);
         };
     }
     if buttons.just_released(MouseButton::Left) {
         editor_context.painting = false;
-        info!(" editor_context.painting = false;",);
     }
 }
 
@@ -244,7 +227,7 @@ pub fn paint<C: CoordinateSystem>(
         node_over_events.clear();
         return;
     }
-    let Some(paint_instance) = editor_context.selected_model else {
+    let Some(model_brush) = &editor_context.model_brush else {
         node_over_events.clear();
         return;
     };
@@ -262,14 +245,10 @@ pub fn paint<C: CoordinateSystem>(
             continue;
         };
 
-        info!(
-            "Request to generate model {}  on node {}",
-            paint_instance, node.0
-        );
-        if let Err(err) = generator.set_and_propagate(node.0, paint_instance, true) {
+        if let Err(err) = generator.set_and_propagate(node.0, model_brush.instance, true) {
             warn!(
-                "Failed to generate model {}  on node {}: {}",
-                paint_instance, node.0, err
+                "Failed to generate model {} on node {}: {}",
+                model_brush.instance, node.0, err
             );
         }
     }

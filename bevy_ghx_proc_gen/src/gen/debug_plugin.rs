@@ -17,6 +17,7 @@ use self::{
         update_cursors_overlays, update_selection_cursor_panel_text, CursorKeyboardMovement,
         CursorKeyboardMovementSettings, SelectCursor, SelectionCursorMarkerSettings,
     },
+    egui_editor::{update_brush, BrushEvent},
     generation::{
         generate_all, insert_error_markers_to_new_generations,
         insert_void_nodes_to_new_generations, step_by_step_input_update, step_by_step_timed_update,
@@ -47,7 +48,7 @@ use self::picking::{
 pub mod picking;
 
 #[cfg(feature = "egui-edit")]
-use self::egui_editor::{draw_cursor_edit_window, paint, update_painting_state, EditorContext};
+use self::egui_editor::{draw_edition_panel, paint, update_painting_state, EditorContext};
 
 #[cfg(feature = "egui-edit")]
 pub mod egui_editor;
@@ -126,14 +127,16 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
                 app.init_resource::<GridCursorsUiSettings>();
             }
         }
-        #[cfg(feature = "egui-edit")]
-        app.init_resource::<EditorContext>();
-        #[cfg(feature = "picking")]
-        app.init_resource::<CursorTargetAssets>();
 
         app.add_event::<GenerationEvent>();
+
+        #[cfg(feature = "egui-edit")]
+        app.init_resource::<EditorContext>()
+            .add_event::<BrushEvent>();
+
         #[cfg(feature = "picking")]
-        app.add_event::<NodeOverEvent>()
+        app.init_resource::<CursorTargetAssets>()
+            .add_event::<NodeOverEvent>()
             .add_event::<NodeOutEvent>()
             .add_event::<NodeSelectedEvent>();
 
@@ -199,10 +202,13 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
         #[cfg(feature = "egui-edit")]
         app.add_systems(
             Update,
-            (
-                draw_cursor_edit_window::<C>,
-                (update_painting_state, paint::<C>).chain(),
-            ),
+            ((
+                draw_edition_panel::<C>,
+                update_brush,
+                update_painting_state,
+                paint::<C>,
+            )
+                .chain(),),
         );
 
         match self.cursor_ui_mode {
