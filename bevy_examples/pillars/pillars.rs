@@ -66,27 +66,12 @@ fn setup_scene(
     ));
     commands.spawn((
         PbrBundle {
-            mesh: meshes.add(Mesh::from(Cuboid::default())),
-            material: materials.add(StandardMaterial {
-                base_color: Color::hex("888888").unwrap(),
-                unlit: true,
-                cull_mode: None,
-                ..default()
-            }),
-            transform: Transform::from_scale(Vec3::splat(1_000_000.0)),
-
-            ..default()
-        },
-        Name::new("Sky"),
-    ));
-    commands.spawn((
-        PbrBundle {
             mesh: meshes.add(Mesh::from(Plane3d::default())),
             material: materials.add(StandardMaterial {
                 base_color: Color::hex("888888").unwrap(),
                 ..default()
             }),
-            transform: Transform::from_scale(Vec3::splat(200.0)).with_translation(Vec3::new(
+            transform: Transform::from_scale(Vec3::splat(10000.0)).with_translation(Vec3::new(
                 0.,
                 BLOCK_SIZE / 2.,
                 0.,
@@ -99,17 +84,17 @@ fn setup_scene(
     // Scene lights
     commands.insert_resource(AmbientLight {
         color: Color::ORANGE_RED,
-        brightness: 0.02,
+        brightness: 0.05,
     });
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
             shadows_enabled: true,
-            illuminance: 8000.,
-            color: Color::ORANGE_RED,
+            illuminance: 3000.,
+            color: Color::rgb(1.0, 0.85, 0.65),
             ..default()
         },
         transform: Transform {
-            translation: Vec3::new(5.0, 10.0, 2.0),
+            translation: Vec3::new(0.0, 0.0, 0.0),
             rotation: Quat::from_euler(EulerRot::ZYX, 0., -PI / 5., -PI / 3.),
             ..default()
         },
@@ -118,8 +103,8 @@ fn setup_scene(
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
             shadows_enabled: false,
-            illuminance: 4000.,
-            color: Color::ORANGE_RED,
+            illuminance: 1250.,
+            color: Color::rgb(1.0, 0.85, 0.65),
             ..default()
         },
         transform: Transform {
