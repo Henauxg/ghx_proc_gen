@@ -76,7 +76,7 @@ fn setup_scene(mut commands: Commands) {
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
             shadows_enabled: true,
-            illuminance: 8000.,
+            illuminance: 4000.,
             color: Color::rgb(1.0, 0.85, 0.65),
             ..default()
         },
@@ -90,7 +90,7 @@ fn setup_scene(mut commands: Commands) {
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
             shadows_enabled: false,
-            illuminance: 4000.,
+            illuminance: 2000.,
             color: Color::ORANGE_RED,
             ..default()
         },
