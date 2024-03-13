@@ -10,6 +10,7 @@ use bevy::{
         schedule::IntoSystemConfigs,
         system::{Commands, Query, Res, ResMut},
     },
+    gizmos::config::GizmoConfigStore,
     hierarchy::BuildChildren,
     input::{
         common_conditions::input_just_pressed,
@@ -28,7 +29,8 @@ use bevy::{
 };
 use bevy_ghx_grid::{
     debug_plugin::{
-        toggle_debug_grids_visibilities, toggle_grid_markers_visibilities, GridDebugPlugin,
+        markers::MarkersGroup, toggle_debug_grids_visibilities, toggle_grid_markers_visibilities,
+        GridDebugPlugin,
     },
     ghx_grid::coordinate_system::CoordinateSystem,
 };
@@ -95,7 +97,7 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
             self.assets_scale,
             ease_in_cubic,
         ));
-        app.add_systems(Startup, setup_ui);
+        app.add_systems(Startup, (setup_ui, customize_markers_gizmos_config));
         app.add_systems(
             Update,
             (
@@ -126,6 +128,12 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
                 .before(bevy_egui::EguiSet::BeginFrame),
         );
     }
+}
+
+pub fn customize_markers_gizmos_config(mut config_store: ResMut<GizmoConfigStore>) {
+    let markers_config = config_store.config_mut::<MarkersGroup>().0;
+    // Make them appear on top of everything else
+    markers_config.depth_bias = -1.0;
 }
 
 pub fn adjust_spawn_animation_when_painting(
