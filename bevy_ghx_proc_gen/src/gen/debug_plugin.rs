@@ -2,10 +2,7 @@ use std::{marker::PhantomData, time::Duration};
 
 use bevy::{
     app::{App, Plugin, PostStartup, PostUpdate, PreUpdate, Startup, Update},
-    ecs::{
-        schedule::{apply_deferred, IntoSystemConfigs},
-        system::Resource,
-    },
+    ecs::{schedule::IntoSystemConfigs, system::Resource},
     input::keyboard::KeyCode,
     render::color::Color,
     time::{Timer, TimerMode},
@@ -172,7 +169,6 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
                     insert_default_bundle_to_spawned_nodes::<PickableBundle>,
                     (
                         update_cursor_targets_nodes::<C>,
-                        apply_deferred,
                         insert_cursor_picking_handlers_to_grid_nodes::<C>,
                     )
                         .chain(),
