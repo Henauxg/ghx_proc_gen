@@ -40,7 +40,7 @@ use bevy_ghx_proc_gen::{
         assets::{AssetsBundleSpawner, ComponentSpawner, NoComponents},
         debug_plugin::{
             cursor::{CursorsOverlaysRoot, CursorsPanelRoot},
-            egui_editor::{paint, update_painting_state, EditorContext},
+            egui_editor::{paint, toggle_editor, update_painting_state, EditorContext},
             CursorUiMode, GenerationControl, GenerationControlStatus, GenerationViewMode,
             ProcGenDebugPlugin,
         },
@@ -107,6 +107,7 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
                     toggle_visibility::<ExamplesUiRoot>,
                     toggle_visibility::<CursorsPanelRoot>,
                     toggle_visibility::<CursorsOverlaysRoot>,
+                    toggle_editor,
                 )
                     .run_if(input_just_pressed(KeyCode::F1)),
                 toggle_visibility::<FpsRoot>.run_if(input_just_pressed(KeyCode::F2)),
