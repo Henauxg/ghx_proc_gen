@@ -73,11 +73,7 @@ For more information, check out the `bevy_ghx_proc_gen` [crate documentation](ht
 
 # Bevy plugins
 
-Check out the `GridDebugPlugin` from [`bevy_ghx_grid`](https://github.com/Henauxg/ghx_grid/tree/main/bevy_ghx_grid) which provides debug utilities for the grid-types used by `ghx_proc_gen`.
-
-<p align="center">
-  <img alt="bevy_chess_board_pattern" src="../docs/assets/debug_grid_and_markers.png" width="60%">
-</p>
+- Check out the `GridDebugPlugin` from [`bevy_ghx_grid`](https://github.com/Henauxg/ghx_grid/tree/main/bevy_ghx_grid) which provides debug utilities for the grid-types used by `ghx_proc_gen`.
 
 `ghx_proc_gen` **does not need** a plugin to work, but if you want a really quick way to get started, or are in need of some debug utilities for your generations, there are some ready-made plugins for this:
 
@@ -86,6 +82,16 @@ Check out the `GridDebugPlugin` from [`bevy_ghx_grid`](https://github.com/Henaux
 - `ProcGenDebugPlugin` [*Depends on `GridDebugPlugin`*]: Just a bit more complex, and not focused on performance but rather on demos & debugging use-cases. You can view the generation one step at a time, see where the contradiction occurs and more. See [its sources](src/gen/debug_plugin.rs).
 
 Both of those `plugins` start their work when you insert the components from a `GeneratorBundle` on an `Entity`.
+
+<div align="center">
+  
+`ProcGenDebugPlugin` editing feature demo:
+  
+https://github.com/Henauxg/ghx_proc_gen/assets/19689618/b2f15673-e6aa-4a1d-94f7-a98c903a7591
+
+https://github.com/Henauxg/ghx_proc_gen/assets/19689618/5fa26a8f-7454-4574-9cc3-f6f77fdd0049
+
+</div>
 
 # Cargo features
 
