@@ -11,9 +11,7 @@ A Rust library for 2D & 3D procedural generation with **Model synthesis/Wave fun
 
 <div align="center">
 
-https://github.com/Henauxg/ghx_proc_gen/assets/19689618/3f68c62e-ff0c-4d26-adf4-dbc25839dcf3
-
-*Examples in the video are slowed down in order to see the generation progress*
+![canyon](https://github.com/Henauxg/ghx_proc_gen/assets/19689618/5c4f47da-4180-40da-89cf-4750304e707f)
 
 </div>
 
