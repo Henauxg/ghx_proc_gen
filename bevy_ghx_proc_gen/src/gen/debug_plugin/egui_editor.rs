@@ -27,6 +27,17 @@ use super::{
     picking::{CursorTarget, NodeOverEvent, NodeSelectedEvent},
 };
 
+#[derive(Resource)]
+pub struct EditorConfig {
+    enabled: bool,
+}
+
+impl Default for EditorConfig {
+    fn default() -> Self {
+        Self { enabled: true }
+    }
+}
+
 #[derive(Resource, Default)]
 pub struct EditorContext {
     pub model_brush: Option<ModelBrush>,
@@ -44,6 +55,14 @@ pub enum BrushEvent {
     ClearBrush,
     UpdateBrush(ModelBrush),
     UpdateRotation(ModelRotation),
+}
+
+pub fn editor_enabled(editor_config: Res<EditorConfig>) -> bool {
+    editor_config.enabled
+}
+
+pub fn toggle_editor(mut editor_config: ResMut<EditorConfig>) {
+    editor_config.enabled = !editor_config.enabled;
 }
 
 pub fn draw_edition_panel<C: CoordinateSystem>(

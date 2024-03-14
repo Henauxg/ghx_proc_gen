@@ -17,7 +17,7 @@ use self::{
         update_cursors_overlays, update_selection_cursor_panel_text, CursorKeyboardMovement,
         CursorKeyboardMovementSettings, SelectCursor, SelectionCursorMarkerSettings,
     },
-    egui_editor::{update_brush, BrushEvent},
+    egui_editor::{editor_enabled, update_brush, BrushEvent, EditorConfig},
     generation::{
         generate_all, insert_error_markers_to_new_generations,
         insert_void_nodes_to_new_generations, step_by_step_input_update, step_by_step_timed_update,
@@ -131,7 +131,8 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
         app.add_event::<GenerationEvent>();
 
         #[cfg(feature = "egui-edit")]
-        app.init_resource::<EditorContext>()
+        app.init_resource::<EditorConfig>()
+            .init_resource::<EditorContext>()
             .add_event::<BrushEvent>();
 
         #[cfg(feature = "picking")]
@@ -202,13 +203,14 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
         #[cfg(feature = "egui-edit")]
         app.add_systems(
             Update,
-            ((
+            (
                 draw_edition_panel::<C>,
                 update_brush,
                 update_painting_state,
                 paint::<C>,
             )
-                .chain(),),
+                .chain()
+                .run_if(editor_enabled),
         );
 
         match self.cursor_ui_mode {
