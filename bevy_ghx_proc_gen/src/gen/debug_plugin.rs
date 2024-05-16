@@ -17,17 +17,11 @@ use self::{
         update_cursors_overlays, update_selection_cursor_panel_text, CursorKeyboardMovement,
         CursorKeyboardMovementSettings, SelectCursor, SelectionCursorMarkerSettings,
     },
-    egui_editor::{editor_enabled, update_brush, BrushEvent, EditorConfig},
     generation::{
         generate_all, insert_error_markers_to_new_generations,
         insert_void_nodes_to_new_generations, step_by_step_input_update, step_by_step_timed_update,
         update_active_generation, update_generation_control, update_generation_view,
         ActiveGeneration, GenerationEvent,
-    },
-    picking::{
-        picking_remove_previous_over_cursor, setup_picking_assets, update_cursor_targets_nodes,
-        update_over_cursor_from_generation_events, update_over_cursor_panel_text,
-        CursorTargetAssets, NodeOutEvent, OverCursor, OverCursorMarkerSettings,
     },
 };
 use super::{
@@ -40,15 +34,20 @@ use bevy_mod_picking::PickableBundle;
 
 #[cfg(feature = "picking")]
 use self::picking::{
-    insert_cursor_picking_handlers_to_grid_nodes, picking_update_cursors_position, NodeOverEvent,
-    NodeSelectedEvent,
+    insert_cursor_picking_handlers_to_grid_nodes, picking_remove_previous_over_cursor,
+    picking_update_cursors_position, setup_picking_assets, update_cursor_targets_nodes,
+    update_over_cursor_from_generation_events, update_over_cursor_panel_text, CursorTargetAssets,
+    NodeOutEvent, NodeOverEvent, NodeSelectedEvent, OverCursor, OverCursorMarkerSettings,
 };
 
 #[cfg(feature = "picking")]
 pub mod picking;
 
 #[cfg(feature = "egui-edit")]
-use self::egui_editor::{draw_edition_panel, paint, update_painting_state, EditorContext};
+use self::egui_editor::{
+    draw_edition_panel, editor_enabled, paint, update_brush, update_painting_state, BrushEvent,
+    EditorConfig, EditorContext,
+};
 
 #[cfg(feature = "egui-edit")]
 pub mod egui_editor;
@@ -117,7 +116,6 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
         // If the resources already exists, nothing happens, else, add them with default values.
         app.init_resource::<ProcGenKeyBindings>()
             .init_resource::<GenerationControl>()
-            .init_resource::<OverCursorMarkerSettings>()
             .init_resource::<SelectionCursorMarkerSettings>()
             .init_resource::<CursorKeyboardMovement>()
             .init_resource::<CursorKeyboardMovementSettings>();
@@ -137,6 +135,7 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
 
         #[cfg(feature = "picking")]
         app.init_resource::<CursorTargetAssets>()
+            .init_resource::<OverCursorMarkerSettings>()
             .add_event::<NodeOverEvent>()
             .add_event::<NodeOutEvent>()
             .add_event::<NodeSelectedEvent>();

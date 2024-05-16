@@ -30,11 +30,13 @@ use bevy_ghx_grid::{
         grid::{GridDefinition, GridPosition},
     },
 };
-use bevy_mod_picking::picking_core::Pickable;
 use ghx_proc_gen::{
     generator::{Generator, ModelVariations},
     NodeIndex,
 };
+
+#[cfg(feature = "picking")]
+use bevy_mod_picking::picking_core::Pickable;
 
 use super::{
     generation::{ActiveGeneration, GenerationEvent},
