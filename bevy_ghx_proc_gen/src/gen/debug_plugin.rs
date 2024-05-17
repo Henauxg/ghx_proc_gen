@@ -92,7 +92,7 @@ impl Default for GridCursorsUiSettings {
     }
 }
 
-/// A [`Plugin`] useful for debug/analysis/demo. It mainly run [`Generator`] components and spawn the generated model's [`crate::gen::assets::ModelAsset`]
+/// A [`Plugin`] useful for debug/analysis/demo. It mainly run [`ghx_proc_gen::generator::Generator`] components and spawn the generated model's [`crate::gen::assets::ModelAsset`]
 ///
 /// It takes in a [`GenerationViewMode`] to control how the generators components will be run.
 ///
@@ -378,9 +378,9 @@ pub struct ProcGenKeyBindings {
 
     /// Key to pause/unpause the current [`GenerationControlStatus`]
     pub pause_toggle: KeyCode,
-    /// Key used only with [`GenerationViewMode::StepByStepPaused`] to step once per press
+    /// Key used only with [`GenerationViewMode::StepByStepManual`] to step once per press
     pub step: KeyCode,
-    /// Key used only with [`GenerationViewMode::StepByStepPaused`] to step continuously as long as pressed
+    /// Key used only with [`GenerationViewMode::StepByStepManual`] to step continuously as long as pressed
     pub continuous_step: KeyCode,
 }
 

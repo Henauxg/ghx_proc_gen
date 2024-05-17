@@ -71,10 +71,10 @@ pub enum GenerationStatus {
     Done,
 }
 
-/// Output of a [`Generator`] in the context of its [`crate::grid::GridDefinition`].
+/// Output of a [`Generator`] in the context of its [`ghx_grid::grid::GridDefinition`].
 #[derive(Clone, Copy, Debug)]
 pub struct GeneratedNode {
-    /// Index of the node in the [`crate::grid::GridDefinition`]
+    /// Index of the node in the grid
     pub node_index: NodeIndex,
     /// Generated node data
     pub model_instance: ModelInstance,

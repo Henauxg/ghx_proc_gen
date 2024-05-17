@@ -27,7 +27,7 @@ use proc_gen::generator::Generator;
 pub struct GeneratorBundle<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> {
     /// For positional rendering of the grid
     pub spatial: SpatialBundle,
-    /// Grid definition (Should be the same [`proc_gen::grid::GridDefinition`] as in the generator)
+    /// Grid definition (Should be the same [`bevy_ghx_grid::ghx_grid::grid::GridDefinition`] as in the generator)
     pub grid: GridDefinition<C>,
     /// Generator
     pub generator: Generator<C>,

@@ -7,7 +7,8 @@ use super::model::{ModelRotation, ModelTemplate, ALL_MODEL_ROTATIONS};
 /// Id of a possible connection type
 pub(crate) type SocketId = u64;
 
-/// Used to create one or more [`Socket`]. Created sockets can then be used to define [`super::model::Model`] and define connections between them.
+/// Used to create one or more [`Socket`]. Created sockets can then be used to define [`super::model::Model`] and
+/// define connections between them.
 #[derive(Clone)]
 pub struct SocketCollection {
     incremental_socket_index: u32,
@@ -35,7 +36,8 @@ impl SocketCollection {
         socket
     }
 
-    /// Adds a connection between two sockets. [`Model`] with sockets `from` can connect to [`Model`] with sockets `to` and vice versa.
+    /// Adds a connection between two sockets. [`super::model::Model`] with sockets `from` can connect to model with
+    /// sockets `to` and vice versa.
     ///
     /// - There is **no** direction in the relation, adding a connection from`a` to `b` also adds a connection from `b` to `a`
     /// - By default (until the connection is explicitly added), a socket is not "compatible" with itself.
@@ -88,7 +90,7 @@ impl SocketCollection {
         self
     }
 
-    /// Adds a connection between all possible rotations of two sockets that are on the rotation axis of the [`super::Rules`]. [`Model`] with sockets `from` can connect to [`Model`] with sockets `to` and vice versa.
+    /// Adds a connection between all possible rotations of two sockets that are on the rotation axis of the [`super::Rules`]. [`super::model::Model`] with sockets `from` can connect to model with sockets `to` and vice versa.
     ///
     /// - There is **no** direction in the relation, adding a connection from`a` to `b` also adds a connection from `b` to `a`
     /// - By default (until the connection is explicitly added), a socket is not "compatible" with itself.
@@ -150,11 +152,16 @@ impl SocketCollection {
 
     /// Similar to `add_rotated_connection` but with additional constraints.
     ///
-    /// Adds a connection between only the specified `relative_rotations` of two sockets that are on the rotation axis of the [`super::Rules`]. [`Model`] with sockets `from`, with a given relative rotation to socket `to`, can connect to [`Model`] with sockets `to` (and vice versa with the opposite relative rotation).
+    /// Adds a connection between only the specified `relative_rotations` of two sockets that are on the rotation axis
+    /// of the [`super::Rules`]. [`super::model::Model`] with sockets `from`, with a given relative rotation to socket
+    /// `to`, can connect to model with sockets `to` (and vice versa with the opposite relative rotation).
     ///
-    /// `relative_rotations` should be defined with regard to rotation [`ModelRotation::Rot0`] of `to`. So a value of [`ModelRotation::Rot90`] in `relative_rotations` means that a `from` socket can be connected to a `to` socket if and only if the `from` socket is rotated 90° more than the `to` socket, no matter their absolute rotations.
+    /// `relative_rotations` should be defined with regard to rotation [`ModelRotation::Rot0`] of `to`. So a value of
+    /// [`ModelRotation::Rot90`] in `relative_rotations` means that a `from` socket can be connected to a `to` socket if
+    /// and only if the `from` socket is rotated 90° more than the `to` socket, no matter their absolute rotations.
     ///
-    /// - There is **no** direction in the relation, adding a connection from`a` to `b` also adds a connection from `b` to `a` (here with the opposite relative rotation)
+    /// - There is **no** direction in the relation, adding a connection from`a` to `b` also adds a connection from `b`
+    /// to `a` (here with the opposite relative rotation)
     /// - By default (until the connection is explicitly added), a socket is not "compatible" with itself.
     pub fn add_constrained_rotated_connection(
         &mut self,
@@ -203,12 +210,16 @@ impl SocketCollection {
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
-/// Defines a contact point of a [`Model`]. Each [`Model`] may have none or multiple socket(s) on each of his sides.
-/// Relations between sockets are not defined on the socket nor on the [`Model`] but rather in a [`SocketCollection`].
+/// Defines a contact point of a [`super::model::Model`]. Each model may have none or multiple socket(s) on
+/// each of his sides.
+///
+/// Relations between sockets are not defined on the socket nor on the model but rather in a [`SocketCollection`].
 pub struct Socket {
-    /// Index of the socket. Always unique, except for rotated sockets on the rotation axis which share the same `socket_index`
+    /// Index of the socket. Always unique, except for rotated sockets on the rotation axis which share the same
+    /// `socket_index`
     socket_index: u32,
-    /// Internal index which defines the rotation of the socket. Always [`ModelRotation::Rot0`] for sockets that are not on the rotation axis of the [`crate::generator::Rules`]
+    /// Internal index which defines the rotation of the socket. Always [`ModelRotation::Rot0`] for sockets that are
+    /// not on the rotation axis of the [`crate::generator::Rules`]
     rot: ModelRotation,
 }
 
