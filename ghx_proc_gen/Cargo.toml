@@ -1,6 +1,6 @@
 [package]
 name = "ghx_proc_gen"
-version = "0.2.0-dev"
+version = "0.2.0"
 description = "2D & 3D procedural generation with WFC/Model synthesis"
 repository = "https://github.com/Henauxg/ghx_proc_gen"
 documentation = "https://docs.rs/ghx_proc_gen"

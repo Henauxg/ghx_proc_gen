@@ -112,9 +112,10 @@ https://github.com/Henauxg/ghx_proc_gen/assets/19689618/5fa26a8f-7454-4574-9cc3-
 
 Compatibility with Bevy versions:
 
-| `bevy_ghx_proc_gen` | `bevy` |
-| :------------------ | :----- |
-| `0.1`               | `0.12` |
+| ghx_proc_gen | bevy_ghx_proc_gen | bevy |
+| :----------- | :---------------- | :--- |
+| 0.2          | 0.2               | 0.13 |
+| 0.1          | 0.1               | 0.12 |
 
 # License
 
