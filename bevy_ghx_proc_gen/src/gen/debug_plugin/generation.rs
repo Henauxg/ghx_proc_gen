@@ -28,7 +28,7 @@ use ghx_proc_gen::{
     GeneratorError, NodeIndex,
 };
 
-use crate::gen::SpawnedNode;
+use crate::gen::GridNode;
 
 use super::{
     spawn_node, AssetSpawner, AssetsBundleSpawner, ComponentSpawner, GenerationControl,
@@ -307,7 +307,7 @@ pub fn update_generation_view<C: CoordinateSystem, A: AssetsBundleSpawner, T: Co
         Option<&Children>,
         Option<&mut ErrorMarkers>,
     )>,
-    existing_nodes: Query<Entity, With<SpawnedNode>>,
+    existing_nodes: Query<Entity, With<GridNode>>,
 ) {
     for (grid_entity, grid, asset_spawner, mut observer, children, mut error_markers) in
         generators.iter_mut()

@@ -30,15 +30,11 @@ pub mod simple_plugin;
 #[cfg(feature = "default-assets-bundle-spawners")]
 pub mod default_bundles;
 
-/// Used to mark a spawned gird node. Stores the [NodeIndex] of this node
+/// Used to mark a node spawned by a [`ghx_proc_gen::generator::Generator`]. Stores the [NodeIndex] of this node
 #[derive(Component)]
 pub struct GridNode(pub NodeIndex);
 
-/// Flag for nodes spawned by a [`ghx_proc_gen::generator::Generator`]
-#[derive(Component)]
-pub struct SpawnedNode;
-
-/// Utility system. Adds a [`Bundle`] (or a [`Component`]) to every [`Entity`] that has [`SpawnedNode`] Component (this is the case of nodes spawned by the `spawn_node` system). The `Bundle` will have its default value.
+/// Utility system. Adds a [`Bundle`] (or a [`Component`]) to every [`Entity`] that has [`GridNode`] Component (this is the case of nodes spawned by the `spawn_node` system). The `Bundle` will have its default value.
 ///
 /// ### Example
 ///
@@ -65,14 +61,14 @@ pub struct SpawnedNode;
 /// ```
 pub fn insert_default_bundle_to_spawned_nodes<B: Bundle + Default>(
     mut commands: Commands,
-    spawned_nodes: Query<Entity, Added<SpawnedNode>>,
+    spawned_nodes: Query<Entity, Added<GridNode>>,
 ) {
     for node in spawned_nodes.iter() {
         commands.entity(node).try_insert(B::default());
     }
 }
 
-/// Utility system. Adds a [`Bundle`] (or a [`Component`]) to every [`Entity`] that has [`SpawnedNode`] Component (this is the case of nodes spawned by the `spawn_node` system). The `Bundle` will be cloned from a `Resource`
+/// Utility system. Adds a [`Bundle`] (or a [`Component`]) to every [`Entity`] that has [`GridNode`] Component (this is the case of nodes spawned by the `spawn_node` system). The `Bundle` will be cloned from a `Resource`
 ///
 /// ### Example
 ///
@@ -95,7 +91,7 @@ pub fn insert_default_bundle_to_spawned_nodes<B: Bundle + Default>(
 pub fn insert_bundle_from_resource_to_spawned_nodes<B: Bundle + Resource + Clone>(
     mut commands: Commands,
     bundle_to_clone: Res<B>,
-    spawned_nodes: Query<Entity, Added<SpawnedNode>>,
+    spawned_nodes: Query<Entity, Added<GridNode>>,
 ) {
     for node in spawned_nodes.iter() {
         commands.entity(node).try_insert(bundle_to_clone.clone());
@@ -144,7 +140,7 @@ pub fn spawn_node<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawn
             translation.z += asset_spawner.node_size.z * (1. - pos.y as f32 / grid.size_y() as f32);
         }
 
-        let node_entity = commands.spawn((GridNode(node_index), SpawnedNode)).id();
+        let node_entity = commands.spawn(GridNode(node_index)).id();
 
         let node_entity_commands = &mut commands.entity(node_entity);
         node_asset.assets_bundle.insert_bundle(
