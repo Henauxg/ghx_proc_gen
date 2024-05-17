@@ -26,7 +26,7 @@ simple-plugin = []
 debug-plugin = ["ghx_proc_gen/models-names", "bevy_ghx_grid/debug-plugin"]
 # Enables picking through bevy_mod_picking. Used by the debug-plugin if enabled.
 picking = ["dep:bevy_mod_picking"]
-
+# Enables an egui editor panel to inspect nodes and paint models
 egui-edit = ["dep:bevy_egui", "picking"]
 # Adds some default assets bundle spawners for basic types: Handle<Image>, Handle<Scene>, MaterialMesh and PbrMesh
 default-assets-bundle-spawners = [

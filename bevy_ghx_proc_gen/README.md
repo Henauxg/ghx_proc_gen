@@ -68,18 +68,20 @@ fn setup_generator(
   <img alt="bevy_chess_board_pattern" src="../docs/assets/bevy_chess_board_pattern.png">
 </p>
 
-For more information, check out the `bevy_ghx_proc_gen` [crate documentation](https://docs.rs/bevy_ghx_proc_gen/latest/bevy_ghx_proc_gen) or the [Examples](../README.md#examples).
-
+- For more information, check out the `bevy_ghx_proc_gen` [crate documentation](https://docs.rs/bevy_ghx_proc_gen/latest/bevy_ghx_proc_gen) or the [Examples](../README.md#examples).
+- Almost all systems, structs components, resources, ... have a `pub` visibility, so you can use or override them in custom plugins
 
 # Bevy plugins
 
-- Check out the `GridDebugPlugin` from [`bevy_ghx_grid`](https://github.com/Henauxg/ghx_grid/tree/main/bevy_ghx_grid) which provides debug utilities for the grid-types used by `ghx_proc_gen`.
+- Check out the `GridDebugPlugin` from [`bevy_ghx_grid`](https://github.com/Henauxg/bevy_ghx_grid) which provides debug utilities for the grid-types used by `ghx_proc_gen`.
 
 `ghx_proc_gen` **does not need** a plugin to work, but if you want a really quick way to get started, or are in need of some debug utilities for your generations, there are some ready-made plugins for this:
 
 - `ProcGenSimplePlugin`: Really simple, just here to generate and spawn the nodes assets. See [its sources](src/gen/simple_plugin.rs).
 
 - `ProcGenDebugPlugin` [*Depends on `GridDebugPlugin`*]: Just a bit more complex, and not focused on performance but rather on demos & debugging use-cases. You can view the generation one step at a time, see where the contradiction occurs and more. See [its sources](src/gen/debug_plugin.rs).
+  - Keybindings as well as most settings used by the debug plugin can be overriden via some Bevy `Resource`.
+  - Note that the debug plugin, with all features enabled, depends on other plugins to function propely, such as: `DefaultPickingPlugins` (from bevy_mod_picking), `EguiPlugin` (from bevy_egui) or the `GridDebugPlugin` (from bevy_ghx_grid)
 
 Both of those `plugins` start their work when you insert the components from a `GeneratorBundle` on an `Entity`.
 
@@ -98,8 +100,11 @@ https://github.com/Henauxg/ghx_proc_gen/assets/19689618/5fa26a8f-7454-4574-9cc3-
 *Find the list and description in [Cargo.toml](Cargo.toml)*
 
 - `default-assets-bundle-spawners`: This feature compiles simple `AssetBundleSpawner impl` for a few basic types. Disable the feature if you don't need them, or want to customize their implementation.
-- `simple-plugin` compiles the simple plugin and its systems.
-- `debug-plugin` compiles the debug plugin, the grid debug plugin and their systems.
+- `reflect`: simply derives `Reflect` on common structs of the crate.
+- `simple-plugin`: compiles the simple plugin and its systems.
+- `debug-plugin`: compiles the debug plugin, the grid debug plugin and their systems.
+- `picking`: Enables picking through `bevy_mod_picking`. Used by the debug-plugin if enabled.
+- `egui-edit`: Enables an `egui` editor panel to inspect nodes and paint models
 
 *See also the [main crate](../README.md#cargo-features) cargo features*
 

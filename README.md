@@ -15,10 +15,13 @@ A Rust library for 2D & 3D procedural generation with **Model synthesis/Wave fun
 
 </div>
 
-With Model synthesis/Wave function Collapse, **adjacency constraints** are provided as an input to the algorithm, and internally, a solver (AC-4 in this case), will try to generate a solution with satisfies those constraints, very much like a sudoku solver.
+With Model synthesis/Wave function Collapse, **adjacency constraints** are provided as an input to the algorithm, and internally, a solver (AC-4 in this case), will try to generate a solution with satisfies those constraints.
 
-Altough it can be applied to do texture synthesis (mainly with bitmaps), `ghx_proc_gen` focuses more on grid-based use-cases such as terrain or structures generation.
-
+Altough it can be applied to do texture synthesis (mainly with bitmaps), `ghx_proc_gen` focuses more on grid-based use-cases such as terrain or structures generation with the following goals of being:
+- Fast. As much as possible, the core of the algorithm is implemented to be fast; if and when an API operation may hurt performances, this will be clearly visible.
+- Output format agnostic. Models are just numbers in the core algorithm, and how you interpret them in the generator's results is up to you (3d objects, 2d sprites, texts, colors, ...).
+- Ergonomic
+- Well documented (`#![warn(missing_docs)]`)
 
 # Quickstart
 
@@ -96,8 +99,8 @@ For more information, check out the main [crate documentation](https://docs.rs/g
 
 # More details on the API
 
-## Model variations
-
+### Model variations
+---
 To facilitate the rules-definition step, some models variations can be created for you automatically. This will take care of rotating all the model `sockets` properly.
 
 Let's take this rope-bridge model as an example: 
@@ -121,16 +124,16 @@ When retrieving generated results, you get `ModelInstances` which reference the 
 
 You can also manually create rotated variations of a model: `bridge_model.rotated(ModelRotation::Rot180)` and use a different asset for it, change its weight, etc. [*[documentation](https://docs.rs/ghx_proc_gen/latest/ghx_proc_gen/generator/model/struct.Model.html)*].
 
-## Coordinate systems & axis
-
+### Coordinate systems & axis
+---
 `ghx_proc_gen` uses a **right-handed** coordinate system. But the rotation axis used to create model variations can vary:
 - When using `Cartesian3D`, it defaults to `Y+` and can be customized on a `RulesBuilder`.
 - When using `Cartesian2D`, the rotation axis is fixed to `Z+` [*[documentation](https://docs.rs/ghx_proc_gen/latest/ghx_proc_gen/generator/rules/struct.RulesBuilder.html)*].
 
 *For Bevy, see the [Unofficial bevy Cheatbook](https://bevy-cheatbook.github.io/fundamentals/coords.html).*
 
-## Socket connections
-
+### Socket connections
+---
 As seen in the quickstart, socket connections are declared with a `SocketCollection` [*[documentation](https://docs.rs/ghx_proc_gen/latest/ghx_proc_gen/generator/socket/struct.SocketCollection.html)*].
 
 Note that sockets connections situated **on** your rotation axis should be handled differently if they are used on a model with generated rotations variations.
@@ -154,14 +157,20 @@ Let's imagine that models **1** and **2** had different sockets declarations on 
 ```
 See for axample the `bridge_start_bottom` socket in the canyon [example](#examples), which can only face outwards from a rock.
 
-## Observers
+### Generator-human interaction
+---
+A generation can be customized by the user: by setting specific initial values via calls to `with_initial_nodes`/`with_initial_grid`, or by directly interacting with an on-going generation wia calls to `set_and_propagate`. [*[bevy plugin video example](https://github.com/Henauxg/ghx_proc_gen/blob/main/bevy_ghx_proc_gen/README.md#bevy-plugins)*].
 
+_This is used by the `ProcGenDebugPlugin`._
+
+### Observers
+---
 Instead of collecting the results of a Generator call direclty, you can retrieve them via an `Observer` connected to a Generator [*[documentation](https://docs.rs/ghx_proc_gen/latest/ghx_proc_gen/generator/observer/index.html)*].
 
-This is what the `ProcGenDebugPlugin` does.
+_This is used by the `ProcGenDebugPlugin`._
 
-## Grid loop
-
+### Grid loop
+---
 Grids can be configured to loop on any axis, this is set on their `GridDefinition` [*[documentation](https://docs.rs/ghx_proc_gen/latest/ghx_proc_gen/grid/struct.GridDefinition.html)*].
 
 <div align="center">
@@ -181,6 +190,7 @@ Grids can be configured to loop on any axis, this is set on their `GridDefinitio
   The log level can be configured by the user crates (`tracing::level`, the `LogPlugin` for Bevy, ...).
   
 - `bevy`: Disabled by default, enabling it simply derives `Component` on common structs of the crate.
+- `reflect`: Disabled by default, enabling it simply derives `Reflect` on common structs of the crate.
 
 # For Bevy users
 
