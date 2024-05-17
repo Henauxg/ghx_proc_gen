@@ -23,7 +23,11 @@ reflect = ["ghx_proc_gen/reflect"]
 # Compiles the simple plugin and its systems
 simple-plugin = []
 # Compiles the debug plugin and its systems
-debug-plugin = ["ghx_proc_gen/models-names", "bevy_ghx_grid/debug-plugin"]
+debug-plugin = [
+    "ghx_proc_gen/models-names",
+    "bevy_ghx_grid/debug-plugin",
+    "bevy/bevy_ui",               # 	A custom ECS-driven UI framework
+]
 # Enables picking through bevy_mod_picking. Used by the debug-plugin if enabled.
 picking = ["dep:bevy_mod_picking"]
 # Enables an egui editor panel to inspect nodes and paint models
