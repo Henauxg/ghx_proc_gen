@@ -290,6 +290,7 @@ impl<C: CoordinateSystem> Generator<C> {
         (res, generated_nodes)
     }
 
+    /// Returns all the current possible model instances on `node_index`
     pub fn get_models_on(&self, node_index: NodeIndex) -> Vec<ModelInstance> {
         let mut models = Vec::new();
         if !self.internal.is_valid_node_index(node_index) {
@@ -302,6 +303,7 @@ impl<C: CoordinateSystem> Generator<C> {
         models
     }
 
+    /// Returns all the current possible model on `node_index` grouped by variations, as well as the total number of possible models
     pub fn get_models_variations_on(&self, node_index: NodeIndex) -> (Vec<ModelVariations>, u32) {
         let mut model_variations = Vec::new();
         let mut total_models_count = 0;
@@ -339,10 +341,14 @@ impl<C: CoordinateSystem> Generator<C> {
     }
 }
 
+/// Group of models variaitons based on the same input [crate::generator::model::Model] with different rotations
 #[derive(Debug, Clone)]
 pub struct ModelVariations {
+    /// Index of the original input model
     pub index: ModelIndex,
+    /// Info about the base model
     pub info: ModelInfo,
+    /// Rotations of the base model
     pub rotations: Vec<ModelRotation>,
 }
 

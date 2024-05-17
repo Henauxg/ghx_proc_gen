@@ -40,6 +40,7 @@ use self::picking::{
     NodeOutEvent, NodeOverEvent, NodeSelectedEvent, OverCursor, OverCursorMarkerSettings,
 };
 
+/// Module with picking features, enabled with the `picking` feature
 #[cfg(feature = "picking")]
 pub mod picking;
 
@@ -49,24 +50,35 @@ use self::egui_editor::{
     EditorConfig, EditorContext,
 };
 
+/// Module providing a small egui editor, enabled with the `egui-edit` feature
 #[cfg(feature = "egui-edit")]
 pub mod egui_editor;
 
+/// Module providing all the grid cursors features
 pub mod cursor;
+/// Module handling the generation fetaures of the debug_plugin
 pub mod generation;
 
+/// Used to configure how the cursors UI should be displayed
 #[derive(Default, Debug, PartialEq, Eq)]
 pub enum CursorUiMode {
+    /// No cursor UI display
     None,
+    /// Display as a UI panel on the screen UI
     Panel,
+    /// Display as a small overlay panel over the [cursor::Cursor]
     #[default]
     Overlay,
 }
 
+/// Resource used to customize cursors UI
 #[derive(Resource, Debug)]
 pub struct GridCursorsUiSettings {
+    /// Font size in the UI panels/overlays
     pub font_size: f32,
+    /// Background color of the UI panels/overlays
     pub background_color: Color,
+    /// Text colors in the UI panels/overlays
     pub text_color: Color,
 }
 
@@ -109,6 +121,7 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> ProcGenDe
 impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
     for ProcGenDebugPlugin<C, A, T>
 {
+    // TODO Clean: Split into multiple plugins
     fn build(&self, app: &mut App) {
         app.insert_resource(self.generation_view_mode);
         app.insert_resource(ActiveGeneration::default());
@@ -345,15 +358,22 @@ pub struct StepByStepTimed {
     pub timer: Timer,
 }
 
-/// Resource available to override the default keybindings used by the [`ProcGenDebugPlugin`]
+/// Resource available to override the default keybindings used by the [`ProcGenDebugPlugin`], usign a QWERTY layout ()
 #[derive(Resource)]
 pub struct ProcGenKeyBindings {
+    /// Key to move the selection cursor to the previous node on the current axis
     pub prev_node: KeyCode,
+    /// Key to move the selection cursor to the next node on the current axis
     pub next_node: KeyCode,
+    /// Key pressed to enable the X axis selection
     pub cursor_x_axis: KeyCode,
+    /// Key pressed to enable the Y axis selection
     pub cursor_y_axis: KeyCode,
+    /// Key pressed to enable the Z axis selection
     pub cursor_z_axis: KeyCode,
+    /// Key to deselect the current selection
     pub deselect: KeyCode,
+    /// Key to move the selection cursor to another grid
     pub switch_grid: KeyCode,
 
     /// Key to pause/unpause the current [`GenerationControlStatus`]

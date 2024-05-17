@@ -203,18 +203,22 @@ impl<C: CoordinateSystem> ModelCollection<C> {
         self.models.len()
     }
 
+    /// Returns an iterator over all models in the collection
     pub fn models(&self) -> std::slice::Iter<'_, Model<C>> {
         self.models.iter()
     }
 
+    /// Returns a mutable iterator over all models in the collection
     pub fn models_mut(&mut self) -> std::slice::IterMut<'_, Model<C>> {
         self.models.iter_mut()
     }
 
+    /// Returns the last model in the colleciton if any
     pub fn last(&self) -> Option<&Model<C>> {
         self.models.last()
     }
 
+    /// Returns the last model in the colleciton as mutable if any
     pub fn last_mut(&mut self) -> Option<&mut Model<C>> {
         self.models.last_mut()
     }
@@ -352,10 +356,7 @@ impl<C: CoordinateSystem> Model<C> {
         ModelRotation::Rot0
     }
 
-    pub fn var_ref(&self) -> (ModelIndex, ModelRotation) {
-        (self.index, self.first_rot())
-    }
-
+    /// Creates a model instance from this model
     pub fn instance(&self) -> ModelInstance {
         ModelInstance {
             model_index: self.index,

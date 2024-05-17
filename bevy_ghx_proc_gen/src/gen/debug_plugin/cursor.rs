@@ -43,23 +43,35 @@ use super::{
     GridCursorsUiSettings, ProcGenKeyBindings,
 };
 
+/// Marker component to be put on a [Camera] to signal that it should be used to display curosr overlays
+///
+/// - **Not needed** if only a single camera is used.
+/// - If used, should not be present on more than 1 camera
 #[derive(Component)]
 pub struct GridCursorsOverlayCamera;
 
+/// Root marker for the cursors panel UI
 #[derive(Component)]
 pub struct CursorsPanelRoot;
 
+/// Root marker for the cursors overlay UI
 #[derive(Component)]
 pub struct CursorsOverlaysRoot;
 
+/// Text component marker for the cursors panel UI
 #[derive(Component)]
 pub struct CursorsPanelText;
 
+/// Represents a node in a grid and its [GridMarker]
 #[derive(Debug)]
 pub struct TargetedNode {
+    /// Grid entity the node bleongs to
     pub grid: Entity,
+    /// Index of the node in its grid
     pub node_index: NodeIndex,
+    /// Position of the node in its grid
     pub position: GridPosition,
+    /// Marker entity for this targeted node
     pub marker: Entity,
 }
 impl fmt::Display for TargetedNode {
@@ -68,35 +80,48 @@ impl fmt::Display for TargetedNode {
     }
 }
 
+/// Represents a generic cursor and its optional target
 #[derive(Component, Default, Debug)]
 pub struct Cursor(pub Option<TargetedNode>);
 
+/// Information about what is being pointed by a cursor
 #[derive(Component, Default, Debug)]
 pub struct CursorInfo {
+    /// How many possible models for the node pointed by the cursor
     pub total_models_count: u32,
+    /// Groups of models for the node pointed by the cursor
     pub models_variations: Vec<ModelVariations>,
 }
 impl CursorInfo {
+    /// Clear all information in the [CursorInfo]
     pub fn clear(&mut self) {
         self.total_models_count = 0;
         self.models_variations.clear();
     }
 }
 
+/// Trait implemented by cursors to customize their behavior
 pub trait CursorBehavior: Component {
+    /// Create a new cursor
     fn new() -> Self;
+    /// Returns whether or not this cursor should update the active generation when its target changes
     fn updates_active_gen() -> bool;
 }
 
+/// Marker component for a cursor's UI overlay
 #[derive(Component, Debug)]
 pub struct CursorOverlay {
+    /// The cursor Entity
     pub cursor_entity: Entity,
 }
 
+/// Trait implemented by cursors settings resources
 pub trait CursorMarkerSettings: Resource {
+    /// Returns the color used for this type of cursor
     fn color(&self) -> Color;
 }
 
+/// Settings for the selection cursor
 #[derive(Resource)]
 pub struct SelectionCursorMarkerSettings(pub Color);
 impl Default for SelectionCursorMarkerSettings {
@@ -110,6 +135,7 @@ impl CursorMarkerSettings for SelectionCursorMarkerSettings {
     }
 }
 
+/// Selection cursor marker component
 #[derive(Component, Debug)]
 pub struct SelectCursor;
 impl CursorBehavior for SelectCursor {
@@ -121,9 +147,12 @@ impl CursorBehavior for SelectCursor {
     }
 }
 
+/// Used to index text sections when displaying cursors Ui in a panel
 pub const OVER_CURSOR_SECTION_INDEX: usize = 0;
+/// Used to index text sections when displaying cursors Ui in a panel
 pub const SELECTION_CURSOR_SECTION_INDEX: usize = 1;
 
+/// Setup system used to spawn the cursors UI panel
 pub fn setup_cursors_panel(mut commands: Commands, ui_config: Res<GridCursorsUiSettings>) {
     let root = commands
         .spawn((
@@ -175,6 +204,7 @@ pub fn setup_cursors_panel(mut commands: Commands, ui_config: Res<GridCursorsUiS
     commands.entity(root).add_child(text);
 }
 
+/// Setpu system used to spawn the cursors UI overlay root
 pub fn setup_cursors_overlays(mut commands: Commands) {
     let root = commands
         .spawn((
@@ -187,6 +217,7 @@ pub fn setup_cursors_overlays(mut commands: Commands) {
     commands.entity(root).insert(Pickable::IGNORE);
 }
 
+/// Setup system to spawn a cursor and its overlay
 pub fn setup_cursor<C: CoordinateSystem, CI: CursorBehavior>(
     mut commands: Commands,
     overlays_root: Query<Entity, With<CursorsOverlaysRoot>>,
@@ -216,6 +247,7 @@ pub fn setup_cursor<C: CoordinateSystem, CI: CursorBehavior>(
         .insert(Pickable::IGNORE);
 }
 
+/// System updating all the [CursorInfo] components when [Cursor] components are changed
 pub fn update_cursors_info_on_cursors_changes<C: CoordinateSystem>(
     mut moved_cursors: Query<(&mut CursorInfo, &Cursor), Changed<Cursor>>,
     generators: Query<&Generator<C>>,
@@ -235,6 +267,7 @@ pub fn update_cursors_info_on_cursors_changes<C: CoordinateSystem>(
     }
 }
 
+/// System updating all the [CursorInfo] based on [GenerationEvent]
 pub fn update_cursors_info_from_generation_events<C: CoordinateSystem>(
     mut cursors_events: EventReader<GenerationEvent>,
     generators: Query<&Generator<C>>,
@@ -272,9 +305,10 @@ pub fn update_cursors_info_from_generation_events<C: CoordinateSystem>(
     }
 }
 
+/// System updating the selection cursor panel UI based on changes in [CursorInfo]
 pub fn update_selection_cursor_panel_text(
     mut cursors_panel_text: Query<&mut Text, With<CursorsPanelText>>,
-    mut updated_cursors: Query<(&CursorInfo, &Cursor), (Changed<CursorInfo>, With<SelectCursor>)>,
+    updated_cursors: Query<(&CursorInfo, &Cursor), (Changed<CursorInfo>, With<SelectCursor>)>,
 ) {
     if let Ok((cursor_info, cursor)) = updated_cursors.get_single() {
         for mut text in &mut cursors_panel_text {
@@ -292,6 +326,7 @@ pub fn update_selection_cursor_panel_text(
     }
 }
 
+/// Listen to [KeyCode] to deselect the current selection cursor
 pub fn deselect_from_keybinds(
     keys: Res<ButtonInput<KeyCode>>,
     proc_gen_key_bindings: Res<ProcGenKeyBindings>,
@@ -310,8 +345,11 @@ pub fn deselect_from_keybinds(
     }
 }
 
+/// Simple entity collection
 pub struct EntityProvider {
+    /// Entities in the collection
     pub entities: Vec<Entity>,
+    /// Current index in the collection
     pub index: usize,
 }
 
@@ -324,15 +362,19 @@ impl Default for EntityProvider {
     }
 }
 impl EntityProvider {
+    /// Updates the collection with `entities` and clamp the index to the new collection length
     pub fn update(&mut self, entities: Vec<Entity>) {
         self.entities = entities;
         self.index = (self.index + 1) % self.entities.len();
     }
+
+    /// Returns the entity at the current index
     pub fn get(&self) -> Entity {
         self.entities[self.index]
     }
 }
 
+/// System that listens to the generation switch [KeyCode] to switch the current active generation grid
 pub fn switch_generation_selection_from_keybinds<C: CoordinateSystem>(
     mut local_grid_cycler: Local<EntityProvider>,
     mut commands: Commands,
@@ -369,11 +411,18 @@ pub fn switch_generation_selection_from_keybinds<C: CoordinateSystem>(
 
 const CURSOR_KEYS_MOVEMENT_COOLDOWN_MS: u64 = 140;
 const CURSOR_KEYS_MOVEMENT_SHORT_COOLDOWN_MS: u64 = 45;
+const CURSOR_KEYS_MOVEMENT_SPEED_UP_DELAY_MS: u64 = 350;
 
+/// Resource used to customize keyboard movement of the selection cursor
 #[derive(Resource)]
 pub struct CursorKeyboardMovementSettings {
+    /// Cooldown between two movements when not sped up
     pub default_cooldown_ms: u64,
+    /// Cooldown between two movements when sped up
     pub short_cooldown_ms: u64,
+    /// Duration after which the cooldown between two movmeents gets sped up if
+    /// the move key is continuously pressed
+    pub speed_up_timer_duration_ms: Duration,
 }
 
 impl Default for CursorKeyboardMovementSettings {
@@ -381,15 +430,19 @@ impl Default for CursorKeyboardMovementSettings {
         Self {
             default_cooldown_ms: CURSOR_KEYS_MOVEMENT_COOLDOWN_MS,
             short_cooldown_ms: CURSOR_KEYS_MOVEMENT_SHORT_COOLDOWN_MS,
+            speed_up_timer_duration_ms: Duration::from_millis(
+                CURSOR_KEYS_MOVEMENT_SPEED_UP_DELAY_MS,
+            ),
         }
     }
 }
 
-const CURSOR_KEYS_MOVEMENT_SPEED_UP_DELAY_MS: u64 = 350;
-
+/// Resource used to track keyboard movement variables for the selection cursor
 #[derive(Resource)]
 pub struct CursorKeyboardMovement {
+    /// Current cooldwon to move again
     pub cooldown: Timer,
+    /// Current timer before speeding up the movements
     pub speed_up_timer: Timer,
 }
 
@@ -408,6 +461,7 @@ impl Default for CursorKeyboardMovement {
     }
 }
 
+/// System handling movements of the selection cursor from the keyboard
 pub fn move_selection_from_keybinds<C: CoordinateSystem>(
     mut commands: Commands,
     keys: Res<ButtonInput<KeyCode>>,
@@ -415,7 +469,7 @@ pub fn move_selection_from_keybinds<C: CoordinateSystem>(
     selection_marker_settings: Res<SelectionCursorMarkerSettings>,
     proc_gen_key_bindings: Res<ProcGenKeyBindings>,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
-    mut key_mvmt_values: Res<CursorKeyboardMovementSettings>,
+    key_mvmt_values: Res<CursorKeyboardMovementSettings>,
     mut key_mvmt: ResMut<CursorKeyboardMovement>,
     mut selection_cursor: Query<&mut Cursor, With<SelectCursor>>,
     grids: Query<(Entity, &GridDefinition<C>)>,
@@ -479,6 +533,9 @@ pub fn move_selection_from_keybinds<C: CoordinateSystem>(
                         .cooldown
                         .set_duration(Duration::from_millis(key_mvmt_values.default_cooldown_ms));
                 }
+                key_mvmt
+                    .speed_up_timer
+                    .set_duration(key_mvmt_values.speed_up_timer_duration_ms);
                 key_mvmt.speed_up_timer.reset();
             }
             movement
@@ -529,6 +586,7 @@ pub fn move_selection_from_keybinds<C: CoordinateSystem>(
     }
 }
 
+/// Utility function to spanw a [GridMarker]
 pub fn spawn_marker_and_create_cursor(
     commands: &mut Commands,
     grid_entity: Entity,
@@ -545,6 +603,7 @@ pub fn spawn_marker_and_create_cursor(
     }
 }
 
+/// Utility function to transform data from a [CursorInfo] into a [String]
 pub fn cursor_info_to_string(cursor: &TargetedNode, cursor_info: &CursorInfo) -> String {
     let text = if cursor_info.models_variations.len() > 1 {
         format!(
@@ -580,17 +639,19 @@ pub fn cursor_info_to_string(cursor: &TargetedNode, cursor_info: &CursorInfo) ->
     text
 }
 
+/// Local flag used as a system local resource
 #[derive(Default)]
 pub struct Flag(pub bool);
 
+/// System updating the cursors overlay UI
 pub fn update_cursors_overlays(
     mut camera_warning_flag: Local<Flag>,
     mut commands: Commands,
     ui_config: Res<GridCursorsUiSettings>,
     just_one_camera: Query<(&Camera, &GlobalTransform), Without<GridCursorsOverlayCamera>>,
     overlay_camera: Query<(&Camera, &GlobalTransform), With<GridCursorsOverlayCamera>>,
-    mut cursor_overlays: Query<(Entity, &CursorOverlay)>,
-    mut cursors: Query<(&CursorInfo, &Cursor)>,
+    cursor_overlays: Query<(Entity, &CursorOverlay)>,
+    cursors: Query<(&CursorInfo, &Cursor)>,
     markers: Query<&GlobalTransform, With<GridMarker>>,
 ) {
     let (camera, cam_gtransform) = match just_one_camera.get_single() {

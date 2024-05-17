@@ -39,15 +39,22 @@ use super::{
 #[derive(Component, Default, Deref, DerefMut)]
 pub struct VoidNodes(pub HashSet<ModelIndex>);
 
+/// Component used to store a collection of [`bevy_ghx_grid::debug_plugin::markers::GridMarker`] entities
 #[derive(Component, Default, Deref, DerefMut)]
 pub struct ErrorMarkers(pub Vec<Entity>);
 
+/// Event relating to a generation
 #[derive(Event, Clone, Copy, Debug)]
 pub enum GenerationEvent {
+    /// The generation with the specified entity was reinitialized
     Reinitialized(Entity),
+    /// The generation with the specified entity was updated on the specified node
     Updated(Entity, NodeIndex),
 }
 
+/// Resource used to track the currently active generation.
+///
+/// The contained option can be [None] if no generation is active
 #[derive(Resource, Default)]
 pub struct ActiveGeneration(pub Option<Entity>);
 
@@ -74,6 +81,7 @@ pub fn insert_void_nodes_to_new_generations<
     }
 }
 
+/// System used to insert an empty [ErrorMarkers] component into new generation entities
 pub fn insert_error_markers_to_new_generations<C: CoordinateSystem>(
     mut commands: Commands,
     mut new_generations: Query<Entity, (With<Generator<C>>, Without<ErrorMarkers>)>,
@@ -83,6 +91,7 @@ pub fn insert_error_markers_to_new_generations<C: CoordinateSystem>(
     }
 }
 
+/// System that will update the currenty active generation if it was [None]
 pub fn update_active_generation<C: CoordinateSystem>(
     mut active_generation: ResMut<ActiveGeneration>,
     generations: Query<Entity, With<Generator<C>>>,
@@ -143,6 +152,8 @@ pub fn handle_reinitialization_and_continue<C: CoordinateSystem>(
     return true;
 }
 
+/// Function used to display some info about a generation that finished,
+/// as well as to properly handle reinitialization status and pause.
 pub fn handle_generation_done<C: CoordinateSystem>(
     generation_control: &mut ResMut<GenerationControl>,
     generator: &mut Generator<C>,
@@ -162,6 +173,8 @@ pub fn handle_generation_done<C: CoordinateSystem>(
     }
 }
 
+/// Function used to display some info about a generation that failed,
+/// as well as to properly handle reinitialization status and pause.
 pub fn handle_generation_error<C: CoordinateSystem>(
     generation_control: &mut ResMut<GenerationControl>,
     generator: &mut Generator<C>,
@@ -281,6 +294,7 @@ pub fn step_by_step_timed_update<C: CoordinateSystem>(
     }
 }
 
+/// System used to spawn nodes, emit [GenerationEvent] and despawn markers, based on data read from a [QueuedObserver] on a generation entity
 pub fn update_generation_view<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner>(
     mut commands: Commands,
     mut marker_events: EventWriter<MarkerDespawnEvent>,

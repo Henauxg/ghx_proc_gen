@@ -30,8 +30,9 @@ pub mod simple_plugin;
 #[cfg(feature = "default-assets-bundle-spawners")]
 pub mod default_bundles;
 
+/// Used to mark a spawned gird node. Stores the [NodeIndex] of this node
 #[derive(Component)]
-pub struct GridNode(NodeIndex);
+pub struct GridNode(pub NodeIndex);
 
 /// Flag for nodes spawned by a [`ghx_proc_gen::generator::Generator`]
 #[derive(Component)]

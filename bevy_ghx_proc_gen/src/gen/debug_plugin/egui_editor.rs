@@ -1,11 +1,10 @@
 use bevy::{
     ecs::{
-        entity::Entity,
         event::{Event, EventReader, EventWriter},
         query::With,
         system::{Query, Res, ResMut, Resource},
     },
-    input::{keyboard::KeyCode, mouse::MouseButton, ButtonInput},
+    input::{mouse::MouseButton, ButtonInput},
     log::warn,
 };
 use bevy_egui::{
@@ -14,7 +13,7 @@ use bevy_egui::{
 };
 use bevy_ghx_grid::ghx_grid::coordinate_system::CoordinateSystem;
 use ghx_proc_gen::generator::{
-    model::{ModelIndex, ModelInstance, ModelRotation},
+    model::{ModelInstance, ModelRotation},
     rules::ModelInfo,
     Generator,
 };
@@ -22,14 +21,16 @@ use ghx_proc_gen::generator::{
 use crate::gen::GridNode;
 
 use super::{
-    cursor::{Cursor, CursorInfo, SelectCursor, TargetedNode},
+    cursor::{Cursor, CursorInfo, SelectCursor},
     generation::ActiveGeneration,
     picking::{CursorTarget, NodeOverEvent, NodeSelectedEvent},
 };
 
+/// Resource sued to track the status of the edgui editor
 #[derive(Resource)]
 pub struct EditorConfig {
-    enabled: bool,
+    /// Whether or not the editor is currently enabled
+    pub enabled: bool,
 }
 
 impl Default for EditorConfig {
@@ -38,39 +39,52 @@ impl Default for EditorConfig {
     }
 }
 
+/// Context of the egui editor
 #[derive(Resource, Default)]
 pub struct EditorContext {
+    /// Current brush, can be [None]
     pub model_brush: Option<ModelBrush>,
+    /// Is the editor currently painting
     pub painting: bool,
 }
 
+/// A model "brush" holding information about what model it paints
 #[derive(Clone)]
 pub struct ModelBrush {
-    info: ModelInfo,
-    instance: ModelInstance,
+    /// General info about the model
+    pub info: ModelInfo,
+    /// Specific instance of the model
+    pub instance: ModelInstance,
 }
 
+/// Event types for model brushes
 #[derive(Event)]
 pub enum BrushEvent {
+    /// Clear the current brush
     ClearBrush,
+    /// Update the current brush to a new one
     UpdateBrush(ModelBrush),
+    /// Update only the rotation of the current brush
     UpdateRotation(ModelRotation),
 }
 
+/// System condition to check if the egui editor is enabled
 pub fn editor_enabled(editor_config: Res<EditorConfig>) -> bool {
     editor_config.enabled
 }
 
+/// System that can be used to toggle on/off the egui editor
 pub fn toggle_editor(mut editor_config: ResMut<EditorConfig>) {
     editor_config.enabled = !editor_config.enabled;
 }
 
+/// System used to draw the editor egui window
 pub fn draw_edition_panel<C: CoordinateSystem>(
-    mut editor_context: ResMut<EditorContext>,
+    editor_context: ResMut<EditorContext>,
     mut contexts: EguiContexts,
     active_generation: Res<ActiveGeneration>,
     mut brush_events: EventWriter<BrushEvent>,
-    mut generations: Query<&mut Generator<C>>,
+    generations: Query<&mut Generator<C>>,
     selection_cursor: Query<(&Cursor, &CursorInfo), With<SelectCursor>>,
 ) {
     let Some(active_generation) = active_generation.0 else {
@@ -195,6 +209,7 @@ pub fn draw_edition_panel<C: CoordinateSystem>(
         });
 }
 
+/// System reading [BrushEvent] to update the current model brush in the [EditorContext]
 pub fn update_brush(
     mut editor_context: ResMut<EditorContext>,
     mut brush_events: EventReader<BrushEvent>,
@@ -214,6 +229,7 @@ pub fn update_brush(
     }
 }
 
+/// System updating the painting state in the [EditorContext] based on mouse inputs and [NodeSelectedEvent]
 pub fn update_painting_state(
     mut editor_context: ResMut<EditorContext>,
     buttons: Res<ButtonInput<MouseButton>>,
@@ -234,9 +250,9 @@ pub fn update_painting_state(
     }
 }
 
+/// System issuing the generation requests to the geenrator based on the painting state
 pub fn paint<C: CoordinateSystem>(
-    mut editor_context: ResMut<EditorContext>,
-    keys: Res<ButtonInput<KeyCode>>,
+    editor_context: ResMut<EditorContext>,
     active_generation: Res<ActiveGeneration>,
     mut node_over_events: EventReader<NodeOverEvent>,
     mut generations: Query<&mut Generator<C>>,
@@ -270,25 +286,5 @@ pub fn paint<C: CoordinateSystem>(
                 model_brush.instance, node.0, err
             );
         }
-    }
-}
-
-pub fn generate_node<C: CoordinateSystem>(
-    active_generation: Entity,
-    selected_node: &TargetedNode,
-    model_index: ModelIndex,
-    model_rot: ModelRotation,
-    mut generations: &mut Query<&mut Generator<C>>,
-) {
-    let Ok(mut generator) = generations.get_mut(active_generation) else {
-        return;
-    };
-    if let Err(err) =
-        generator.set_and_propagate(selected_node.node_index, (model_index, model_rot), true)
-    {
-        warn!(
-            "Failed to generate model {} rotation {} on node {}: {}",
-            model_index, model_rot, selected_node.node_index, err
-        );
     }
 }

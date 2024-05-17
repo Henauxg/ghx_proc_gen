@@ -45,6 +45,7 @@ use super::{
     ProcGenKeyBindings,
 };
 
+/// Used to customize the color of the Over cursor [GridMarker]
 #[derive(Resource)]
 pub struct OverCursorMarkerSettings(pub Color);
 impl Default for OverCursorMarkerSettings {
@@ -58,6 +59,7 @@ impl CursorMarkerSettings for OverCursorMarkerSettings {
     }
 }
 
+/// Main component for the Over cursor
 #[derive(Component, Debug)]
 pub struct OverCursor;
 impl CursorBehavior for OverCursor {
@@ -69,6 +71,7 @@ impl CursorBehavior for OverCursor {
     }
 }
 
+/// Event raised when a node starts being overed by a mouse pointer
 #[derive(Event, Deref, DerefMut)]
 pub struct NodeOverEvent(pub Entity);
 impl From<ListenerInput<Pointer<Over>>> for NodeOverEvent {
@@ -77,6 +80,7 @@ impl From<ListenerInput<Pointer<Over>>> for NodeOverEvent {
     }
 }
 
+/// Event raised when a node stops being overed by a mouse pointer
 #[derive(Event, Deref, DerefMut)]
 pub struct NodeOutEvent(pub Entity);
 impl From<ListenerInput<Pointer<Out>>> for NodeOutEvent {
@@ -85,9 +89,11 @@ impl From<ListenerInput<Pointer<Out>>> for NodeOutEvent {
     }
 }
 
+/// Event raised when a node is selected by a mouse pointer
 #[derive(Event, Deref, DerefMut)]
 pub struct NodeSelectedEvent(pub Entity);
 
+/// System that inserts picking event handlers to entites with an added [GridNode] component
 pub fn insert_cursor_picking_handlers_to_grid_nodes<C: CoordinateSystem>(
     mut commands: Commands,
     spawned_nodes: Query<Entity, Added<GridNode>>,
@@ -110,9 +116,10 @@ pub fn insert_cursor_picking_handlers_to_grid_nodes<C: CoordinateSystem>(
     }
 }
 
+/// System that update the over cursor UI panel
 pub fn update_over_cursor_panel_text(
     mut cursors_panel_text: Query<&mut Text, With<CursorsPanelText>>,
-    mut updated_cursors: Query<(&CursorInfo, &Cursor), (Changed<CursorInfo>, With<OverCursor>)>,
+    updated_cursors: Query<(&CursorInfo, &Cursor), (Changed<CursorInfo>, With<OverCursor>)>,
 ) {
     if let Ok((cursor_info, cursor)) = updated_cursors.get_single() {
         for mut text in &mut cursors_panel_text {
@@ -130,7 +137,9 @@ pub fn update_over_cursor_panel_text(
     }
 }
 
-// TODO Before update_cursors_info_on_cursors_changes and before update_cursors_info_from_generation_events
+/// System updating the Over [Cursor] by reading all the [GenerationEvent]
+///
+/// Should run after update_cursors_info_on_cursors_changes and before update_cursors_info_from_generation_events
 pub fn update_over_cursor_from_generation_events<C: CoordinateSystem>(
     mut cursors_events: EventReader<GenerationEvent>,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
@@ -153,6 +162,7 @@ pub fn update_over_cursor_from_generation_events<C: CoordinateSystem>(
     }
 }
 
+/// System used to update cursor positions from picking events
 pub fn picking_update_cursors_position<
     C: CoordinateSystem,
     CS: CursorMarkerSettings,
@@ -164,7 +174,7 @@ pub fn picking_update_cursors_position<
     mut active_generation: ResMut<ActiveGeneration>,
     mut events: EventReader<PE>,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
-    mut grid_nodes: Query<(&GridNode, &Parent)>,
+    grid_nodes: Query<(&GridNode, &Parent)>,
     mut cursor: Query<&mut Cursor, With<CB>>,
     generations: Query<(Entity, &GridDefinition<C>), With<Generator<C>>>,
 ) {
@@ -214,6 +224,7 @@ pub fn picking_update_cursors_position<
     }
 }
 
+/// System used to remove an Over cursor on a [NodeOutEvent]
 pub fn picking_remove_previous_over_cursor<C: CoordinateSystem>(
     mut out_events: EventReader<NodeOutEvent>,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
@@ -236,6 +247,7 @@ pub fn picking_remove_previous_over_cursor<C: CoordinateSystem>(
     }
 }
 
+/// Settings and assets used by the [CursorTarget]
 #[derive(Resource, Default)]
 pub struct CursorTargetAssets {
     color: Color,
@@ -244,6 +256,7 @@ pub struct CursorTargetAssets {
     target_mat_3d: Handle<StandardMaterial>,
 }
 
+/// System used to insert default values into [CursorTargetAssets]
 pub fn setup_picking_assets(
     mut meshes: ResMut<Assets<Mesh>>,
     mut standard_materials: ResMut<Assets<StandardMaterial>>,
@@ -262,15 +275,20 @@ pub fn setup_picking_assets(
     });
 }
 
+/// Main component marker for a cursor target
 #[derive(Component)]
 pub struct CursorTarget;
 
+/// Local system resource used to cache and track cursor targets current siutation
 #[derive(Default)]
 pub struct ActiveCursorTargets {
+    /// Current axis
     pub axis: Direction,
+    /// Current source node
     pub from_node: NodeIndex,
 }
 
+/// System that spawn & depsanw the cursor targets
 pub fn update_cursor_targets_nodes<C: CoordinateSystem>(
     mut local_active_cursor_targets: Local<Option<ActiveCursorTargets>>,
     mut commands: Commands,
@@ -278,7 +296,7 @@ pub fn update_cursor_targets_nodes<C: CoordinateSystem>(
     cursor_target_assets: Res<CursorTargetAssets>,
     proc_gen_key_bindings: Res<ProcGenKeyBindings>,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
-    mut selection_cursor: Query<&Cursor, With<SelectCursor>>,
+    selection_cursor: Query<&Cursor, With<SelectCursor>>,
     mut over_cursor: Query<&mut Cursor, (With<OverCursor>, Without<SelectCursor>)>,
     grids_with_cam3d: Query<(&GridDefinition<C>, &DebugGridView), With<DebugGridView3d>>,
     grids_with_cam2d: Query<
@@ -351,11 +369,12 @@ pub fn update_cursor_targets_nodes<C: CoordinateSystem>(
     }
 }
 
+/// Function used to despawn all cursor targets and eventually the attached over cursor
 pub fn despawn_cursor_targets(
     commands: &mut Commands,
-    mut marker_events: &mut EventWriter<MarkerDespawnEvent>,
+    marker_events: &mut EventWriter<MarkerDespawnEvent>,
     cursor_targets: &Query<Entity, With<CursorTarget>>,
-    mut over_cursor: &mut Query<&mut Cursor, (With<OverCursor>, Without<SelectCursor>)>,
+    over_cursor: &mut Query<&mut Cursor, (With<OverCursor>, Without<SelectCursor>)>,
 ) {
     for cursor_target in cursor_targets.iter() {
         commands.entity(cursor_target).despawn_recursive();
@@ -369,6 +388,7 @@ pub fn despawn_cursor_targets(
     };
 }
 
+/// Function used to spawn cursor targets
 pub fn spawn_cursor_targets<C: CoordinateSystem>(
     commands: &mut Commands,
     cursor_target_assets: &Res<CursorTargetAssets>,
@@ -401,6 +421,7 @@ pub fn spawn_cursor_targets<C: CoordinateSystem>(
     }
 }
 
+/// Function used to spawn cursor targets when using a 3d camera
 pub fn spawn_cursor_targets_3d<C: CoordinateSystem>(
     commands: &mut Commands,
     cursor_target_assets: &Res<CursorTargetAssets>,
@@ -464,6 +485,7 @@ pub fn spawn_cursor_targets_3d<C: CoordinateSystem>(
     }
 }
 
+/// Function used to spawn cursor targets when using a 2d camera
 pub fn spawn_cursor_targets_2d<C: CoordinateSystem>(
     commands: &mut Commands,
     cursor_target_assets: &Res<CursorTargetAssets>,
