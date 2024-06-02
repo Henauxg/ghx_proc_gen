@@ -1,13 +1,15 @@
 use std::error::Error;
 
-use ghx_grid::{
-    coordinate_system::Cartesian2D,
-    grid::{GridDefinition, GridPosition},
-};
-use ghx_proc_gen::generator::{
-    model::ModelCollection,
-    rules::RulesBuilder,
-    socket::{SocketCollection, SocketsCartesian2D},
+use ghx_proc_gen::{
+    generator::{
+        model::ModelCollection,
+        rules::RulesBuilder,
+        socket::{SocketCollection, SocketsCartesian2D},
+    },
+    ghx_grid::{
+        coordinate_system::Cartesian2D,
+        grid::{GridDefinition, GridPosition},
+    },
 };
 
 use ghx_proc_gen::generator::builder::GeneratorBuilder;
