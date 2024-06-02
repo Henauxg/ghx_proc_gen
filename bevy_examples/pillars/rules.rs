@@ -1,8 +1,10 @@
 use bevy_examples::utils::AssetDef;
-use bevy_ghx_grid::ghx_grid::coordinate_system::Cartesian3D;
-use bevy_ghx_proc_gen::proc_gen::generator::{
-    model::ModelCollection,
-    socket::{SocketCollection, SocketsCartesian3D},
+use bevy_ghx_proc_gen::{
+    bevy_ghx_grid::ghx_grid::coordinate_system::Cartesian3D,
+    proc_gen::generator::{
+        model::ModelCollection,
+        socket::{SocketCollection, SocketsCartesian3D},
+    },
 };
 
 pub(crate) fn rules_and_assets() -> (

@@ -16,11 +16,11 @@ use bevy::{
 };
 
 use bevy_examples::{plugin::ProcGenExamplesPlugin, utils::load_assets};
-use bevy_ghx_grid::{
-    debug_plugin::{view::DebugGridView, DebugGridView2dBundle},
-    ghx_grid::{coordinate_system::Cartesian3D, direction::Direction, grid::GridDefinition},
-};
 use bevy_ghx_proc_gen::{
+    bevy_ghx_grid::{
+        debug_plugin::{view::DebugGridView, DebugGridView2dBundle},
+        ghx_grid::{coordinate_system::Cartesian3D, direction::Direction, grid::GridDefinition},
+    },
     gen::{
         assets::{AssetSpawner, RulesModelsAssets},
         debug_plugin::GenerationViewMode,

@@ -27,15 +27,15 @@ use bevy::{
         PositionType, Style, UiRect, Val,
     },
 };
-use bevy_ghx_grid::{
-    debug_plugin::{
-        markers::MarkersGroup, toggle_debug_grids_visibilities, toggle_grid_markers_visibilities,
-        GridDebugPlugin,
-    },
-    ghx_grid::coordinate_system::CoordinateSystem,
-};
 use bevy_ghx_proc_gen::{
     bevy_egui::{self, EguiPlugin},
+    bevy_ghx_grid::{
+        debug_plugin::{
+            markers::MarkersGroup, toggle_debug_grids_visibilities,
+            toggle_grid_markers_visibilities, GridDebugPlugin,
+        },
+        ghx_grid::coordinate_system::CoordinateSystem,
+    },
     gen::{
         assets::{AssetsBundleSpawner, ComponentSpawner, NoComponents},
         debug_plugin::{
