@@ -17,9 +17,9 @@ models-names = []
 # Enables some debug traces (via tracing)
 debug-traces = ["models-names"]
 # Enables some Bevy trait derives
-bevy = ["dep:bevy"]
+bevy = ["dep:bevy", "ghx_grid/bevy"]
 # Enables more Bevy trait derives for reflection
-reflect = ["bevy"]
+reflect = ["bevy", "ghx_grid/reflect"]
 
 [dependencies]
 # Internal dependencies
