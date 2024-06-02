@@ -19,7 +19,7 @@ default = [
     "default-assets-bundle-spawners",
 ]
 # Enables some reflect derives in ghx_proc_gen
-reflect = ["ghx_proc_gen/reflect"]
+reflect = ["ghx_proc_gen/reflect", "bevy_ghx_grid/reflect"]
 # Compiles the simple plugin and its systems
 simple-plugin = []
 # Compiles the debug plugin and its systems
