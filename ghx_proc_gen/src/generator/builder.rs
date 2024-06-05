@@ -2,7 +2,7 @@ use std::{marker::PhantomData, sync::Arc};
 
 use ghx_grid::{
     coordinate_system::CoordinateSystem,
-    grid::{GridData, GridDefinition, NodeRef},
+    grid::{Grid, GridData, NodeRef},
 };
 
 use crate::{GeneratorBuilderError, NodeIndex};
@@ -52,9 +52,9 @@ pub struct Unset;
 ///    .build();
 /// ```
 #[derive(Clone)]
-pub struct GeneratorBuilder<G, R, C: CoordinateSystem> {
+pub struct GeneratorBuilder<G, R, C: CoordinateSystem, T: Grid<C>> {
     rules: Option<Arc<Rules<C>>>,
-    grid: Option<GridDefinition<C>>,
+    grid: Option<T>,
     max_retry_count: u32,
     node_selection_heuristic: NodeSelectionHeuristic,
     model_selection_heuristic: ModelSelectionHeuristic,
@@ -64,7 +64,7 @@ pub struct GeneratorBuilder<G, R, C: CoordinateSystem> {
     typestate: PhantomData<(G, R)>,
 }
 
-impl<C: CoordinateSystem> GeneratorBuilder<Unset, Unset, C> {
+impl<C: CoordinateSystem, G: Grid<C>> GeneratorBuilder<Unset, Unset, C, G> {
     /// Creates a [`GeneratorBuilder`] with its values set to their default.
     pub fn new() -> Self {
         Self {
@@ -81,9 +81,9 @@ impl<C: CoordinateSystem> GeneratorBuilder<Unset, Unset, C> {
     }
 }
 
-impl<C: CoordinateSystem> GeneratorBuilder<Unset, Unset, C> {
+impl<C: CoordinateSystem, G: Grid<C>> GeneratorBuilder<Unset, Unset, C, G> {
     /// Sets the [`Rules`] to be used by the [`Generator`]
-    pub fn with_rules(self, rules: Rules<C>) -> GeneratorBuilder<Unset, Set, C> {
+    pub fn with_rules(self, rules: Rules<C>) -> GeneratorBuilder<Unset, Set, C, G> {
         GeneratorBuilder {
             rules: Some(Arc::new(rules)),
 
@@ -100,7 +100,7 @@ impl<C: CoordinateSystem> GeneratorBuilder<Unset, Unset, C> {
     }
 
     /// Sets the [`Rules`] to be used by the [`Generator`]. The `Generator` will hold a read-only Rc onto those `Rules` which can be safely shared by multiple `Generator`.
-    pub fn with_shared_rules(self, rules: Arc<Rules<C>>) -> GeneratorBuilder<Unset, Set, C> {
+    pub fn with_shared_rules(self, rules: Arc<Rules<C>>) -> GeneratorBuilder<Unset, Set, C, G> {
         GeneratorBuilder {
             rules: Some(rules),
 
@@ -117,9 +117,9 @@ impl<C: CoordinateSystem> GeneratorBuilder<Unset, Unset, C> {
     }
 }
 
-impl<C: CoordinateSystem> GeneratorBuilder<Unset, Set, C> {
+impl<C: CoordinateSystem, G: Grid<C>> GeneratorBuilder<Unset, Set, C, G> {
     /// Sets the [`GridDefinition`] to be used by the [`Generator`].
-    pub fn with_grid(self, grid: GridDefinition<C>) -> GeneratorBuilder<Set, Set, C> {
+    pub fn with_grid(self, grid: G) -> GeneratorBuilder<Set, Set, C, G> {
         GeneratorBuilder {
             grid: Some(grid),
 
@@ -136,7 +136,7 @@ impl<C: CoordinateSystem> GeneratorBuilder<Unset, Set, C> {
     }
 }
 
-impl<G, R, C: CoordinateSystem> GeneratorBuilder<G, R, C> {
+impl<G, R, C: CoordinateSystem, T: Grid<C>> GeneratorBuilder<G, R, C, T> {
     /// Specifies how many time the [`Generator`] should retry to generate the [`GridDefinition`] when a contradiction is encountered. Set to [`DEFAULT_RETRY_COUNT`] by default.
     pub fn with_max_retry_count(mut self, max_retry_count: u32) -> Self {
         self.max_retry_count = max_retry_count;
@@ -171,11 +171,11 @@ impl<G, R, C: CoordinateSystem> GeneratorBuilder<G, R, C> {
 }
 
 // For functions in this impl, we know that self.grid is `Some` thanks to the typing.
-impl<C: CoordinateSystem, R> GeneratorBuilder<Set, R, C> {
+impl<C: CoordinateSystem, R, G: Grid<C>> GeneratorBuilder<Set, R, C, G> {
     /// Adds a [`QueuedStatefulObserver`] to the [`Generator`] that will be built, and returns it.
     ///
     /// Adding the observer before building the generator allows the observer to see the nodes than *can* be generated during a generator's initialization.
-    pub fn add_queued_stateful_observer(&mut self) -> QueuedStatefulObserver<C> {
+    pub fn add_queued_stateful_observer(&mut self) -> QueuedStatefulObserver<C, G> {
         let (sender, receiver) = crossbeam_channel::unbounded();
         self.observers.push(sender);
         let grid = self.grid.clone().unwrap();
@@ -196,13 +196,13 @@ impl<C: CoordinateSystem, R> GeneratorBuilder<Set, R, C> {
     /// See [`GeneratorBuilder::with_initial_grid`] for a more versatile and easy to use method (at the price of a bit of performances during the method call).
     pub fn with_initial_grid_raw<M: ModelVariantRef<C>>(
         mut self,
-        data: GridData<C, Option<ModelVariantIndex>>,
+        data: GridData<C, Option<ModelVariantIndex>, G>,
     ) -> Result<Self, GeneratorBuilderError> {
         let grid = self.grid.as_ref().unwrap();
-        if grid.size() != data.grid().size() {
+        if grid.total_size() != data.grid().total_size() {
             return Err(GeneratorBuilderError::InvalidGridSize(
-                data.grid().size(),
-                grid.size(),
+                data.grid().total_size(),
+                grid.total_size(),
             ));
         } else {
             for (node_index, node) in data.nodes().iter().enumerate() {
@@ -219,7 +219,7 @@ impl<C: CoordinateSystem, R> GeneratorBuilder<Set, R, C> {
 }
 
 // For functions in this impl, we know that self.rules and self.grid are `Some` thanks to the typing.
-impl<C: CoordinateSystem> GeneratorBuilder<Set, Set, C> {
+impl<C: CoordinateSystem, G: Grid<C>> GeneratorBuilder<Set, Set, C, G> {
     /// Registers some [`NodeRef`] [`ModelVariantRef`] pairs to be spawned initially by the [`Generator`]. These nodes will be spawned when the generator reinitializes too.
     ///
     /// See [`GeneratorBuilder::with_initial_nodes_raw`] for a bit more performant but more constrained method. The performance difference only matters during this method call in the `GeneratorBuilder`, during generation all the initial nodes are already converted to their raw format.
@@ -241,14 +241,14 @@ impl<C: CoordinateSystem> GeneratorBuilder<Set, Set, C> {
     /// See [`GeneratorBuilder::with_initial_grid_raw`] for a bit more performant but more constrained method. The performance difference only matters during this method call in the `GeneratorBuilder`, during generation all the initial nodes are already converted to their raw format.
     pub fn with_initial_grid<M: ModelVariantRef<C>>(
         mut self,
-        data: GridData<C, Option<M>>,
+        data: GridData<C, Option<M>, G>,
     ) -> Result<Self, GeneratorBuilderError> {
         let grid = self.grid.as_ref().unwrap();
         let rules = self.rules.as_ref().unwrap();
-        if grid.size() != data.grid().size() {
+        if grid.total_size() != data.grid().total_size() {
             return Err(GeneratorBuilderError::InvalidGridSize(
-                data.grid().size(),
-                grid.size(),
+                data.grid().total_size(),
+                grid.total_size(),
             ));
         } else {
             for (node_index, node) in data.nodes().iter().enumerate() {
@@ -264,14 +264,14 @@ impl<C: CoordinateSystem> GeneratorBuilder<Set, Set, C> {
     }
 
     /// Instantiates a [`Generator`] as specified by the various builder parameters.
-    pub fn build(self) -> Result<Generator<C>, GeneratorBuilderError> {
+    pub fn build(self) -> Result<Generator<C, G>, GeneratorBuilderError> {
         self.internal_build(&mut None)
     }
 
     /// Instantiates a [`Generator`] as specified by the various builder parameters and return the initially generated nodes if any
     pub fn build_collected(
         self,
-    ) -> Result<(Generator<C>, Vec<GeneratedNode>), GeneratorBuilderError> {
+    ) -> Result<(Generator<C, G>, Vec<GeneratedNode>), GeneratorBuilderError> {
         let mut generated_nodes = Vec::new();
         let res = self.internal_build(&mut Some(&mut generated_nodes))?;
         Ok((res, generated_nodes))
@@ -280,7 +280,7 @@ impl<C: CoordinateSystem> GeneratorBuilder<Set, Set, C> {
     fn internal_build(
         self,
         collector: &mut Collector,
-    ) -> Result<Generator<C>, GeneratorBuilderError> {
+    ) -> Result<Generator<C, G>, GeneratorBuilderError> {
         // We know that self.rules and self.grid are `Some` thanks to the typing.
         let rules = self.rules.unwrap();
         let grid = self.grid.unwrap();

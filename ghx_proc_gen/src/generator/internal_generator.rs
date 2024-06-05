@@ -3,7 +3,8 @@ use std::sync::Arc;
 use bitvec::{bitvec, order::LocalBits, slice::IterOnes, vec::BitVec};
 use ghx_grid::{
     coordinate_system::CoordinateSystem,
-    grid::{GridData, GridDefinition},
+    direction::DirectionTrait,
+    grid::{Grid, GridData},
 };
 use ndarray::{Array, Ix3};
 use rand::{
@@ -42,9 +43,9 @@ struct PropagationEntry {
     model_index: ModelVariantIndex,
 }
 
-pub(crate) struct InternalGenerator<C: CoordinateSystem> {
+pub(crate) struct InternalGenerator<C: CoordinateSystem, G: Grid<C>> {
     // === Read-only configuration ===
-    pub(crate) grid: GridDefinition<C>,
+    pub(crate) grid: G,
     pub(crate) rules: Arc<Rules<C>>,
 
     // === Generation state ===
@@ -68,10 +69,10 @@ pub(crate) struct InternalGenerator<C: CoordinateSystem> {
     supports_count: Array<usize, Ix3>,
 }
 
-impl<C: CoordinateSystem> InternalGenerator<C> {
+impl<C: CoordinateSystem, G: Grid<C>> InternalGenerator<C, G> {
     pub(crate) fn new(
         rules: Arc<Rules<C>>,
-        grid: GridDefinition<C>,
+        grid: G,
         node_selection_heuristic: NodeSelectionHeuristic,
         model_selection_heuristic: ModelSelectionHeuristic,
         rng_mode: RngMode,
@@ -115,7 +116,7 @@ impl<C: CoordinateSystem> InternalGenerator<C> {
     }
 }
 
-impl<C: CoordinateSystem> InternalGenerator<C> {
+impl<C: CoordinateSystem, G: Grid<C>> InternalGenerator<C, G> {
     #[inline]
     fn is_model_possible(&self, node: NodeIndex, model: ModelVariantIndex) -> bool {
         self.nodes[node * self.rules.models_count() + model] == true
@@ -208,7 +209,7 @@ impl<C: CoordinateSystem> InternalGenerator<C> {
             // For a given `node`, `neighbours[direction]` will hold the optionnal index of the neighbour node in `direction`
             for direction in self.grid.directions() {
                 let grid_pos = self.grid.pos_from_index(node);
-                neighbours[*direction as usize] =
+                neighbours[(*direction).into()] =
                     self.grid.get_next_index_in_direction(&grid_pos, *direction);
             }
 
@@ -216,11 +217,11 @@ impl<C: CoordinateSystem> InternalGenerator<C> {
                 for direction in self.grid.directions() {
                     let opposite_dir = direction.opposite();
                     // During initialization, the support count for a model "from" a direction is simply the count of allowed adjacent models when looking in the opposite direction, or 0 for a non-looping border (no neighbour from this direction).
-                    match neighbours[opposite_dir as usize] {
+                    match neighbours[opposite_dir.into()] {
                         Some(_) => {
                             let allowed_models_count =
                                 self.rules.allowed_models(model, opposite_dir).len();
-                            self.supports_count[(node, model, *direction as usize)] =
+                            self.supports_count[(node, model, (*direction).into())] =
                                 allowed_models_count;
                             if allowed_models_count == 0 && self.is_model_possible(node, model) {
                                 // Ban model for node since it would 100% lead to a contradiction at some point during the generation.
@@ -232,7 +233,7 @@ impl<C: CoordinateSystem> InternalGenerator<C> {
                                 break;
                             }
                         }
-                        None => self.supports_count[(node, model, *direction as usize)] = 0,
+                        None => self.supports_count[(node, model, (*direction).into())] = 0,
                     };
                 }
             }
@@ -529,7 +530,7 @@ impl<C: CoordinateSystem> InternalGenerator<C> {
 
             // None of these model are possible on this node now, set their support to 0
             for dir in self.grid.directions() {
-                self.supports_count[(node_index, model_index, *dir as usize)] = 0;
+                self.supports_count[(node_index, model_index, (*dir).into())] = 0;
             }
         }
         // Remove eliminated possibilities (after enqueuing the propagation entries because we currently filter on the possible models)
@@ -559,7 +560,7 @@ impl<C: CoordinateSystem> InternalGenerator<C> {
     ) -> Result<(), GeneratorError> {
         // Update the supports
         for dir in self.grid.directions() {
-            let supports_count = &mut self.supports_count[(node_index, model, *dir as usize)];
+            let supports_count = &mut self.supports_count[(node_index, model, (*dir).into())];
             *supports_count = 0;
         }
         // Update the state
@@ -655,7 +656,7 @@ impl<C: CoordinateSystem> InternalGenerator<C> {
                     // Decrease the support count of all models previously supported by "from"
                     for &model in rules.allowed_models(from.model_index, *dir) {
                         let supports_count =
-                            &mut self.supports_count[(to_node_index, model, *dir as usize)];
+                            &mut self.supports_count[(to_node_index, model, (*dir).into())];
                         if *supports_count > 0 {
                             *supports_count -= 1;
                             // When we find a model which is now unsupported, we queue a ban
@@ -702,7 +703,7 @@ impl<C: CoordinateSystem> InternalGenerator<C> {
     }
 
     /// Should only be called when the nodes are fully generated
-    pub(crate) fn to_grid_data(&self) -> GridData<C, ModelInstance> {
+    pub(crate) fn to_grid_data(&self) -> GridData<C, ModelInstance, G> {
         let mut generated_nodes = Vec::with_capacity(self.nodes.len());
         for node_index in 0..self.grid.total_size() {
             let model_index = self.get_model_index(node_index);

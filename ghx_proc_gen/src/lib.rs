@@ -56,5 +56,5 @@ pub enum GeneratorBuilderError {
     InitialNodeSetError(#[from] NodeSetError),
     /// Error returned by a [`generator::builder::GeneratorBuilder`] when a given grid does not match the size of the builder's grid.
     #[error("Given grid size {0:?} does not match the expected size {1:?}")]
-    InvalidGridSize((u32, u32, u32), (u32, u32, u32)),
+    InvalidGridSize(usize, usize),
 }
