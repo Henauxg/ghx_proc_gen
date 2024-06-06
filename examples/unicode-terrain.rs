@@ -3,17 +3,19 @@ use std::{
     thread, time,
 };
 
-use ghx_grid::{
-    coordinate_system::Cartesian2D,
-    grid::{GridData, GridDefinition},
-};
-use ghx_proc_gen::generator::{
-    model::{ModelCollection, ModelInstance},
-    node_heuristic::NodeSelectionHeuristic,
-    observer::QueuedStatefulObserver,
-    rules::RulesBuilder,
-    socket::{SocketCollection, SocketsCartesian2D},
-    GenerationStatus, ModelSelectionHeuristic,
+use ghx_proc_gen::{
+    generator::{
+        model::{ModelCollection, ModelInstance},
+        node_heuristic::NodeSelectionHeuristic,
+        observer::QueuedStatefulObserver,
+        rules::RulesBuilder,
+        socket::{SocketCollection, SocketsCartesian2D},
+        GenerationStatus, ModelSelectionHeuristic,
+    },
+    ghx_grid::{
+        coordinate_system::Cartesian2D,
+        grid::{GridData, GridDefinition},
+    },
 };
 
 use ghx_proc_gen::generator::{builder::GeneratorBuilder, RngMode};

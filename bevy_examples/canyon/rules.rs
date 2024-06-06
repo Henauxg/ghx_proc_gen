@@ -1,7 +1,7 @@
 use bevy::{ecs::component::Component, math::Vec3};
 use bevy_examples::utils::AssetDef;
-use bevy_ghx_grid::ghx_grid::{coordinate_system::Cartesian3D, direction::GridDelta};
 use bevy_ghx_proc_gen::{
+    bevy_ghx_grid::ghx_grid::{coordinate_system::Cartesian3D, direction::GridDelta},
     gen::assets::ComponentSpawner,
     proc_gen::generator::{
         model::{ModelCollection, ModelInstance, ModelRotation},

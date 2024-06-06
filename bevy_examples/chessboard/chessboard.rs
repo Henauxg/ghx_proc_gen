@@ -1,10 +1,10 @@
 use bevy::prelude::*;
 
-use bevy_ghx_grid::ghx_grid::{
-    coordinate_system::Cartesian2D,
-    grid::{GridDefinition, GridPosition},
-};
 use bevy_ghx_proc_gen::{
+    bevy_ghx_grid::ghx_grid::{
+        coordinate_system::Cartesian2D,
+        grid::{GridDefinition, GridPosition},
+    },
     gen::{
         assets::{AssetSpawner, RulesModelsAssets},
         default_bundles::PbrMesh,

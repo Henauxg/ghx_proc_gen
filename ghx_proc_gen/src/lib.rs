@@ -6,6 +6,8 @@
 use generator::model::{ModelIndex, ModelRotation, ModelVariantIndex};
 use ghx_grid::grid::GridIndex;
 
+pub use ghx_grid;
+
 /// Model synthesis/Wave function Collapse generator
 pub mod generator;
 
