@@ -130,7 +130,7 @@ fn main() {
 }
 
 fn display_grid(
-    data_grid: &GridData<Cartesian2D, Option<ModelInstance>>,
+    data_grid: &GridData<Cartesian2D, Option<ModelInstance>, GridDefinition<Cartesian2D>>,
     icons: &Vec<&'static str>,
 ) {
     for y in (0..data_grid.grid().size_y()).rev() {
