@@ -4,7 +4,7 @@ use bitvec::{bitvec, order::LocalBits, slice::IterOnes, vec::BitVec};
 use ghx_grid::{
     coordinate_system::CoordinateSystem,
     direction::DirectionTrait,
-    grid::{Grid, GridData},
+    grid::{Grid, GridData, NodeRef},
 };
 use ndarray::{Array, Ix3};
 use rand::{
@@ -208,9 +208,10 @@ impl<C: CoordinateSystem, G: Grid<C>> InternalGenerator<C, G> {
         for node in 0..self.grid.total_size() {
             // For a given `node`, `neighbours[direction]` will hold the optionnal index of the neighbour node in `direction`
             for direction in self.grid.directions() {
-                let grid_pos = self.grid.pos_from_index(node);
-                neighbours[(*direction).into()] =
-                    self.grid.get_next_index_in_direction(&grid_pos, *direction);
+                let grid_index = node.to_index(&self.grid);
+                neighbours[(*direction).into()] = self
+                    .grid
+                    .get_next_index_in_direction(grid_index, *direction);
             }
 
             for model in 0..self.rules.models_count() {
@@ -637,8 +638,6 @@ impl<C: CoordinateSystem, G: Grid<C>> InternalGenerator<C, G> {
         let rules = Arc::clone(&self.rules);
 
         while let Some(from) = self.propagation_stack.pop() {
-            let from_position = self.grid.pos_from_index(from.node_index);
-
             #[cfg(feature = "debug-traces")]
             trace!(
                 "Propagate removal of model {:?} named '{}' for node {}",
@@ -651,7 +650,7 @@ impl<C: CoordinateSystem, G: Grid<C>> InternalGenerator<C, G> {
             for dir in self.grid.directions() {
                 // Get the adjacent node in this direction, it may not exist.
                 if let Some(to_node_index) =
-                    self.grid.get_next_index_in_direction(&from_position, *dir)
+                    self.grid.get_next_index_in_direction(from.node_index, *dir)
                 {
                     // Decrease the support count of all models previously supported by "from"
                     for &model in rules.allowed_models(from.model_index, *dir) {
