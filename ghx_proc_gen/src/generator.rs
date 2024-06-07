@@ -5,7 +5,7 @@ use std::{collections::HashMap, sync::Arc};
 use bevy::ecs::component::Component;
 
 use ghx_grid::{
-    coordinate_system::{Cartesian2D, CoordinateSystem},
+    coordinate_system::CoordinateSystem,
     grid::{Grid, GridData, NodeRef},
 };
 

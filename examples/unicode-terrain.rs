@@ -14,7 +14,7 @@ use ghx_proc_gen::{
     },
     ghx_grid::{
         coordinate_system::Cartesian2D,
-        grid::{GridData, GridDefinition},
+        grid::{GridData, CartesianGrid},
     },
 };
 
@@ -85,7 +85,7 @@ fn main() {
     let rules = RulesBuilder::new_cartesian_2d(models, sockets)
         .build()
         .unwrap();
-    let grid = GridDefinition::new_cartesian_2d(35, 12, false, false);
+    let grid = CartesianGrid::new_cartesian_2d(35, 12, false, false);
     let mut generator = GeneratorBuilder::new()
         .with_rules(rules)
         .with_grid(grid)
@@ -132,7 +132,7 @@ fn main() {
 }
 
 fn display_grid(
-    data_grid: &GridData<Cartesian2D, Option<ModelInstance>, GridDefinition<Cartesian2D>>,
+    data_grid: &GridData<Cartesian2D, Option<ModelInstance>, CartesianGrid<Cartesian2D>>,
     icons: &Vec<&'static str>,
 ) {
     for y in (0..data_grid.grid().size_y()).rev() {
