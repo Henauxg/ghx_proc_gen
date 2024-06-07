@@ -2,7 +2,7 @@ use std::{borrow::Cow, collections::HashSet, fmt, marker::PhantomData};
 
 use ghx_grid::{
     coordinate_system::{Cartesian2D, Cartesian3D, CoordinateSystem},
-    direction::Direction,
+    direction::{Direction, DirectionTrait},
 };
 #[cfg(feature = "debug-traces")]
 use tracing::warn;
@@ -90,7 +90,7 @@ impl ModelTemplate<Cartesian2D> {
     }
 }
 
-impl<C> ModelTemplate<C> {
+impl<C: CoordinateSystem> ModelTemplate<C> {
     /// Specify that this [`ModelTemplate`] can be rotated in exactly one way: `rotation`
     ///
     /// Rotations are specified as counter-clockwise
@@ -150,16 +150,15 @@ impl<C> ModelTemplate<C> {
         self
     }
 
-    fn rotated_sockets(&self, rotation: ModelRotation, rot_axis: Direction) -> Vec<Vec<Socket>> {
+    fn rotated_sockets(&self, rotation: ModelRotation, rot_axis: C::Direction) -> Vec<Vec<Socket>> {
         let mut rotated_sockets = vec![Vec::new(); self.sockets.len()];
 
         // Not pretty: if the node sockets contain the rotation axis
-        if self.sockets.len() > rot_axis as usize {
+        if self.sockets.len() > rot_axis.into() {
             // Sockets on the rotation axis are marked as rotated
             for fixed_axis in [rot_axis, rot_axis.opposite()] {
-                rotated_sockets[fixed_axis as usize]
-                    .extend(self.sockets[fixed_axis as usize].clone());
-                for socket in &mut rotated_sockets[fixed_axis as usize] {
+                rotated_sockets[fixed_axis.into()].extend(self.sockets[fixed_axis.into()].clone());
+                for socket in &mut rotated_sockets[fixed_axis.into()] {
                     socket.rotate(rotation);
                 }
             }
@@ -170,8 +169,7 @@ impl<C> ModelTemplate<C> {
         rotated_basis.rotate_right(rotation.index() as usize);
 
         for i in 0..basis.len() {
-            rotated_sockets[basis[i] as usize]
-                .extend(self.sockets[rotated_basis[i] as usize].clone());
+            rotated_sockets[basis[i].into()].extend(self.sockets[rotated_basis[i].into()].clone());
         }
         rotated_sockets
     }
@@ -223,7 +221,7 @@ impl<C: CoordinateSystem> ModelCollection<C> {
         self.models.last_mut()
     }
 
-    pub(crate) fn create_variations(&self, rotation_axis: Direction) -> Vec<ModelVariation> {
+    pub(crate) fn create_variations(&self, rotation_axis: C::Direction) -> Vec<ModelVariation> {
         let mut model_variations = Vec::new();
         for model in self.models.iter() {
             // Iterate on a vec of all possible node rotations and filter with the set to have a deterministic insertion order of model variations.
