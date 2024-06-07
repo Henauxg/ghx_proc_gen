@@ -14,7 +14,7 @@ use ghx_proc_gen::{
     },
     ghx_grid::{
         coordinate_system::Cartesian2D,
-        grid::{GridData, CartesianGrid},
+        grid::{CartesianGrid, GridData},
     },
 };
 

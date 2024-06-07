@@ -1,12 +1,14 @@
 use std::error::Error;
 
-use ghx_proc_gen::{generator::{
-    model::ModelCollection,
-    rules::RulesBuilder,
-    socket::{SocketCollection, SocketsCartesian2D},
-},ghx_grid::{coordinate_system::Cartesian2D, grid::CartesianGrid}};
-
-use ghx_proc_gen::generator::builder::GeneratorBuilder;
+use ghx_proc_gen::{
+    generator::{
+        builder::GeneratorBuilder,
+        model::ModelCollection,
+        rules::RulesBuilder,
+        socket::{SocketCollection, SocketsCartesian2D},
+    },
+    ghx_grid::{coordinate_system::Cartesian2D, grid::CartesianGrid},
+};
 
 fn main() -> Result<(), Box<dyn Error>> {
     // A SocketCollection is what we use to create sockets and define their connections
@@ -37,7 +39,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // There many more parameters you can tweak on a Generator before building it, explore the API.
     let mut generator = GeneratorBuilder::new()
         .with_rules(rules)
-        .with_grid(grid) 
+        .with_grid(grid)
         .with_initial_nodes(initial_nodes)?
         .build()?;
 
