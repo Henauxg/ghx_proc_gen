@@ -1,10 +1,7 @@
 use bevy::prelude::*;
 
 use bevy_ghx_proc_gen::{
-    bevy_ghx_grid::ghx_grid::{
-        coordinate_system::Cartesian2D,
-        grid::{GridDefinition, GridPosition},
-    },
+    bevy_ghx_grid::ghx_grid::cartesian::{grid::CartesianGrid, coordinates::Cartesian2D},
     gen::{
         assets::{AssetSpawner, RulesModelsAssets},
         default_bundles::PbrMesh,
@@ -65,14 +62,15 @@ fn setup_generator(
         .unwrap();
 
     // Like a chess board, let's do an 8x8 2d grid
-    let grid = GridDefinition::new_cartesian_2d(8, 8, false, false);
+    let grid = CartesianGrid::new_cartesian_2d(8, 8, false, false);
+    let initial_nodes = vec![(grid.index_from_coords(0, 0, 0), black_model)];
 
     // There many more parameters you can tweak on a Generator before building it, explore the API.
     let generator = GeneratorBuilder::new()
         .with_rules(rules)
         .with_grid(grid.clone())
         // Let's ensure that we make a chessboard, with a black square bottom-left
-        .with_initial_nodes(vec![(GridPosition::new_xy(0, 0), black_model)])
+        .with_initial_nodes(initial_nodes)
         .unwrap()
         .build()
         .unwrap();

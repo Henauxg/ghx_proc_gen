@@ -1,6 +1,9 @@
 use std::f32::consts::PI;
 
-use bevy::{log::LogPlugin, pbr::DirectionalLightShadowMap, prelude::*};
+use bevy::{
+    log::LogPlugin, pbr::DirectionalLightShadowMap,
+     prelude::*,
+    color::palettes::css::{ORANGE_RED, GRAY}};
 
 use bevy_examples::{
     anim::SpawningScaleAnimation, plugin::ProcGenExamplesPlugin, utils::load_assets,
@@ -8,7 +11,7 @@ use bevy_examples::{
 use bevy_ghx_proc_gen::{
     bevy_ghx_grid::{
         debug_plugin::{view::DebugGridView, DebugGridView3dBundle},
-        ghx_grid::{coordinate_system::Cartesian3D, grid::GridDefinition},
+        ghx_grid::cartesian::{coordinates::Cartesian3D, grid::CartesianGrid},
     },
     gen::{
         assets::AssetSpawner,
@@ -20,7 +23,7 @@ use bevy_ghx_proc_gen::{
     },
     GeneratorBundle,
 };
-use bevy_ghx_utils::camera::{update_pan_orbit_camera, PanOrbitCamera};
+use bevy_ghx_utils::camera::{update_pan_orbit_camera, PanOrbitCameraBundle, PanOrbitState};
 
 use rand::Rng;
 use rules::{CustomComponents, RotationRandomizer, ScaleRandomizer, WindRotation};
@@ -62,22 +65,25 @@ fn setup_scene(mut commands: Commands) {
                 .looking_at(look_target, Vec3::Y),
             ..default()
         },
-        PanOrbitCamera {
+        PanOrbitCameraBundle {
+            state: PanOrbitState {
             radius,
+            ..default()
+        },
             ..Default::default()
         },
     ));
 
     // Scene lights
     commands.insert_resource(AmbientLight {
-        color: Color::ORANGE_RED,
+        color: ORANGE_RED.into(),
         brightness: 0.05,
     });
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
             shadows_enabled: true,
             illuminance: 4000.,
-            color: Color::rgb(1.0, 0.85, 0.65),
+            color: Color::srgb(1.0, 0.85, 0.65).into(),
             ..default()
         },
         transform: Transform {
@@ -91,7 +97,7 @@ fn setup_scene(mut commands: Commands) {
         directional_light: DirectionalLight {
             shadows_enabled: false,
             illuminance: 2000.,
-            color: Color::ORANGE_RED,
+            color: ORANGE_RED.into(),
             ..default()
         },
         transform: Transform {
@@ -118,7 +124,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
     let rules = RulesBuilder::new_cartesian_3d(models, socket_collection)
         .build()
         .unwrap();
-    let grid = GridDefinition::new_cartesian_3d(GRID_X, GRID_HEIGHT, GRID_Z, false, false, false);
+    let grid = CartesianGrid::new_cartesian_3d(GRID_X, GRID_HEIGHT, GRID_Z, false, false, false);
 
     let mut initial_constraints = grid.new_grid_data(None);
     // Force void nodes on the upmost layer
@@ -137,9 +143,10 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
     initial_constraints.set_all_yz(0, GRID_Z - 1, sand_ref);
     // Let's force a small lake at the center
     let water_ref = Some(water_instance);
-    for x in 2 * GRID_X / 5..3 * GRID_X / 5 {
+    // TODO! Fix this code
+    /*for x in 2 * GRID_X / 5..3 * GRID_X / 5 {
         for z in 2 * GRID_Z / 5..3 * GRID_Z / 5 {
-            initial_constraints.set((x, 0, z), water_ref);
+            initial_constraints.set((x as usize, 0 as usize, z as usize), water_ref);
         }
     }
     // We could hope for a water bridge, or force one !
@@ -147,7 +154,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         (GRID_X / 2, GRID_HEIGHT / 2, GRID_Z / 2),
         Some(bridge_instance),
     );
-
+    */
     let mut gen_builder = GeneratorBuilder::new()
         .with_rules(rules)
         .with_grid(grid.clone())
@@ -187,7 +194,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         },
         observer,
         DebugGridView3dBundle {
-            view: DebugGridView::new(false, true, Color::GRAY, NODE_SIZE),
+            view: DebugGridView::new(false, true, GRAY.into(), NODE_SIZE),
             ..default()
         },
     ));

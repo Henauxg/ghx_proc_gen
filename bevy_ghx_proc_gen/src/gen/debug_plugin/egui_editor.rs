@@ -1,3 +1,5 @@
+use crate::gen::CartesianCoordinates;
+
 use bevy::{
     ecs::{
         event::{Event, EventReader, EventWriter},
@@ -79,7 +81,7 @@ pub fn toggle_editor(mut editor_config: ResMut<EditorConfig>) {
 }
 
 /// System used to draw the editor egui window
-pub fn draw_edition_panel<C: CoordinateSystem>(
+pub fn draw_edition_panel<C: CoordinateSystem + CartesianCoordinates>(
     editor_context: ResMut<EditorContext>,
     mut contexts: EguiContexts,
     active_generation: Res<ActiveGeneration>,
@@ -251,7 +253,7 @@ pub fn update_painting_state(
 }
 
 /// System issuing the generation requests to the geenrator based on the painting state
-pub fn paint<C: CoordinateSystem>(
+pub fn paint<C: CoordinateSystem + CartesianCoordinates>(
     editor_context: ResMut<EditorContext>,
     active_generation: Res<ActiveGeneration>,
     mut node_over_events: EventReader<NodeOverEvent>,

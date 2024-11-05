@@ -1,5 +1,6 @@
 use bevy::{
     app::{App, Plugin, Startup, Update},
+    color::{Color, palettes::basic::{WHITE, BLACK}},
     diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
     ecs::{
         component::Component,
@@ -7,7 +8,8 @@ use bevy::{
         system::{Commands, Query, Res},
     },
     hierarchy::BuildChildren,
-    render::{color::Color, view::Visibility},
+    prelude::Alpha,
+    render::view::Visibility,
     text::{Text, TextSection, TextStyle},
     ui::{
         node_bundles::{NodeBundle, TextBundle},
@@ -45,7 +47,7 @@ pub fn setup_fps_counter(mut commands: Commands) {
             FpsRoot,
             NodeBundle {
                 // give it a dark background for readability
-                background_color: BackgroundColor(Color::BLACK.with_a(0.5)),
+                background_color: BackgroundColor(BLACK.with_alpha(0.5).into()),
                 // make it "always on top" by setting the Z index to maximum
                 // we want it to be displayed over all other UI
                 z_index: ZIndex::Global(i32::MAX),
@@ -79,7 +81,7 @@ pub fn setup_fps_counter(mut commands: Commands) {
                         value: "FPS: ".into(),
                         style: TextStyle {
                             font_size: DEFAULT_EXAMPLES_FONT_SIZE,
-                            color: Color::WHITE,
+                            color: WHITE.into(),
                             // if you want to use your game's font asset,
                             // uncomment this and provide the handle:
                             // font: my_font_handle
@@ -90,7 +92,7 @@ pub fn setup_fps_counter(mut commands: Commands) {
                         value: " N/A".into(),
                         style: TextStyle {
                             font_size: DEFAULT_EXAMPLES_FONT_SIZE,
-                            color: Color::WHITE,
+                            color: WHITE.into(),
                             // if you want to use your game's font asset,
                             // uncomment this and provide the handle:
                             // font: my_font_handle
@@ -124,22 +126,22 @@ pub fn fps_text_update_system(
             // text according to the FPS value:
             text.sections[1].style.color = if value >= 120.0 {
                 // Above 120 FPS, use green color
-                Color::rgb(0.0, 1.0, 0.0)
+                Color::srgb(0.0, 1.0, 0.0)
             } else if value >= 60.0 {
                 // Between 60-120 FPS, gradually transition from yellow to green
-                Color::rgb((1.0 - (value - 60.0) / (120.0 - 60.0)) as f32, 1.0, 0.0)
+                Color::srgb((1.0 - (value - 60.0) / (120.0 - 60.0)) as f32, 1.0, 0.0)
             } else if value >= 30.0 {
                 // Between 30-60 FPS, gradually transition from red to yellow
-                Color::rgb(1.0, ((value - 30.0) / (60.0 - 30.0)) as f32, 0.0)
+                Color::srgb(1.0, ((value - 30.0) / (60.0 - 30.0)) as f32, 0.0)
             } else {
                 // Below 30 FPS, use red color
-                Color::rgb(1.0, 0.0, 0.0)
+                Color::srgb(1.0, 0.0, 0.0)
             }
         } else {
             // display "N/A" if we can't get a FPS measurement
             // add an extra space to preserve alignment
             text.sections[1].value = " N/A".into();
-            text.sections[1].style.color = Color::WHITE;
+            text.sections[1].style.color = WHITE.into();
         }
     }
 }

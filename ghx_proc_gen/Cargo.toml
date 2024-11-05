@@ -23,7 +23,7 @@ reflect = ["bevy", "ghx_grid/reflect"]
 
 [dependencies]
 # Internal dependencies
-ghx_grid = { version = "0.2.0", features = [] }
+ghx_grid = { version = "0.4", features = [] }
 
 # External dependencies
 bitvec = "1.0.1"
@@ -36,4 +36,8 @@ tracing = "0.1.40"
 # Optional dependencies
 
 # Only enabled when the "bevy" feature is enabled
-bevy = { version = "0.13.0", optional = true, default-features = false }
+bevy = { version = "0.14", optional = true, default-features = false, features = [ 
+    "bevy_winit", 
+    "bevy_render",
+    "wayland",
+]}

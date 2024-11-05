@@ -2,8 +2,8 @@ use bevy_examples::utils::AssetDef;
 
 use bevy_ghx_proc_gen::{
     bevy_ghx_grid::ghx_grid::{
-        coordinate_system::Cartesian3D,
-        direction::{Direction, GridDelta},
+        cartesian::coordinates::{GridDelta, Cartesian3D},
+        direction::Direction,
     },
     proc_gen::generator::{
         model::{ModelCollection, ModelRotation},

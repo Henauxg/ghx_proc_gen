@@ -1,3 +1,5 @@
+use crate::gen::CartesianCoordinates;
+
 use bevy::{
     asset::{Assets, Handle},
     ecs::{
@@ -10,9 +12,10 @@ use bevy::{
     hierarchy::{BuildChildren, DespawnRecursiveExt, Parent},
     input::{keyboard::KeyCode, ButtonInput},
     math::{primitives::Cuboid, Vec2, Vec3},
-    pbr::{AlphaMode, NotShadowCaster, PbrBundle, StandardMaterial},
-    prelude::{Deref, DerefMut},
-    render::{color::Color, mesh::Mesh},
+    pbr::{NotShadowCaster, PbrBundle, StandardMaterial},
+    prelude::{Deref, DerefMut, AlphaMode, Alpha},
+    render::mesh::Mesh,
+    color::Color,
     sprite::{Sprite, SpriteBundle},
     text::Text,
     transform::components::Transform,
@@ -25,7 +28,7 @@ use bevy_ghx_grid::{
         markers::{GridMarker, MarkerDespawnEvent},
         view::{DebugGridView, DebugGridView2d, DebugGridView3d},
     },
-    ghx_grid::{coordinate_system::CoordinateSystem, direction::Direction, grid::GridDefinition},
+    ghx_grid::{coordinate_system::CoordinateSystem, direction::Direction, cartesian::grid::CartesianGrid},
 };
 use bevy_mod_picking::{
     events::Out,
@@ -50,7 +53,7 @@ use super::{
 pub struct OverCursorMarkerSettings(pub Color);
 impl Default for OverCursorMarkerSettings {
     fn default() -> Self {
-        Self(Color::rgb(0.85, 0.85, 0.73))
+        Self(Color::srgb(0.85, 0.85, 0.73))
     }
 }
 impl CursorMarkerSettings for OverCursorMarkerSettings {
@@ -94,7 +97,7 @@ impl From<ListenerInput<Pointer<Out>>> for NodeOutEvent {
 pub struct NodeSelectedEvent(pub Entity);
 
 /// System that inserts picking event handlers to entites with an added [GridNode] component
-pub fn insert_cursor_picking_handlers_to_grid_nodes<C: CoordinateSystem>(
+pub fn insert_cursor_picking_handlers_to_grid_nodes<C: CoordinateSystem + CartesianCoordinates>(
     mut commands: Commands,
     spawned_nodes: Query<Entity, Added<GridNode>>,
 ) {
@@ -140,7 +143,7 @@ pub fn update_over_cursor_panel_text(
 /// System updating the Over [Cursor] by reading all the [GenerationEvent]
 ///
 /// Should run after update_cursors_info_on_cursors_changes and before update_cursors_info_from_generation_events
-pub fn update_over_cursor_from_generation_events<C: CoordinateSystem>(
+pub fn update_over_cursor_from_generation_events<C: CoordinateSystem + CartesianCoordinates>(
     mut cursors_events: EventReader<GenerationEvent>,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
     mut over_cursor: Query<&mut Cursor, With<OverCursor>>,
@@ -164,7 +167,7 @@ pub fn update_over_cursor_from_generation_events<C: CoordinateSystem>(
 
 /// System used to update cursor positions from picking events
 pub fn picking_update_cursors_position<
-    C: CoordinateSystem,
+    C: CoordinateSystem + CartesianCoordinates,
     CS: CursorMarkerSettings,
     CB: CursorBehavior,
     PE: Event + std::ops::DerefMut<Target = Entity>,
@@ -176,7 +179,7 @@ pub fn picking_update_cursors_position<
     mut marker_events: EventWriter<MarkerDespawnEvent>,
     grid_nodes: Query<(&GridNode, &Parent)>,
     mut cursor: Query<&mut Cursor, With<CB>>,
-    generations: Query<(Entity, &GridDefinition<C>), With<Generator<C>>>,
+    generations: Query<(Entity, &CartesianGrid<C>), With<Generator<C>>>,
 ) {
     if let Some(event) = events.read().last() {
         let Ok(mut cursor) = cursor.get_single_mut() else {
@@ -225,7 +228,7 @@ pub fn picking_update_cursors_position<
 }
 
 /// System used to remove an Over cursor on a [NodeOutEvent]
-pub fn picking_remove_previous_over_cursor<C: CoordinateSystem>(
+pub fn picking_remove_previous_over_cursor<C: CoordinateSystem + CartesianCoordinates>(
     mut out_events: EventReader<NodeOutEvent>,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
     mut nodes: Query<&GridNode>,
@@ -262,7 +265,7 @@ pub fn setup_picking_assets(
     mut standard_materials: ResMut<Assets<StandardMaterial>>,
     mut cursor_target_assets: ResMut<CursorTargetAssets>,
 ) {
-    cursor_target_assets.color = Color::WHITE.with_a(0.15);
+    cursor_target_assets.color = Color::WHITE.with_alpha(0.15);
     cursor_target_assets.base_size = 0.9;
     cursor_target_assets.target_mesh_3d = meshes.add(Mesh::from(Cuboid {
         half_size: Vec3::splat(cursor_target_assets.base_size / 2.),
@@ -289,7 +292,7 @@ pub struct ActiveCursorTargets {
 }
 
 /// System that spawn & depsanw the cursor targets
-pub fn update_cursor_targets_nodes<C: CoordinateSystem>(
+pub fn update_cursor_targets_nodes<C: CoordinateSystem + CartesianCoordinates>(
     mut local_active_cursor_targets: Local<Option<ActiveCursorTargets>>,
     mut commands: Commands,
     keys: Res<ButtonInput<KeyCode>>,
@@ -298,9 +301,9 @@ pub fn update_cursor_targets_nodes<C: CoordinateSystem>(
     mut marker_events: EventWriter<MarkerDespawnEvent>,
     selection_cursor: Query<&Cursor, With<SelectCursor>>,
     mut over_cursor: Query<&mut Cursor, (With<OverCursor>, Without<SelectCursor>)>,
-    grids_with_cam3d: Query<(&GridDefinition<C>, &DebugGridView), With<DebugGridView3d>>,
+    grids_with_cam3d: Query<(&CartesianGrid<C>, &DebugGridView), With<DebugGridView3d>>,
     grids_with_cam2d: Query<
-        (&GridDefinition<C>, &DebugGridView),
+        (&CartesianGrid<C>, &DebugGridView),
         (With<DebugGridView2d>, Without<DebugGridView3d>),
     >,
     cursor_targets: Query<Entity, With<CursorTarget>>,
@@ -389,14 +392,14 @@ pub fn despawn_cursor_targets(
 }
 
 /// Function used to spawn cursor targets
-pub fn spawn_cursor_targets<C: CoordinateSystem>(
+pub fn spawn_cursor_targets<C: CoordinateSystem + CartesianCoordinates>(
     commands: &mut Commands,
     cursor_target_assets: &Res<CursorTargetAssets>,
     selected_node: &TargetedNode,
     axis: Direction,
-    grids_with_cam3d: &Query<(&GridDefinition<C>, &DebugGridView), With<DebugGridView3d>>,
+    grids_with_cam3d: &Query<(&CartesianGrid<C>, &DebugGridView), With<DebugGridView3d>>,
     grids_with_cam2d: &Query<
-        (&GridDefinition<C>, &DebugGridView),
+        (&CartesianGrid<C>, &DebugGridView),
         (With<DebugGridView2d>, Without<DebugGridView3d>),
     >,
 ) {
@@ -422,12 +425,12 @@ pub fn spawn_cursor_targets<C: CoordinateSystem>(
 }
 
 /// Function used to spawn cursor targets when using a 3d camera
-pub fn spawn_cursor_targets_3d<C: CoordinateSystem>(
+pub fn spawn_cursor_targets_3d<C: CoordinateSystem + CartesianCoordinates>(
     commands: &mut Commands,
     cursor_target_assets: &Res<CursorTargetAssets>,
     axis: Direction,
     selected_node: &TargetedNode,
-    grid: &GridDefinition<C>,
+    grid: &CartesianGrid<C>,
     node_size: &Vec3,
 ) {
     let mut spawn_cursor_target = |x: u32, y: u32, z: u32| {
@@ -486,12 +489,12 @@ pub fn spawn_cursor_targets_3d<C: CoordinateSystem>(
 }
 
 /// Function used to spawn cursor targets when using a 2d camera
-pub fn spawn_cursor_targets_2d<C: CoordinateSystem>(
+pub fn spawn_cursor_targets_2d<C: CoordinateSystem + CartesianCoordinates>(
     commands: &mut Commands,
     cursor_target_assets: &Res<CursorTargetAssets>,
     axis: Direction,
     selected_node: &TargetedNode,
-    grid: &GridDefinition<C>,
+    grid: &CartesianGrid<C>,
     node_size: &Vec3,
 ) {
     let mut spawn_cursor_target = |x: u32, y: u32, z: u32| {

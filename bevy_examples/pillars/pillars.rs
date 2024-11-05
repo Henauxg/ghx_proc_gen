@@ -1,13 +1,17 @@
 use std::{f32::consts::PI, sync::Arc};
 
-use bevy::{log::LogPlugin, pbr::DirectionalLightShadowMap, prelude::*};
+use bevy::{
+    log::LogPlugin, pbr::DirectionalLightShadowMap,
+    prelude::*,
+    color::palettes::{basic::GRAY, css::ORANGE_RED}
+};
 
 use bevy_examples::{plugin::ProcGenExamplesPlugin, utils::load_assets};
 
 use bevy_ghx_proc_gen::{
     bevy_ghx_grid::{
         debug_plugin::{view::DebugGridView, DebugGridView3dBundle},
-        ghx_grid::{coordinate_system::Cartesian3D, grid::GridDefinition},
+        ghx_grid::cartesian::{coordinates::Cartesian3D, grid::CartesianGrid},
     },
     gen::{
         assets::{AssetSpawner, RulesModelsAssets},
@@ -16,7 +20,7 @@ use bevy_ghx_proc_gen::{
     proc_gen::generator::{builder::GeneratorBuilder, rules::RulesBuilder},
     GeneratorBundle,
 };
-use bevy_ghx_utils::camera::{update_pan_orbit_camera, PanOrbitCamera};
+use bevy_ghx_utils::camera::{update_pan_orbit_camera, PanOrbitCameraBundle, PanOrbitState};
 
 use crate::rules::rules_and_assets;
 
@@ -52,12 +56,15 @@ fn setup_scene(
             transform: Transform::from_translation(camera_position).looking_at(Vec3::ZERO, Vec3::Y),
             ..default()
         },
-        PanOrbitCamera {
-            radius,
-            ..Default::default()
+        PanOrbitCameraBundle {
+            state: PanOrbitState {
+                radius,
+                ..default()
+            },
+            ..default()
         },
         FogSettings {
-            color: Color::rgba(0.2, 0.15, 0.1, 1.0),
+            color: Color::srgba(0.2, 0.15, 0.1, 1.0).into(),
             falloff: FogFalloff::Linear {
                 start: 55.0,
                 end: 145.0,
@@ -69,7 +76,7 @@ fn setup_scene(
         PbrBundle {
             mesh: meshes.add(Mesh::from(Plane3d::default())),
             material: materials.add(StandardMaterial {
-                base_color: Color::hex("888888").unwrap(),
+                base_color: Color::srgb_u8(136, 136, 136).into(),
                 ..default()
             }),
             transform: Transform::from_scale(Vec3::splat(10000.0)).with_translation(Vec3::new(
@@ -84,14 +91,14 @@ fn setup_scene(
 
     // Scene lights
     commands.insert_resource(AmbientLight {
-        color: Color::ORANGE_RED,
+        color: ORANGE_RED.into(),
         brightness: 0.05,
     });
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
             shadows_enabled: true,
             illuminance: 3000.,
-            color: Color::rgb(1.0, 0.85, 0.65),
+            color: Color::srgb(1.0, 0.85, 0.65).into(),
             ..default()
         },
         transform: Transform {
@@ -105,7 +112,7 @@ fn setup_scene(
         directional_light: DirectionalLight {
             shadows_enabled: false,
             illuminance: 1250.,
-            color: Color::rgb(1.0, 0.85, 0.65),
+            color: Color::srgb(1.0, 0.85, 0.65).into(),
             ..default()
         },
         transform: Transform {
@@ -126,7 +133,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
             .build()
             .unwrap(),
     );
-    let grid = GridDefinition::new_cartesian_3d(GRID_X, GRID_HEIGHT, GRID_Z, false, false, false);
+    let grid = CartesianGrid::new_cartesian_3d(GRID_X, GRID_HEIGHT, GRID_Z, false, false, false);
     let gen_builder = GeneratorBuilder::new()
         // We share the Rules between all the generators
         .with_shared_rules(rules.clone())
@@ -160,7 +167,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
             },
             observer,
             DebugGridView3dBundle {
-                view: DebugGridView::new(false, true, Color::GRAY, NODE_SIZE),
+                view: DebugGridView::new(false, true, GRAY.into(), NODE_SIZE),
                 ..default()
             },
             Name::new(format!("Grid_{}", i)),

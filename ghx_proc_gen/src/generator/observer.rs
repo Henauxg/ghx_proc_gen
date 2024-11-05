@@ -3,8 +3,7 @@ use super::{model::ModelInstance, GeneratedNode, Generator};
 #[cfg(feature = "bevy")]
 use bevy::ecs::component::Component;
 use ghx_grid::{
-    coordinate_system::CoordinateSystem,
-    grid::{GridData, GridDefinition},
+    cartesian::{coordinates::CartesianCoordinates, grid::CartesianGrid}, coordinate_system::CoordinateSystem, grid::{Grid, GridData}
 };
 
 /// Update sent by a [`crate::generator::Generator`]
@@ -22,21 +21,21 @@ pub enum GenerationUpdate {
 ///
 /// Can be used in a different thread than the generator's thread.
 #[cfg_attr(feature = "bevy", derive(Component))]
-pub struct QueuedStatefulObserver<T: CoordinateSystem> {
-    grid_data: GridData<T, Option<ModelInstance>>,
+pub struct QueuedStatefulObserver<C: CoordinateSystem + CartesianCoordinates> {
+    grid_data: GridData<C, Option<ModelInstance>, CartesianGrid<C>>,
     receiver: crossbeam_channel::Receiver<GenerationUpdate>,
 }
 
-impl<T: CoordinateSystem> QueuedStatefulObserver<T> {
+impl<C: CoordinateSystem + CartesianCoordinates> QueuedStatefulObserver<C> {
     /// Creates a new [`QueuedStatefulObserver`] for a given [`crate::generator::Generator`]
-    pub fn new(generator: &mut Generator<T>) -> Self {
+    pub fn new(generator: &mut Generator<C>) -> Self {
         let receiver = generator.create_observer_queue();
         QueuedStatefulObserver::create(receiver, generator.grid())
     }
 
     pub(crate) fn create(
         receiver: crossbeam_channel::Receiver<GenerationUpdate>,
-        grid: &GridDefinition<T>,
+        grid: &CartesianGrid<C>,
     ) -> Self {
         QueuedStatefulObserver {
             grid_data: GridData::new(grid.clone(), vec![None; grid.total_size()]),
@@ -45,7 +44,7 @@ impl<T: CoordinateSystem> QueuedStatefulObserver<T> {
     }
 
     /// Returns a ref to the observer's [`GridData`]
-    pub fn grid_data(&self) -> &GridData<T, Option<ModelInstance>> {
+    pub fn grid_data(&self) -> &GridData<C, Option<ModelInstance>, CartesianGrid<C>> {
         &self.grid_data
     }
 
@@ -92,7 +91,7 @@ pub struct QueuedObserver {
 
 impl QueuedObserver {
     /// Creates a new [`QueuedObserver`] for a given [`crate::generator::Generator`]
-    pub fn new<T: CoordinateSystem>(generator: &mut Generator<T>) -> Self {
+    pub fn new<T: CoordinateSystem + CartesianCoordinates>(generator: &mut Generator<T>) -> Self {
         let receiver = generator.create_observer_queue();
         QueuedObserver { receiver }
     }

@@ -5,8 +5,9 @@ use std::{collections::HashMap, sync::Arc};
 use bevy::ecs::component::Component;
 
 use ghx_grid::{
-    coordinate_system::{Cartesian2D, CoordinateSystem},
-    grid::{GridData, GridDefinition, NodeRef},
+    coordinate_system::CoordinateSystem,
+    cartesian::{coordinates::{Cartesian2D, CartesianCoordinates}, grid::CartesianGrid},
+    grid::{GridData, NodeRef},
 };
 
 use crate::{GeneratorError, NodeIndex, NodeSetError};
@@ -71,7 +72,7 @@ pub enum GenerationStatus {
     Done,
 }
 
-/// Output of a [`Generator`] in the context of its [`ghx_grid::grid::GridDefinition`].
+/// Output of a [`Generator`] in the context of its [`ghx_grid::grid::CartesianGrid`].
 #[derive(Clone, Copy, Debug)]
 pub struct GeneratedNode {
     /// Index of the node in the grid
@@ -106,7 +107,7 @@ pub struct Generator<C: CoordinateSystem> {
     internal: InternalGenerator<C>,
 }
 
-impl<C: CoordinateSystem> Generator<C> {
+impl<C: CoordinateSystem + CartesianCoordinates> Generator<C> {
     /// Returns a new `GeneratorBuilder`
     pub fn builder() -> GeneratorBuilder<Unset, Unset, Cartesian2D> {
         GeneratorBuilder::new()
@@ -114,7 +115,7 @@ impl<C: CoordinateSystem> Generator<C> {
 
     fn create(
         rules: Arc<Rules<C>>,
-        grid: GridDefinition<C>,
+        grid: CartesianGrid<C>,
         initial_nodes: Vec<(NodeIndex, ModelVariantIndex)>,
         max_retry_count: u32,
         node_selection_heuristic: NodeSelectionHeuristic,
@@ -144,12 +145,12 @@ impl<C: CoordinateSystem> Generator<C> {
         }
     }
 
-    /// Returns the `max_retry_count`: how many time the [`Generator`] should retry to generate the [`GridDefinition`] when a contradiction is encountered
+    /// Returns the `max_retry_count`: how many time the [`Generator`] should retry to generate the [`CartesianGrid`] when a contradiction is encountered
     pub fn max_retry_count(&self) -> u32 {
         self.max_retry_count
     }
 
-    /// Specifies how many time the [`Generator`] should retry to generate the [`GridDefinition`] when a contradiction is encountered
+    /// Specifies how many time the [`Generator`] should retry to generate the [`CartesianGrid`] when a contradiction is encountered
     pub fn set_max_retry_count(&mut self, max_retry_count: u32) {
         self.max_retry_count = max_retry_count;
     }
@@ -159,8 +160,8 @@ impl<C: CoordinateSystem> Generator<C> {
         self.internal.seed
     }
 
-    /// Returns the [`GridDefinition`] used by the generator
-    pub fn grid(&self) -> &GridDefinition<C> {
+    /// Returns the [`CartesianGrid`] used by the generator
+    pub fn grid(&self) -> &CartesianGrid<C> {
         &self.internal.grid
     }
 
@@ -177,7 +178,7 @@ impl<C: CoordinateSystem> Generator<C> {
     /// Returns a [`GridData`] of [`ModelInstance`] with all the nodes generated if the generation is done
     ///
     /// Returns `None` if the generation is still ongoing or currently failed
-    pub fn to_grid_data(&self) -> Option<GridData<C, ModelInstance>> {
+    pub fn to_grid_data(&self) -> Option<GridData<C, ModelInstance, CartesianGrid<C>>> {
         match self.internal.status {
             InternalGeneratorStatus::Ongoing => None,
             InternalGeneratorStatus::Failed(_) => None,
@@ -192,7 +193,7 @@ impl<C: CoordinateSystem> Generator<C> {
     /// If the generation was already started by previous calls to [`Generator::set_and_propagate`] or [`Generator::select_and_propagate`], this will simply continue the current generation.
     pub fn generate_grid(
         &mut self,
-    ) -> Result<(GenInfo, GridData<C, ModelInstance>), GeneratorError> {
+    ) -> Result<(GenInfo, GridData<C, ModelInstance, CartesianGrid<C>>), GeneratorError> {
         let gen_info =
             self.internal
                 .generate(&mut None, self.max_retry_count, &self.initial_nodes)?;

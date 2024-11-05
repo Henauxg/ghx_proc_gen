@@ -2,6 +2,7 @@ use std::marker::PhantomData;
 
 use bevy::{
     app::{App, Plugin, PreUpdate, Startup, Update},
+    color::{Color, palettes::css::{YELLOW_GREEN, GREEN}},
     diagnostic::FrameTimeDiagnosticsPlugin,
     ecs::{
         component::Component,
@@ -19,8 +20,7 @@ use bevy::{
         ButtonInput,
     },
     math::Vec3,
-    prelude::default,
-    render::color::Color,
+    prelude::{default, Alpha},
     text::{BreakLineOn, Text, TextSection, TextStyle},
     ui::{
         node_bundles::{NodeBundle, TextBundle},
@@ -34,7 +34,7 @@ use bevy_ghx_proc_gen::{
             markers::MarkersGroup, toggle_debug_grids_visibilities,
             toggle_grid_markers_visibilities, GridDebugPlugin,
         },
-        ghx_grid::coordinate_system::CoordinateSystem,
+        ghx_grid::{coordinate_system::CoordinateSystem, cartesian::coordinates::CartesianCoordinates},
     },
     gen::{
         assets::{AssetsBundleSpawner, ComponentSpawner, NoComponents},
@@ -80,7 +80,7 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner>
 const DEFAULT_SPAWN_ANIMATION_DURATION: f32 = 0.6;
 const FAST_SPAWN_ANIMATION_DURATION: f32 = 0.1;
 
-impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
+impl<C: CoordinateSystem + CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
     for ProcGenExamplesPlugin<C, A, T>
 {
     fn build(&self, app: &mut App) {
@@ -126,7 +126,7 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
             PreUpdate,
             absorb_egui_inputs
                 .after(bevy_egui::systems::process_input_system)
-                .before(bevy_egui::EguiSet::BeginFrame),
+                .before(bevy_egui::EguiSet::BeginPass),
         );
     }
 }
@@ -197,7 +197,7 @@ pub fn setup_ui(mut commands: Commands, view_mode: Res<GenerationViewMode>) {
         .spawn((
             Pickable::IGNORE,
             NodeBundle {
-                background_color: Color::BLACK.with_a(0.6).into(),
+                background_color: Color::BLACK.with_alpha(0.6).into(),
                 style: Style {
                     position_type: PositionType::Absolute,
                     top: Val::Percent(1.),
@@ -298,9 +298,9 @@ pub fn update_generation_control_ui(
     for mut text in &mut query {
         let status_section = &mut text.sections[GENERATION_CONTROL_STATUS_TEXT_SECTION_ID];
         (status_section.value, status_section.style.color) = match gen_control.status {
-            GenerationControlStatus::Ongoing => ("Ongoing ('Space' to pause)".into(), Color::GREEN),
+            GenerationControlStatus::Ongoing => ("Ongoing ('Space' to pause)".into(), GREEN.into()),
             GenerationControlStatus::Paused => {
-                ("Paused ('Space' to unpause)".into(), Color::YELLOW_GREEN)
+                ("Paused ('Space' to unpause)".into(), YELLOW_GREEN.into())
             }
         };
 

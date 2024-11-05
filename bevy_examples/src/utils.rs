@@ -5,7 +5,7 @@ use bevy::{
 };
 
 use bevy_ghx_proc_gen::{
-    bevy_ghx_grid::ghx_grid::direction::GridDelta,
+    bevy_ghx_grid::ghx_grid::cartesian::coordinates::GridDelta,
     gen::assets::{
         AssetsBundleSpawner, ComponentSpawner, ModelAsset, NoComponents, RulesModelsAssets,
     },

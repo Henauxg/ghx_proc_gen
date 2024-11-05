@@ -1,8 +1,7 @@
 use std::{marker::PhantomData, sync::Arc};
 
 use ghx_grid::{
-    coordinate_system::CoordinateSystem,
-    grid::{GridData, GridDefinition, NodeRef},
+    cartesian::{coordinates::CartesianCoordinates, grid::CartesianGrid}, coordinate_system::CoordinateSystem, grid::{GridData, NodeRef},
 };
 
 use crate::{GeneratorBuilderError, NodeIndex};
@@ -18,23 +17,23 @@ use super::{
 /// Default retry count for the generator
 pub const DEFAULT_RETRY_COUNT: u32 = 50;
 
-/// Internal type used to provide a type-safe builder with compatible [`GridDefinition`] and [`Rules`]
+/// Internal type used to provide a type-safe builder with compatible [`CartesianGrid`] and [`Rules`]
 #[derive(Copy, Clone)]
 pub struct Set;
-/// Internal type used to provide a type-safe builder with compatible [`GridDefinition`] and [`Rules`]
+/// Internal type used to provide a type-safe builder with compatible [`CartesianGrid`] and [`Rules`]
 #[derive(Copy, Clone)]
 pub struct Unset;
 
 /// Used to instantiate a new [`Generator`].
 ///
-/// [`Rules`] and [`GridDefinition`] are the two non-optionnal structs that are needed before being able to call `build`.
+/// [`Rules`] and [`CartesianGrid`] are the two non-optionnal structs that are needed before being able to call `build`.
 ///
 /// ### Example
 ///
 /// Create a `Generator` from a `GeneratorBuilder`.
 /// ```
 /// use ghx_proc_gen::{generator::{builder::GeneratorBuilder, rules::{Rules, RulesBuilder}, socket::{SocketsCartesian2D, SocketCollection}, model::ModelCollection}};
-/// use ghx_grid::grid::GridDefinition;
+/// use ghx_grid::grid::CartesianGrid;
 ///
 /// let mut sockets = SocketCollection::new();
 /// let a = sockets.create();
@@ -45,7 +44,7 @@ pub struct Unset;
 ///
 /// let rules = RulesBuilder::new_cartesian_2d(models,sockets).build().unwrap();
 ///
-/// let grid = GridDefinition::new_cartesian_2d(10, 10, false, false);
+/// let grid = CartesianGrid::new_cartesian_2d(10, 10, false, false);
 /// let mut generator = GeneratorBuilder::new()
 ///    .with_rules(rules)
 ///    .with_grid(grid)
@@ -54,7 +53,7 @@ pub struct Unset;
 #[derive(Clone)]
 pub struct GeneratorBuilder<G, R, C: CoordinateSystem> {
     rules: Option<Arc<Rules<C>>>,
-    grid: Option<GridDefinition<C>>,
+    grid: Option<CartesianGrid<C>>,
     max_retry_count: u32,
     node_selection_heuristic: NodeSelectionHeuristic,
     model_selection_heuristic: ModelSelectionHeuristic,
@@ -118,8 +117,8 @@ impl<C: CoordinateSystem> GeneratorBuilder<Unset, Unset, C> {
 }
 
 impl<C: CoordinateSystem> GeneratorBuilder<Unset, Set, C> {
-    /// Sets the [`GridDefinition`] to be used by the [`Generator`].
-    pub fn with_grid(self, grid: GridDefinition<C>) -> GeneratorBuilder<Set, Set, C> {
+    /// Sets the [`CartesianGrid`] to be used by the [`Generator`].
+    pub fn with_grid(self, grid: CartesianGrid<C>) -> GeneratorBuilder<Set, Set, C> {
         GeneratorBuilder {
             grid: Some(grid),
 
@@ -137,7 +136,7 @@ impl<C: CoordinateSystem> GeneratorBuilder<Unset, Set, C> {
 }
 
 impl<G, R, C: CoordinateSystem> GeneratorBuilder<G, R, C> {
-    /// Specifies how many time the [`Generator`] should retry to generate the [`GridDefinition`] when a contradiction is encountered. Set to [`DEFAULT_RETRY_COUNT`] by default.
+    /// Specifies how many time the [`Generator`] should retry to generate the [`CartesianGrid`] when a contradiction is encountered. Set to [`DEFAULT_RETRY_COUNT`] by default.
     pub fn with_max_retry_count(mut self, max_retry_count: u32) -> Self {
         self.max_retry_count = max_retry_count;
         self
@@ -171,7 +170,7 @@ impl<G, R, C: CoordinateSystem> GeneratorBuilder<G, R, C> {
 }
 
 // For functions in this impl, we know that self.grid is `Some` thanks to the typing.
-impl<C: CoordinateSystem, R> GeneratorBuilder<Set, R, C> {
+impl<C: CoordinateSystem + CartesianCoordinates, R> GeneratorBuilder<Set, R, C> {
     /// Adds a [`QueuedStatefulObserver`] to the [`Generator`] that will be built, and returns it.
     ///
     /// Adding the observer before building the generator allows the observer to see the nodes than *can* be generated during a generator's initialization.
@@ -196,7 +195,7 @@ impl<C: CoordinateSystem, R> GeneratorBuilder<Set, R, C> {
     /// See [`GeneratorBuilder::with_initial_grid`] for a more versatile and easy to use method (at the price of a bit of performances during the method call).
     pub fn with_initial_grid_raw<M: ModelVariantRef<C>>(
         mut self,
-        data: GridData<C, Option<ModelVariantIndex>>,
+        data: GridData<C, Option<ModelVariantIndex>, CartesianGrid<C>>,
     ) -> Result<Self, GeneratorBuilderError> {
         let grid = self.grid.as_ref().unwrap();
         if grid.size() != data.grid().size() {
@@ -205,7 +204,7 @@ impl<C: CoordinateSystem, R> GeneratorBuilder<Set, R, C> {
                 grid.size(),
             ));
         } else {
-            for (node_index, node) in data.nodes().iter().enumerate() {
+            for (node_index, node) in data.iter().enumerate() {
                 match node {
                     Some(model_var_index) => {
                         self.initial_nodes.push((node_index, *model_var_index))
@@ -219,7 +218,7 @@ impl<C: CoordinateSystem, R> GeneratorBuilder<Set, R, C> {
 }
 
 // For functions in this impl, we know that self.rules and self.grid are `Some` thanks to the typing.
-impl<C: CoordinateSystem> GeneratorBuilder<Set, Set, C> {
+impl<C: CoordinateSystem + CartesianCoordinates> GeneratorBuilder<Set, Set, C> {
     /// Registers some [`NodeRef`] [`ModelVariantRef`] pairs to be spawned initially by the [`Generator`]. These nodes will be spawned when the generator reinitializes too.
     ///
     /// See [`GeneratorBuilder::with_initial_nodes_raw`] for a bit more performant but more constrained method. The performance difference only matters during this method call in the `GeneratorBuilder`, during generation all the initial nodes are already converted to their raw format.
@@ -241,7 +240,7 @@ impl<C: CoordinateSystem> GeneratorBuilder<Set, Set, C> {
     /// See [`GeneratorBuilder::with_initial_grid_raw`] for a bit more performant but more constrained method. The performance difference only matters during this method call in the `GeneratorBuilder`, during generation all the initial nodes are already converted to their raw format.
     pub fn with_initial_grid<M: ModelVariantRef<C>>(
         mut self,
-        data: GridData<C, Option<M>>,
+        data: GridData<C, Option<M>, CartesianGrid<C>>,
     ) -> Result<Self, GeneratorBuilderError> {
         let grid = self.grid.as_ref().unwrap();
         let rules = self.rules.as_ref().unwrap();
@@ -251,7 +250,7 @@ impl<C: CoordinateSystem> GeneratorBuilder<Set, Set, C> {
                 grid.size(),
             ));
         } else {
-            for (node_index, node) in data.nodes().iter().enumerate() {
+            for (node_index, node) in data.iter().enumerate() {
                 match node {
                     Some(model_ref) => self
                         .initial_nodes

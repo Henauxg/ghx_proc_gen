@@ -1,6 +1,10 @@
 use std::{fmt, time::Duration};
+use crate::gen::CartesianCoordinates;
+
 
 use bevy::{
+    color::Color,
+    prelude::Srgba,
     core::Name,
     ecs::{
         component::Component,
@@ -12,7 +16,7 @@ use bevy::{
     hierarchy::BuildChildren,
     input::{keyboard::KeyCode, ButtonInput},
     log::warn,
-    render::{camera::Camera, color::Color},
+    render::camera::Camera,
     text::{BreakLineOn, Text, TextSection, TextStyle},
     time::{Time, Timer, TimerMode},
     transform::components::GlobalTransform,
@@ -27,7 +31,7 @@ use bevy_ghx_grid::{
     ghx_grid::{
         coordinate_system::CoordinateSystem,
         direction::Direction,
-        grid::{GridDefinition, GridPosition},
+        cartesian::{grid::CartesianGrid, coordinates::CartesianPosition},
     },
 };
 use ghx_proc_gen::{
@@ -70,7 +74,7 @@ pub struct TargetedNode {
     /// Index of the node in its grid
     pub node_index: NodeIndex,
     /// Position of the node in its grid
-    pub position: GridPosition,
+    pub position: CartesianPosition,
     /// Marker entity for this targeted node
     pub marker: Entity,
 }
@@ -126,7 +130,7 @@ pub trait CursorMarkerSettings: Resource {
 pub struct SelectionCursorMarkerSettings(pub Color);
 impl Default for SelectionCursorMarkerSettings {
     fn default() -> Self {
-        Self(Color::GREEN)
+        Self(Srgba::rgb(0.0, 0.5019608, 0.0).into())
     }
 }
 impl CursorMarkerSettings for SelectionCursorMarkerSettings {
@@ -218,7 +222,7 @@ pub fn setup_cursors_overlays(mut commands: Commands) {
 }
 
 /// Setup system to spawn a cursor and its overlay
-pub fn setup_cursor<C: CoordinateSystem, CI: CursorBehavior>(
+pub fn setup_cursor<C: CoordinateSystem + CartesianCoordinates, CI: CursorBehavior>(
     mut commands: Commands,
     overlays_root: Query<Entity, With<CursorsOverlaysRoot>>,
 ) {
@@ -248,7 +252,7 @@ pub fn setup_cursor<C: CoordinateSystem, CI: CursorBehavior>(
 }
 
 /// System updating all the [CursorInfo] components when [Cursor] components are changed
-pub fn update_cursors_info_on_cursors_changes<C: CoordinateSystem>(
+pub fn update_cursors_info_on_cursors_changes<C: CoordinateSystem + CartesianCoordinates>(
     mut moved_cursors: Query<(&mut CursorInfo, &Cursor), Changed<Cursor>>,
     generators: Query<&Generator<C>>,
 ) {
@@ -268,7 +272,7 @@ pub fn update_cursors_info_on_cursors_changes<C: CoordinateSystem>(
 }
 
 /// System updating all the [CursorInfo] based on [GenerationEvent]
-pub fn update_cursors_info_from_generation_events<C: CoordinateSystem>(
+pub fn update_cursors_info_from_generation_events<C: CoordinateSystem + CartesianCoordinates>(
     mut cursors_events: EventReader<GenerationEvent>,
     generators: Query<&Generator<C>>,
     mut cursors: Query<(&Cursor, &mut CursorInfo)>,
@@ -375,7 +379,7 @@ impl EntityProvider {
 }
 
 /// System that listens to the generation switch [KeyCode] to switch the current active generation grid
-pub fn switch_generation_selection_from_keybinds<C: CoordinateSystem>(
+pub fn switch_generation_selection_from_keybinds<C: CoordinateSystem + CartesianCoordinates>(
     mut local_grid_cycler: Local<EntityProvider>,
     mut commands: Commands,
     mut active_generation: ResMut<ActiveGeneration>,
@@ -384,7 +388,7 @@ pub fn switch_generation_selection_from_keybinds<C: CoordinateSystem>(
     proc_gen_key_bindings: Res<ProcGenKeyBindings>,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
     mut selection_cursor: Query<&mut Cursor, With<SelectCursor>>,
-    generators: Query<Entity, (With<Generator<C>>, With<GridDefinition<C>>)>,
+    generators: Query<Entity, (With<Generator<C>>, With<CartesianGrid<C>>)>,
 ) {
     if keys.just_pressed(proc_gen_key_bindings.switch_grid) {
         let Ok(mut cursor) = selection_cursor.get_single_mut() else {
@@ -402,7 +406,7 @@ pub fn switch_generation_selection_from_keybinds<C: CoordinateSystem>(
         cursor.0 = Some(spawn_marker_and_create_cursor(
             &mut commands,
             grid_entity,
-            GridPosition::new(0, 0, 0),
+            CartesianPosition::new(0, 0, 0),
             0,
             selection_marker_settings.color(),
         ));
@@ -462,7 +466,7 @@ impl Default for CursorKeyboardMovement {
 }
 
 /// System handling movements of the selection cursor from the keyboard
-pub fn move_selection_from_keybinds<C: CoordinateSystem>(
+pub fn move_selection_from_keybinds<C: CoordinateSystem + CartesianCoordinates>(
     mut commands: Commands,
     keys: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
@@ -472,7 +476,7 @@ pub fn move_selection_from_keybinds<C: CoordinateSystem>(
     key_mvmt_values: Res<CursorKeyboardMovementSettings>,
     mut key_mvmt: ResMut<CursorKeyboardMovement>,
     mut selection_cursor: Query<&mut Cursor, With<SelectCursor>>,
-    grids: Query<(Entity, &GridDefinition<C>)>,
+    grids: Query<(Entity, &CartesianGrid<C>)>,
 ) {
     let Ok(mut cursor) = selection_cursor.get_single_mut() else {
         return;
@@ -566,7 +570,7 @@ pub fn move_selection_from_keybinds<C: CoordinateSystem>(
                     let Some((grid_entity, _grid)) = grids.iter().last() else {
                         return;
                     };
-                    Some((grid_entity, 0, GridPosition::new(0, 0, 0)))
+                    Some((grid_entity, 0, CartesianPosition::new(0, 0, 0)))
                 }
             };
 
@@ -590,7 +594,7 @@ pub fn move_selection_from_keybinds<C: CoordinateSystem>(
 pub fn spawn_marker_and_create_cursor(
     commands: &mut Commands,
     grid_entity: Entity,
-    position: GridPosition,
+    position: CartesianPosition,
     node_index: NodeIndex,
     color: Color,
 ) -> TargetedNode {

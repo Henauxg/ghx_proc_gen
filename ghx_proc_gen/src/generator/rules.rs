@@ -5,8 +5,9 @@ use std::{
 };
 
 use ghx_grid::{
-    coordinate_system::{Cartesian2D, Cartesian3D, CoordinateSystem},
-    direction::Direction,
+    cartesian::coordinates::{Cartesian2D, Cartesian3D},
+    coordinate_system::CoordinateSystem,
+    direction::{Direction, DirectionTrait},
 };
 use ndarray::{Array, Ix1, Ix2};
 
@@ -226,8 +227,8 @@ impl<C: CoordinateSystem> Rules<C> {
             Array::from_elem(coord_system.directions().len(), BTreeSet::new());
         for (model_index, model) in model_variations.iter().enumerate() {
             for &direction in coord_system.directions() {
-                let opposite_dir = direction.opposite() as usize;
-                for socket in &model.sockets()[direction as usize] {
+                let opposite_dir = usize::try_from(direction.opposite()).unwrap();
+                for socket in &model.sockets()[usize::try_from(direction).unwrap()] {
                     let compatible_models = sockets_to_models
                         .entry(socket)
                         .or_insert(empty_in_all_directions.clone());
@@ -245,16 +246,16 @@ impl<C: CoordinateSystem> Rules<C> {
                 // We filter unique models with a Set, but waht we want in the Rules is a Vec for access speed, caching, and iteration determinism.
                 let mut unique_models = HashSet::new();
                 // For each socket of the model in this direction: get all the sockets that are compatible for connection
-                for socket in &model.sockets()[direction as usize] {
+                for socket in &model.sockets()[usize::try_from(direction).unwrap()] {
                     if let Some(compatible_sockets) = socket_collection.get_compatibles(*socket) {
                         for compatible_socket in compatible_sockets {
                             // For each of those: get all the models that have this socket from direction
                             // `sockets_to_models` may not have an entry for `compatible_socket` depending on user input data (socket present in sockets_connections but not in a model)
                             if let Some(allowed_models) = sockets_to_models.get(&compatible_socket)
                             {
-                                for allowed_model in &allowed_models[direction as usize] {
+                                for allowed_model in &allowed_models[usize::try_from(direction).unwrap()] {
                                     if unique_models.insert(*allowed_model) {
-                                        allowed_neighbours[(model_index, direction as usize)]
+                                        allowed_neighbours[(model_index, usize::try_from(direction).unwrap())]
                                             .push(*allowed_model);
                                     }
                                 }

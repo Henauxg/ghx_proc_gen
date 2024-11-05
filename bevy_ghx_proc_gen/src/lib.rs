@@ -16,7 +16,7 @@ pub use bevy_mod_picking;
 pub use bevy_egui;
 
 use bevy::{ecs::bundle::Bundle, prelude::SpatialBundle};
-use bevy_ghx_grid::ghx_grid::{coordinate_system::CoordinateSystem, grid::GridDefinition};
+use bevy_ghx_grid::ghx_grid::{coordinate_system::CoordinateSystem, cartesian::grid::CartesianGrid};
 use gen::assets::{AssetSpawner, AssetsBundleSpawner, ComponentSpawner};
 use proc_gen::generator::Generator;
 
@@ -27,8 +27,8 @@ use proc_gen::generator::Generator;
 pub struct GeneratorBundle<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> {
     /// For positional rendering of the grid
     pub spatial: SpatialBundle,
-    /// Grid definition (Should be the same [`bevy_ghx_grid::ghx_grid::grid::GridDefinition`] as in the generator)
-    pub grid: GridDefinition<C>,
+    /// Grid definition (Should be the same [`bevy_ghx_grid::ghx_grid::grid::CartesianGrid`] as in the generator)
+    pub grid: CartesianGrid<C>,
     /// Generator
     pub generator: Generator<C>,
     /// Assets information used when spawning nodes
