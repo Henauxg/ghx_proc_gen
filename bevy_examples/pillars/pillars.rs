@@ -52,10 +52,6 @@ fn setup_scene(
     let camera_position = Vec3::new(0., 3. * GRID_HEIGHT as f32, 0.75 * GRID_Z as f32);
     let radius = camera_position.length();
     commands.spawn((
-        Camera3dBundle {
-            transform: Transform::from_translation(camera_position).looking_at(Vec3::ZERO, Vec3::Y),
-            ..default()
-        },
         PanOrbitCameraBundle {
             state: PanOrbitState {
                 radius,

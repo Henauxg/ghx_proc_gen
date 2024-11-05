@@ -60,11 +60,6 @@ fn setup_scene(mut commands: Commands) {
     let look_target = Vec3::new(0., -10., 0.);
     let radius = (look_target - camera_position).length();
     commands.spawn((
-        Camera3dBundle {
-            transform: Transform::from_translation(camera_position)
-                .looking_at(look_target, Vec3::Y),
-            ..default()
-        },
         PanOrbitCameraBundle {
             state: PanOrbitState {
             radius,

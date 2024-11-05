@@ -80,7 +80,8 @@ impl<C: CoordinateSystem + CartesianCoordinates> InternalGenerator<C> {
         observers: Vec<crossbeam_channel::Sender<GenerationUpdate>>,
     ) -> Self {
         let models_count = rules.models_count();
-        let nodes_count = grid.total_size();
+        //let nodes_count = grid.total_size();
+        let nodes_count: usize = (grid.size_xy() * grid.size_z()) as usize;
         let direction_count = grid.coord_system().directions_count() as usize;
 
         let seed = match rng_mode {
@@ -161,7 +162,8 @@ impl<C: CoordinateSystem + CartesianCoordinates> InternalGenerator<C> {
 
         self.status = InternalGeneratorStatus::Ongoing;
 
-        let nodes_count = self.grid.total_size();
+        //let nodes_count = self.grid.total_size();
+        let nodes_count = (self.grid.size_xy() * self.grid.size_z()) as usize;
         self.nodes = bitvec![1;self.rules.models_count() * nodes_count ];
         self.nodes_left_to_generate = nodes_count;
         self.possible_models_counts = vec![self.rules.models_count(); nodes_count];
@@ -206,7 +208,9 @@ impl<C: CoordinateSystem + CartesianCoordinates> InternalGenerator<C> {
         debug!("Initializing support counts");
 
         let mut neighbours = vec![None; self.grid.coord_system().directions_count()];
-        for node in 0..self.grid.total_size() {
+        let total_size: usize = (self.grid.size_xy() * self.grid.size_z()) as usize;
+        //for node in 0..self.grid.total_size() {
+        for node in 0..total_size {
             // For a given `node`, `neighbours[direction]` will hold the optionnal index of the neighbour node in `direction`
             for direction in self.grid.coord_system().directions() {
                 let grid_pos = self.grid.pos_from_index(node);
@@ -706,9 +710,11 @@ impl<C: CoordinateSystem + CartesianCoordinates> InternalGenerator<C> {
     /// Should only be called when the nodes are fully generated
     pub(crate) fn to_grid_data(&self) -> GridData<C, ModelInstance, CartesianGrid<C>> 
         {
+        let total_size: usize = (self.grid.size_xy() * self.grid.size_z()) as usize;
         let mut generated_nodes = Vec::with_capacity(self.nodes.len());
-        for node_index in 0..self.grid.total_size() {
-            let model_index = self.get_model_index(node_index);
+        //for node_index in 0..self.grid.total_size() {
+        for node_index in 0..total_size {
+            let model_index = self.get_model_index(node_index.try_into().unwrap());
             generated_nodes.push(self.rules.model(model_index).clone())
         }
 
