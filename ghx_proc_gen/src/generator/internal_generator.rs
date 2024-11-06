@@ -2,10 +2,10 @@ use std::sync::Arc;
 
 use bitvec::{bitvec, order::LocalBits, slice::IterOnes, vec::BitVec};
 use ghx_grid::{
-    cartesian::{grid::CartesianGrid, coordinates::CartesianCoordinates},
+    cartesian::{coordinates::CartesianCoordinates, grid::CartesianGrid},
     coordinate_system::CoordinateSystem,
-    grid::{GridData, Grid},
     direction::DirectionTrait,
+    grid::GridData,
 };
 use ndarray::{Array, Ix3};
 use rand::{
@@ -70,7 +70,7 @@ pub(crate) struct InternalGenerator<C: CoordinateSystem> {
     supports_count: Array<usize, Ix3>,
 }
 
-impl<C: CoordinateSystem + CartesianCoordinates> InternalGenerator<C> {
+impl<C: CartesianCoordinates> InternalGenerator<C> {
     pub(crate) fn new(
         rules: Arc<Rules<C>>,
         grid: CartesianGrid<C>,
@@ -92,7 +92,7 @@ impl<C: CoordinateSystem + CartesianCoordinates> InternalGenerator<C> {
         let node_selection_heuristic = InternalNodeSelectionHeuristic::from_external(
             node_selection_heuristic,
             &rules,
-            grid.total_size(),
+            nodes_count,
         );
 
         Self {
@@ -118,7 +118,7 @@ impl<C: CoordinateSystem + CartesianCoordinates> InternalGenerator<C> {
     }
 }
 
-impl<C: CoordinateSystem + CartesianCoordinates> InternalGenerator<C> {
+impl<C: CartesianCoordinates> InternalGenerator<C> {
     #[inline]
     fn is_model_possible(&self, node: NodeIndex, model: ModelVariantIndex) -> bool {
         self.nodes[node * self.rules.models_count() + model] == true
@@ -708,8 +708,7 @@ impl<C: CoordinateSystem + CartesianCoordinates> InternalGenerator<C> {
     }
 
     /// Should only be called when the nodes are fully generated
-    pub(crate) fn to_grid_data(&self) -> GridData<C, ModelInstance, CartesianGrid<C>> 
-        {
+    pub(crate) fn to_grid_data(&self) -> GridData<C, ModelInstance, CartesianGrid<C>> {
         let total_size: usize = (self.grid.size_xy() * self.grid.size_z()) as usize;
         let mut generated_nodes = Vec::with_capacity(self.nodes.len());
         //for node_index in 0..self.grid.total_size() {

@@ -2,6 +2,7 @@ use crate::gen::CartesianCoordinates;
 
 use bevy::{
     asset::{Assets, Handle},
+    color::Color,
     ecs::{
         component::Component,
         entity::Entity,
@@ -13,9 +14,8 @@ use bevy::{
     input::{keyboard::KeyCode, ButtonInput},
     math::{primitives::Cuboid, Vec2, Vec3},
     pbr::{NotShadowCaster, PbrBundle, StandardMaterial},
-    prelude::{Deref, DerefMut, AlphaMode, Alpha},
+    prelude::{Alpha, AlphaMode, Deref, DerefMut},
     render::mesh::Mesh,
-    color::Color,
     sprite::{Sprite, SpriteBundle},
     text::Text,
     transform::components::Transform,
@@ -28,7 +28,9 @@ use bevy_ghx_grid::{
         markers::{GridMarker, MarkerDespawnEvent},
         view::{DebugGridView, DebugGridView2d, DebugGridView3d},
     },
-    ghx_grid::{coordinate_system::CoordinateSystem, direction::Direction, cartesian::grid::CartesianGrid},
+    ghx_grid::{
+        cartesian::grid::CartesianGrid, coordinate_system::CoordinateSystem, direction::Direction,
+    },
 };
 use bevy_mod_picking::{
     events::Out,

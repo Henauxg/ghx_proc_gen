@@ -5,8 +5,11 @@ use std::{collections::HashMap, sync::Arc};
 use bevy::ecs::component::Component;
 
 use ghx_grid::{
+    cartesian::{
+        coordinates::{Cartesian2D, CartesianCoordinates},
+        grid::CartesianGrid,
+    },
     coordinate_system::CoordinateSystem,
-    cartesian::{coordinates::{Cartesian2D, CartesianCoordinates}, grid::CartesianGrid},
     grid::{GridData, NodeRef},
 };
 
@@ -107,7 +110,7 @@ pub struct Generator<C: CoordinateSystem> {
     internal: InternalGenerator<C>,
 }
 
-impl<C: CoordinateSystem + CartesianCoordinates> Generator<C> {
+impl<C: CartesianCoordinates> Generator<C> {
     /// Returns a new `GeneratorBuilder`
     pub fn builder() -> GeneratorBuilder<Unset, Unset, Cartesian2D> {
         GeneratorBuilder::new()

@@ -2,7 +2,10 @@ use std::marker::PhantomData;
 
 use bevy::{
     app::{App, Plugin, PreUpdate, Startup, Update},
-    color::{Color, palettes::css::{YELLOW_GREEN, GREEN}},
+    color::{
+        palettes::css::{GREEN, YELLOW_GREEN},
+        Color,
+    },
     diagnostic::FrameTimeDiagnosticsPlugin,
     ecs::{
         component::Component,
@@ -34,7 +37,9 @@ use bevy_ghx_proc_gen::{
             markers::MarkersGroup, toggle_debug_grids_visibilities,
             toggle_grid_markers_visibilities, GridDebugPlugin,
         },
-        ghx_grid::{coordinate_system::CoordinateSystem, cartesian::coordinates::CartesianCoordinates},
+        ghx_grid::{
+            cartesian::coordinates::CartesianCoordinates, coordinate_system::CoordinateSystem,
+        },
     },
     gen::{
         assets::{AssetsBundleSpawner, ComponentSpawner, NoComponents},

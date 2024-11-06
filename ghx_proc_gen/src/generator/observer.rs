@@ -3,7 +3,9 @@ use super::{model::ModelInstance, GeneratedNode, Generator};
 #[cfg(feature = "bevy")]
 use bevy::ecs::component::Component;
 use ghx_grid::{
-    cartesian::{coordinates::CartesianCoordinates, grid::CartesianGrid}, coordinate_system::CoordinateSystem, grid::{Grid, GridData}
+    cartesian::{coordinates::CartesianCoordinates, grid::CartesianGrid},
+    coordinate_system::CoordinateSystem,
+    grid::GridData,
 };
 
 /// Update sent by a [`crate::generator::Generator`]
@@ -21,12 +23,12 @@ pub enum GenerationUpdate {
 ///
 /// Can be used in a different thread than the generator's thread.
 #[cfg_attr(feature = "bevy", derive(Component))]
-pub struct QueuedStatefulObserver<C: CoordinateSystem + CartesianCoordinates> {
+pub struct QueuedStatefulObserver<C: CartesianCoordinates> {
     grid_data: GridData<C, Option<ModelInstance>, CartesianGrid<C>>,
     receiver: crossbeam_channel::Receiver<GenerationUpdate>,
 }
 
-impl<C: CoordinateSystem + CartesianCoordinates> QueuedStatefulObserver<C> {
+impl<C: CartesianCoordinates> QueuedStatefulObserver<C> {
     /// Creates a new [`QueuedStatefulObserver`] for a given [`crate::generator::Generator`]
     pub fn new(generator: &mut Generator<C>) -> Self {
         let receiver = generator.create_observer_queue();
@@ -37,8 +39,9 @@ impl<C: CoordinateSystem + CartesianCoordinates> QueuedStatefulObserver<C> {
         receiver: crossbeam_channel::Receiver<GenerationUpdate>,
         grid: &CartesianGrid<C>,
     ) -> Self {
+        let total_size = (grid.size_xy() * grid.size_z()) as usize;
         QueuedStatefulObserver {
-            grid_data: GridData::new(grid.clone(), vec![None; grid.total_size()]),
+            grid_data: GridData::new(grid.clone(), vec![None; total_size]),
             receiver,
         }
     }

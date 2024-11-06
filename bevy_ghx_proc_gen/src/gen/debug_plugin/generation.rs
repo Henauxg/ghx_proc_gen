@@ -1,5 +1,5 @@
-use std::collections::HashSet;
 use crate::gen::CartesianCoordinates;
+use std::collections::HashSet;
 
 use bevy::{
     color::palettes::basic::RED,
@@ -18,7 +18,7 @@ use bevy::{
 };
 use bevy_ghx_grid::{
     debug_plugin::markers::{spawn_marker, MarkerDespawnEvent},
-    ghx_grid::{coordinate_system::CoordinateSystem, cartesian::grid::CartesianGrid},
+    ghx_grid::{cartesian::grid::CartesianGrid, coordinate_system::CoordinateSystem},
 };
 use ghx_proc_gen::{
     generator::{
@@ -296,7 +296,11 @@ pub fn step_by_step_timed_update<C: CoordinateSystem + CartesianCoordinates>(
 }
 
 /// System used to spawn nodes, emit [GenerationEvent] and despawn markers, based on data read from a [QueuedObserver] on a generation entity
-pub fn update_generation_view<C: CoordinateSystem + CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner>(
+pub fn update_generation_view<
+    C: CoordinateSystem + CartesianCoordinates,
+    A: AssetsBundleSpawner,
+    T: ComponentSpawner,
+>(
     mut commands: Commands,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
     mut generation_events: EventWriter<GenerationEvent>,

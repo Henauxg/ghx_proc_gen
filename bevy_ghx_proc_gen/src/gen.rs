@@ -9,8 +9,11 @@ use bevy::{
     hierarchy::BuildChildren,
     math::Vec3,
 };
-use bevy_ghx_grid::ghx_grid::{coordinate_system::CoordinateSystem, cartesian::{grid::CartesianGrid, coordinates::GridDelta}};
-use ghx_proc_gen::{generator::model::ModelInstance, ghx_grid::cartesian::coordinates::CartesianCoordinates, NodeIndex};
+use bevy_ghx_grid::ghx_grid::cartesian::{coordinates::GridDelta, grid::CartesianGrid};
+use ghx_proc_gen::{
+    generator::model::ModelInstance, ghx_grid::cartesian::coordinates::CartesianCoordinates,
+    NodeIndex,
+};
 
 use self::assets::{AssetSpawner, AssetsBundleSpawner, ComponentSpawner};
 
@@ -112,7 +115,7 @@ pub fn insert_bundle_from_resource_to_spawned_nodes<B: Bundle + Resource + Clone
 /// ```ignore
 /// spawn_node::<Cartesian3D, Handle<Image>>(...);
 /// ```
-pub fn spawn_node<C: CoordinateSystem + CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner>(
+pub fn spawn_node<C: CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner>(
     commands: &mut Commands,
     gen_entity: Entity,
     grid: &CartesianGrid<C>,

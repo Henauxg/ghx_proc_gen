@@ -1,6 +1,9 @@
 use bevy::{
     app::{App, Plugin, Startup, Update},
-    color::{Color, palettes::basic::{WHITE, BLACK}},
+    color::{
+        palettes::basic::{BLACK, WHITE},
+        Color,
+    },
     diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
     ecs::{
         component::Component,

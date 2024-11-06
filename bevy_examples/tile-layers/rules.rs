@@ -2,7 +2,7 @@ use bevy_examples::utils::AssetDef;
 
 use bevy_ghx_proc_gen::{
     bevy_ghx_grid::ghx_grid::{
-        cartesian::coordinates::{GridDelta, Cartesian3D},
+        cartesian::coordinates::{Cartesian3D, GridDelta},
         direction::Direction,
     },
     proc_gen::generator::{

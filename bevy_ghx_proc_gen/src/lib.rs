@@ -16,7 +16,9 @@ pub use bevy_mod_picking;
 pub use bevy_egui;
 
 use bevy::{ecs::bundle::Bundle, prelude::SpatialBundle};
-use bevy_ghx_grid::ghx_grid::{coordinate_system::CoordinateSystem, cartesian::grid::CartesianGrid};
+use bevy_ghx_grid::ghx_grid::{
+    cartesian::grid::CartesianGrid, coordinate_system::CoordinateSystem,
+};
 use gen::assets::{AssetSpawner, AssetsBundleSpawner, ComponentSpawner};
 use proc_gen::generator::Generator;
 

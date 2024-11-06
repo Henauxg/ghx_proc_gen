@@ -1,15 +1,14 @@
-use std::{marker::PhantomData, time::Duration};
 use crate::gen::CartesianCoordinates;
+use std::{marker::PhantomData, time::Duration};
 
 use bevy::{
     app::{App, Plugin, PostStartup, PostUpdate, PreUpdate, Startup, Update},
+    color::Color,
     ecs::{schedule::IntoSystemConfigs, system::Resource},
     input::keyboard::KeyCode,
-    color::Color,
-    time::{Timer, TimerMode},
     prelude::Alpha,
+    time::{Timer, TimerMode},
 };
-use bevy_ghx_grid::ghx_grid::coordinate_system::CoordinateSystem;
 
 use self::{
     cursor::{
@@ -100,7 +99,7 @@ impl Default for GridCursorsUiSettings {
 ///
 /// It also uses the following `Resources`: [`ProcGenKeyBindings`] and [`GenerationControl`] (and will init them to their defaults if not inserted by the user).
 pub struct ProcGenDebugPlugin<
-    C: CoordinateSystem + CartesianCoordinates,
+    C: CartesianCoordinates,
     A: AssetsBundleSpawner,
     T: ComponentSpawner = NoComponents,
 > {
@@ -109,7 +108,9 @@ pub struct ProcGenDebugPlugin<
     typestate: PhantomData<(C, A, T)>,
 }
 
-impl<C: CoordinateSystem + CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner> ProcGenDebugPlugin<C, A, T> {
+impl<C: CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner>
+    ProcGenDebugPlugin<C, A, T>
+{
     /// Plugin constructor
     pub fn new(generation_view_mode: GenerationViewMode, cursor_ui_mode: CursorUiMode) -> Self {
         Self {
@@ -120,7 +121,7 @@ impl<C: CoordinateSystem + CartesianCoordinates, A: AssetsBundleSpawner, T: Comp
     }
 }
 
-impl<C: CoordinateSystem + CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
+impl<C: CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
     for ProcGenDebugPlugin<C, A, T>
 {
     // TODO Clean: Split into multiple plugins

@@ -1,7 +1,9 @@
 use std::{marker::PhantomData, sync::Arc};
 
 use ghx_grid::{
-    cartesian::{coordinates::CartesianCoordinates, grid::CartesianGrid}, coordinate_system::CoordinateSystem, grid::{GridData, NodeRef},
+    cartesian::{coordinates::CartesianCoordinates, grid::CartesianGrid},
+    coordinate_system::CoordinateSystem,
+    grid::{GridData, NodeRef},
 };
 
 use crate::{GeneratorBuilderError, NodeIndex};
@@ -170,7 +172,7 @@ impl<G, R, C: CoordinateSystem> GeneratorBuilder<G, R, C> {
 }
 
 // For functions in this impl, we know that self.grid is `Some` thanks to the typing.
-impl<C: CoordinateSystem + CartesianCoordinates, R> GeneratorBuilder<Set, R, C> {
+impl<C: CartesianCoordinates, R> GeneratorBuilder<Set, R, C> {
     /// Adds a [`QueuedStatefulObserver`] to the [`Generator`] that will be built, and returns it.
     ///
     /// Adding the observer before building the generator allows the observer to see the nodes than *can* be generated during a generator's initialization.
@@ -218,7 +220,7 @@ impl<C: CoordinateSystem + CartesianCoordinates, R> GeneratorBuilder<Set, R, C> 
 }
 
 // For functions in this impl, we know that self.rules and self.grid are `Some` thanks to the typing.
-impl<C: CoordinateSystem + CartesianCoordinates> GeneratorBuilder<Set, Set, C> {
+impl<C: CartesianCoordinates> GeneratorBuilder<Set, Set, C> {
     /// Registers some [`NodeRef`] [`ModelVariantRef`] pairs to be spawned initially by the [`Generator`]. These nodes will be spawned when the generator reinitializes too.
     ///
     /// See [`GeneratorBuilder::with_initial_nodes_raw`] for a bit more performant but more constrained method. The performance difference only matters during this method call in the `GeneratorBuilder`, during generation all the initial nodes are already converted to their raw format.

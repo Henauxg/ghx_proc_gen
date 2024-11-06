@@ -1,9 +1,11 @@
 use std::f32::consts::PI;
 
 use bevy::{
-    log::LogPlugin, pbr::DirectionalLightShadowMap,
-     prelude::*,
-    color::palettes::css::{ORANGE_RED, GRAY}};
+    color::palettes::css::{GRAY, ORANGE_RED},
+    log::LogPlugin,
+    pbr::DirectionalLightShadowMap,
+    prelude::*,
+};
 
 use bevy_examples::{
     anim::SpawningScaleAnimation, plugin::ProcGenExamplesPlugin, utils::load_assets,
@@ -59,15 +61,18 @@ fn setup_scene(mut commands: Commands) {
     let camera_position = Vec3::new(0., 1.5 * GRID_HEIGHT as f32, 1.5 * GRID_Z as f32 / 2.);
     let look_target = Vec3::new(0., -10., 0.);
     let radius = (look_target - camera_position).length();
-    commands.spawn((
-        PanOrbitCameraBundle {
-            state: PanOrbitState {
+    commands.spawn((PanOrbitCameraBundle {
+        camera: Camera3dBundle {
+            transform: Transform::from_translation(camera_position)
+                .looking_at(look_target, Vec3::Y),
+            ..default()
+        },
+        state: PanOrbitState {
             radius,
             ..default()
         },
-            ..Default::default()
-        },
-    ));
+        ..Default::default()
+    },));
 
     // Scene lights
     commands.insert_resource(AmbientLight {

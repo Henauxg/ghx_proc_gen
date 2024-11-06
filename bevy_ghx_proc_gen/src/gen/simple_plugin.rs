@@ -1,5 +1,5 @@
-use std::marker::PhantomData;
 use crate::gen::CartesianCoordinates;
+use std::marker::PhantomData;
 
 use bevy::{
     app::{App, Plugin, Update},
@@ -12,7 +12,6 @@ use bevy::{
     log::{info, warn},
     utils::HashSet,
 };
-use bevy_ghx_grid::ghx_grid::coordinate_system::CoordinateSystem;
 use ghx_proc_gen::{generator::Generator, GeneratorError};
 
 use crate::gen::spawn_node;
@@ -23,14 +22,14 @@ use super::{assets::NoComponents, AssetSpawner, AssetsBundleSpawner, ComponentSp
 ///
 /// Once the generation is successful, the plugin will spawn the generated nodes assets.
 pub struct ProcGenSimplePlugin<
-    C: CoordinateSystem + CartesianCoordinates,
+    C: CartesianCoordinates,
     A: AssetsBundleSpawner,
     T: ComponentSpawner = NoComponents,
 > {
     typestate: PhantomData<(C, A, T)>,
 }
 
-impl<C: CoordinateSystem + CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
+impl<C: CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
     for ProcGenSimplePlugin<C, A, T>
 {
     fn build(&self, app: &mut App) {
@@ -42,7 +41,7 @@ impl<C: CoordinateSystem + CartesianCoordinates, A: AssetsBundleSpawner, T: Comp
     }
 }
 
-impl<C: CoordinateSystem + CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner>
+impl<C: CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner>
     ProcGenSimplePlugin<C, A, T>
 {
     /// Constructor
@@ -68,7 +67,7 @@ impl Default for PendingGenerations {
 }
 
 /// System used by [`ProcGenSimplePlugin`] to track entities with newly added [`Generator`] components
-pub fn register_new_generations<C: CoordinateSystem + CartesianCoordinates>(
+pub fn register_new_generations<C: CartesianCoordinates>(
     mut pending_generations: ResMut<PendingGenerations>,
     mut new_generations: Query<Entity, Added<Generator<C>>>,
 ) {
@@ -78,7 +77,7 @@ pub fn register_new_generations<C: CoordinateSystem + CartesianCoordinates>(
 }
 
 /// System used by [`ProcGenSimplePlugin`] to run generators and spawn their node's assets
-pub fn generate_and_spawn<C: CoordinateSystem + CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner>(
+pub fn generate_and_spawn<C: CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner>(
     mut commands: Commands,
     mut pending_generations: ResMut<PendingGenerations>,
     mut generations: Query<(&mut Generator<C>, &AssetSpawner<A, T>)>,

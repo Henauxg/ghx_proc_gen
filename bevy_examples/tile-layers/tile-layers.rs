@@ -17,7 +17,10 @@ use bevy_examples::{plugin::ProcGenExamplesPlugin, utils::load_assets};
 use bevy_ghx_proc_gen::{
     bevy_ghx_grid::{
         debug_plugin::{view::DebugGridView, DebugGridView2dBundle},
-        ghx_grid::{cartesian::{grid::CartesianGrid, coordinates::Cartesian3D}, direction::Direction },
+        ghx_grid::{
+            cartesian::{coordinates::Cartesian3D, grid::CartesianGrid},
+            direction::Direction,
+        },
     },
     gen::{
         assets::{AssetSpawner, RulesModelsAssets},

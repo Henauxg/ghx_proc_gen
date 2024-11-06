@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use bevy_ghx_proc_gen::{
-    bevy_ghx_grid::ghx_grid::cartesian::{grid::CartesianGrid, coordinates::Cartesian2D},
+    bevy_ghx_grid::ghx_grid::cartesian::{coordinates::Cartesian2D, grid::CartesianGrid},
     gen::{
         assets::{AssetSpawner, RulesModelsAssets},
         default_bundles::PbrMesh,

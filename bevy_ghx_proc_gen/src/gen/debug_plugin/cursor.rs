@@ -1,10 +1,8 @@
-use std::{fmt, time::Duration};
 use crate::gen::CartesianCoordinates;
-
+use std::{fmt, time::Duration};
 
 use bevy::{
     color::Color,
-    prelude::Srgba,
     core::Name,
     ecs::{
         component::Component,
@@ -16,6 +14,7 @@ use bevy::{
     hierarchy::BuildChildren,
     input::{keyboard::KeyCode, ButtonInput},
     log::warn,
+    prelude::Srgba,
     render::camera::Camera,
     text::{BreakLineOn, Text, TextSection, TextStyle},
     time::{Time, Timer, TimerMode},
@@ -29,9 +28,9 @@ use bevy::{
 use bevy_ghx_grid::{
     debug_plugin::markers::{spawn_marker, GridMarker, MarkerDespawnEvent},
     ghx_grid::{
+        cartesian::{coordinates::CartesianPosition, grid::CartesianGrid},
         coordinate_system::CoordinateSystem,
         direction::Direction,
-        cartesian::{grid::CartesianGrid, coordinates::CartesianPosition},
     },
 };
 use ghx_proc_gen::{

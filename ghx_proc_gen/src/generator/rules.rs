@@ -253,9 +253,12 @@ impl<C: CoordinateSystem> Rules<C> {
                             // `sockets_to_models` may not have an entry for `compatible_socket` depending on user input data (socket present in sockets_connections but not in a model)
                             if let Some(allowed_models) = sockets_to_models.get(&compatible_socket)
                             {
-                                for allowed_model in &allowed_models[usize::try_from(direction).unwrap()] {
+                                for allowed_model in
+                                    &allowed_models[usize::try_from(direction).unwrap()]
+                                {
                                     if unique_models.insert(*allowed_model) {
-                                        allowed_neighbours[(model_index, usize::try_from(direction).unwrap())]
+                                        allowed_neighbours
+                                            [(model_index, usize::try_from(direction).unwrap())]
                                             .push(*allowed_model);
                                     }
                                 }

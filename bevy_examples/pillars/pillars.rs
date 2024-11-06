@@ -1,9 +1,10 @@
 use std::{f32::consts::PI, sync::Arc};
 
 use bevy::{
-    log::LogPlugin, pbr::DirectionalLightShadowMap,
+    color::palettes::{basic::GRAY, css::ORANGE_RED},
+    log::LogPlugin,
+    pbr::DirectionalLightShadowMap,
     prelude::*,
-    color::palettes::{basic::GRAY, css::ORANGE_RED}
 };
 
 use bevy_examples::{plugin::ProcGenExamplesPlugin, utils::load_assets};
@@ -53,6 +54,10 @@ fn setup_scene(
     let radius = camera_position.length();
     commands.spawn((
         PanOrbitCameraBundle {
+            camera: Camera3dBundle {
+                transform: Transform::from_translation(camera_position).looking_at(Vec3::ZERO, Vec3::Y),
+                ..default()
+            },
             state: PanOrbitState {
                 radius,
                 ..default()
