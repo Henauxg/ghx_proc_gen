@@ -13,7 +13,7 @@ use bevy_examples::{
 use bevy_ghx_proc_gen::{
     bevy_ghx_grid::{
         debug_plugin::{view::DebugGridView, DebugGridView3dBundle},
-        ghx_grid::cartesian::{coordinates::Cartesian3D, grid::CartesianGrid},
+        ghx_grid::{cartesian::{coordinates::Cartesian3D, grid::CartesianGrid}, grid::GridData},
     },
     gen::{
         assets::AssetSpawner,
@@ -126,7 +126,11 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         .unwrap();
     let grid = CartesianGrid::new_cartesian_3d(GRID_X, GRID_HEIGHT, GRID_Z, false, false, false);
 
-    let mut initial_constraints = grid.new_grid_data(None);
+    let grid_size = (grid.size_xy() * grid.size_z()) as usize;
+
+
+    //let mut initial_constraints = grid.new_grid_data(None);
+    let mut initial_constraints: GridData<Cartesian3D, _, CartesianGrid<Cartesian3D>> = GridData::new(grid.clone(), vec![None; grid_size]);
     // Force void nodes on the upmost layer
     let void_ref = Some(void_instance);
     initial_constraints.set_all_y(GRID_HEIGHT - 1, void_ref);
