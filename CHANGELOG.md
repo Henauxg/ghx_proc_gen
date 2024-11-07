@@ -1,8 +1,33 @@
 # Changelog
 
+## Version 0.3.0 (2024-011-07)
+
+###  All crates
+
+- Updated ghx_grid from 0.2.0 to 0.3.2: the generator is now generic over the grid trait
+  - Thanks to @c6p for the PR https://github.com/Henauxg/ghx_proc_gen/pull/2
+  - See the ghx_grid changelog here https://github.com/Henauxg/ghx_grid/blob/main/CHANGELOG.md
+
+### `ghx_proc_gen` crate:
+
+- Expose `ghx_grid` as public
+- Enable `ghx_grid` `bevy` and `reflect` features when these features are enabled in `ghx_proc_gen`
+
+### `bevy_ghx_proc_gen` crate:
+
+- The bevy plugins are only implemented for `CartesianCoordinates`
+- Enable `bevy/bevy_ui` when enabling the `debug-plugin` feature
+- Enable `bevy_ghx_grid/reflect` when enabling the `reflect` feature
+
+### Examples
+
+- Update to use bevy_ghx_grid bundled within bevy_ghx_proc_gen
+
 ## Version 0.2.0 (2024-05-17)
 
-- All crates updated to bevy 0.13
+### All crates
+
+- Updated to bevy 0.13
 
 ### `ghx_proc_gen` crate:
 

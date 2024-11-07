@@ -59,7 +59,7 @@ Let's build a chessboard pattern:
 2) Create a `GridDefinition`:
 ```rust
   // Like a chessboard, let's do an 8x8 2d grid
-  let grid = GridDefinition::new_cartesian_2d(8, 8, false, false);
+  let grid = CartesianGrid::new_cartesian_2d(8, 8, false, false);
 ```
 
 3) Create a `Generator` :
@@ -69,7 +69,7 @@ Let's build a chessboard pattern:
       .with_rules(rules)
       .with_grid(grid)
       // Let's ensure that we make a chessboard, with a black square bottom-left
-      .with_initial_nodes(vec![(GridPosition::new_xy(0, 0), black_model)]).unwrap()
+      .with_initial_nodes(vec![(0, black_model)]).unwrap()
       .build()
       .unwrap();
 ```
