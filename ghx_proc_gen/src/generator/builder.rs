@@ -205,7 +205,7 @@ impl<C: CoordinateSystem, R, G: Grid<C>> GeneratorBuilder<Set, R, C, G> {
                 grid.total_size(),
             ));
         } else {
-            for (node_index, node) in data.nodes().iter().enumerate() {
+            for (node_index, node) in data.iter().enumerate() {
                 match node {
                     Some(model_var_index) => {
                         self.initial_nodes.push((node_index, *model_var_index))
@@ -251,7 +251,7 @@ impl<C: CoordinateSystem, G: Grid<C>> GeneratorBuilder<Set, Set, C, G> {
                 grid.total_size(),
             ));
         } else {
-            for (node_index, node) in data.nodes().iter().enumerate() {
+            for (node_index, node) in data.iter().enumerate() {
                 match node {
                     Some(model_ref) => self
                         .initial_nodes

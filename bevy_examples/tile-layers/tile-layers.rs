@@ -1,15 +1,13 @@
 use bevy::{
     app::{App, PluginGroup, Startup},
     asset::{AssetServer, Handle},
+    color::Color,
     core_pipeline::core_2d::Camera2dBundle,
     ecs::system::{Commands, Res},
     log::LogPlugin,
     math::Vec3,
     prelude::SpatialBundle,
-    render::{
-        color::Color,
-        texture::{Image, ImagePlugin},
-    },
+    render::texture::{Image, ImagePlugin},
     transform::components::Transform,
     utils::default,
     DefaultPlugins,

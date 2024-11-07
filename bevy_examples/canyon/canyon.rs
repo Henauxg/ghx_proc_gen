@@ -1,6 +1,11 @@
 use std::f32::consts::PI;
 
-use bevy::{log::LogPlugin, pbr::DirectionalLightShadowMap, prelude::*};
+use bevy::{
+    color::palettes::css::{GRAY, ORANGE_RED},
+    log::LogPlugin,
+    pbr::DirectionalLightShadowMap,
+    prelude::*,
+};
 
 use bevy_examples::{
     anim::SpawningScaleAnimation, plugin::ProcGenExamplesPlugin, utils::load_assets,
@@ -20,7 +25,7 @@ use bevy_ghx_proc_gen::{
     },
     GeneratorBundle,
 };
-use bevy_ghx_utils::camera::{update_pan_orbit_camera, PanOrbitCamera};
+use bevy_ghx_utils::camera::{update_pan_orbit_camera, PanOrbitCameraBundle, PanOrbitState};
 
 use rand::Rng;
 use rules::{CustomComponents, RotationRandomizer, ScaleRandomizer, WindRotation};
@@ -56,28 +61,29 @@ fn setup_scene(mut commands: Commands) {
     let camera_position = Vec3::new(0., 1.5 * GRID_HEIGHT as f32, 1.5 * GRID_Z as f32 / 2.);
     let look_target = Vec3::new(0., -10., 0.);
     let radius = (look_target - camera_position).length();
-    commands.spawn((
-        Camera3dBundle {
+    commands.spawn((PanOrbitCameraBundle {
+        camera: Camera3dBundle {
             transform: Transform::from_translation(camera_position)
                 .looking_at(look_target, Vec3::Y),
             ..default()
         },
-        PanOrbitCamera {
+        state: PanOrbitState {
             radius,
             ..Default::default()
         },
-    ));
+        ..Default::default()
+    },));
 
     // Scene lights
     commands.insert_resource(AmbientLight {
-        color: Color::ORANGE_RED,
+        color: Color::Srgba(ORANGE_RED),
         brightness: 0.05,
     });
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
             shadows_enabled: true,
             illuminance: 4000.,
-            color: Color::rgb(1.0, 0.85, 0.65),
+            color: Color::srgb(1.0, 0.85, 0.65),
             ..default()
         },
         transform: Transform {
@@ -91,7 +97,7 @@ fn setup_scene(mut commands: Commands) {
         directional_light: DirectionalLight {
             shadows_enabled: false,
             illuminance: 2000.,
-            color: Color::ORANGE_RED,
+            color: Color::Srgba(ORANGE_RED),
             ..default()
         },
         transform: Transform {
@@ -185,7 +191,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         },
         observer,
         DebugGridView3dBundle {
-            view: DebugGridView::new(false, true, Color::GRAY, NODE_SIZE),
+            view: DebugGridView::new(false, true, Color::Srgba(GRAY), NODE_SIZE),
             ..default()
         },
     ));

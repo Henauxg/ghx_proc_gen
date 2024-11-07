@@ -11,10 +11,7 @@ use bevy::{
 };
 use ghx_proc_gen::{
     generator::model::ModelInstance,
-    ghx_grid::{
-        cartesian::{coordinates::CartesianCoordinates, grid::CartesianGrid},
-        grid::Grid,
-    },
+    ghx_grid::cartesian::{coordinates::CartesianCoordinates, grid::CartesianGrid},
     NodeIndex,
 };
 

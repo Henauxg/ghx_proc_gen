@@ -97,7 +97,7 @@ pub fn generate_and_spawn<C: CartesianCoordinates, A: AssetsBundleSpawner, T: Co
                         generation.seed(),
                         generation.grid()
                     );
-                    for (node_index, node) in grid_data.nodes().iter().enumerate() {
+                    for (node_index, node) in grid_data.iter().enumerate() {
                         spawn_node(
                             &mut commands,
                             gen_entity,

@@ -2,9 +2,9 @@ use std::{marker::PhantomData, time::Duration};
 
 use bevy::{
     app::{App, Plugin, PostStartup, PostUpdate, PreUpdate, Startup, Update},
+    color::{Alpha, Color},
     ecs::{schedule::IntoSystemConfigs, system::Resource},
     input::keyboard::KeyCode,
-    render::color::Color,
     time::{Timer, TimerMode},
 };
 use bevy_ghx_grid::ghx_grid::coordinate_system::CoordinateSystem;
@@ -87,7 +87,7 @@ impl Default for GridCursorsUiSettings {
     fn default() -> Self {
         Self {
             font_size: 16.0,
-            background_color: Color::BLACK.with_a(0.45),
+            background_color: Color::BLACK.with_alpha(0.45),
             text_color: Color::WHITE,
         }
     }

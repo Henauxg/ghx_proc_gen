@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use bevy::{
+    color::{palettes::css::RED, Color},
     ecs::{
         component::Component,
         entity::Entity,
@@ -12,7 +13,6 @@ use bevy::{
     input::{keyboard::KeyCode, ButtonInput},
     log::{info, warn},
     prelude::{Deref, DerefMut},
-    render::color::Color,
     time::Time,
 };
 use bevy_ghx_grid::debug_plugin::markers::{spawn_marker, MarkerDespawnEvent};
@@ -22,10 +22,7 @@ use ghx_proc_gen::{
         observer::{GenerationUpdate, QueuedObserver},
         GenerationStatus, Generator,
     },
-    ghx_grid::{
-        cartesian::{coordinates::CartesianCoordinates, grid::CartesianGrid},
-        grid::Grid,
-    },
+    ghx_grid::cartesian::{coordinates::CartesianCoordinates, grid::CartesianGrid},
     GeneratorError, NodeIndex,
 };
 
@@ -346,7 +343,7 @@ pub fn update_generation_view<
                         error_markers.push(spawn_marker(
                             &mut commands,
                             grid_entity,
-                            Color::RED,
+                            Color::Srgba(RED),
                             grid.pos_from_index(node_index),
                         ));
                     }

@@ -1,5 +1,6 @@
 use bevy::{
     asset::{Assets, Handle},
+    color::{Alpha, Color},
     ecs::{
         component::Component,
         entity::Entity,
@@ -10,9 +11,9 @@ use bevy::{
     hierarchy::{BuildChildren, DespawnRecursiveExt, Parent},
     input::{keyboard::KeyCode, ButtonInput},
     math::{primitives::Cuboid, Vec2, Vec3},
-    pbr::{AlphaMode, NotShadowCaster, PbrBundle, StandardMaterial},
-    prelude::{Deref, DerefMut},
-    render::{color::Color, mesh::Mesh},
+    pbr::{NotShadowCaster, PbrBundle, StandardMaterial},
+    prelude::{AlphaMode, Deref, DerefMut},
+    render::mesh::Mesh,
     sprite::{Sprite, SpriteBundle},
     text::Text,
     transform::components::Transform,
@@ -34,10 +35,7 @@ use bevy_mod_picking::{
 };
 use ghx_proc_gen::{
     generator::Generator,
-    ghx_grid::{
-        cartesian::{coordinates::CartesianCoordinates, grid::CartesianGrid},
-        grid::Grid,
-    },
+    ghx_grid::cartesian::{coordinates::CartesianCoordinates, grid::CartesianGrid},
     NodeIndex,
 };
 
@@ -57,7 +55,7 @@ use super::{
 pub struct OverCursorMarkerSettings(pub Color);
 impl Default for OverCursorMarkerSettings {
     fn default() -> Self {
-        Self(Color::rgb(0.85, 0.85, 0.73))
+        Self(Color::srgb(0.85, 0.85, 0.73))
     }
 }
 impl CursorMarkerSettings for OverCursorMarkerSettings {
@@ -269,7 +267,7 @@ pub fn setup_picking_assets(
     mut standard_materials: ResMut<Assets<StandardMaterial>>,
     mut cursor_target_assets: ResMut<CursorTargetAssets>,
 ) {
-    cursor_target_assets.color = Color::WHITE.with_a(0.15);
+    cursor_target_assets.color = Color::WHITE.with_alpha(0.15);
     cursor_target_assets.base_size = 0.9;
     cursor_target_assets.target_mesh_3d = meshes.add(Mesh::from(Cuboid {
         half_size: Vec3::splat(cursor_target_assets.base_size / 2.),

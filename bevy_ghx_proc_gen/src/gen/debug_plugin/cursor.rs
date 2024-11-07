@@ -1,6 +1,7 @@
 use std::{fmt, time::Duration};
 
 use bevy::{
+    color::{palettes::css::GREEN, Color},
     core::Name,
     ecs::{
         component::Component,
@@ -12,7 +13,7 @@ use bevy::{
     hierarchy::BuildChildren,
     input::{keyboard::KeyCode, ButtonInput},
     log::warn,
-    render::{camera::Camera, color::Color},
+    render::camera::Camera,
     text::{BreakLineOn, Text, TextSection, TextStyle},
     time::{Time, Timer, TimerMode},
     transform::components::GlobalTransform,
@@ -28,12 +29,9 @@ use bevy_ghx_grid::{
 };
 use ghx_proc_gen::{
     generator::{Generator, ModelVariations},
-    ghx_grid::{
-        cartesian::{
-            coordinates::{CartesianCoordinates, CartesianPosition},
-            grid::CartesianGrid,
-        },
-        grid::Grid,
+    ghx_grid::cartesian::{
+        coordinates::{CartesianCoordinates, CartesianPosition},
+        grid::CartesianGrid,
     },
     NodeIndex,
 };
@@ -129,7 +127,7 @@ pub trait CursorMarkerSettings: Resource {
 pub struct SelectionCursorMarkerSettings(pub Color);
 impl Default for SelectionCursorMarkerSettings {
     fn default() -> Self {
-        Self(Color::GREEN)
+        Self(Color::Srgba(GREEN))
     }
 }
 impl CursorMarkerSettings for SelectionCursorMarkerSettings {

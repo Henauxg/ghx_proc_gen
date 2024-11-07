@@ -1,5 +1,22 @@
 # Changelog
 
+## Version 0.4.0 (TBD)
+
+###  All crates
+
+- Updated ghx_grid to 0.4
+- Updated bevy to 0.14
+  - Thanks to @a-panda-miner for the PR [#4](https://github.com/Henauxg/ghx_proc_gen/pull/4)
+
+### `ghx_proc_gen` crate:
+
+
+### `bevy_ghx_proc_gen` crate:
+
+
+### Examples
+
+
 ## Version 0.3.0 (2024-011-07)
 
 ###  All crates

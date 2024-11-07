@@ -2,6 +2,10 @@ use std::marker::PhantomData;
 
 use bevy::{
     app::{App, Plugin, PreUpdate, Startup, Update},
+    color::{
+        palettes::css::{GREEN, YELLOW_GREEN},
+        Alpha, Color,
+    },
     diagnostic::FrameTimeDiagnosticsPlugin,
     ecs::{
         component::Component,
@@ -20,7 +24,6 @@ use bevy::{
     },
     math::Vec3,
     prelude::default,
-    render::color::Color,
     text::{BreakLineOn, Text, TextSection, TextStyle},
     ui::{
         node_bundles::{NodeBundle, TextBundle},
@@ -198,7 +201,7 @@ pub fn setup_ui(mut commands: Commands, view_mode: Res<GenerationViewMode>) {
         .spawn((
             Pickable::IGNORE,
             NodeBundle {
-                background_color: Color::BLACK.with_a(0.6).into(),
+                background_color: Color::BLACK.with_alpha(0.6).into(),
                 style: Style {
                     position_type: PositionType::Absolute,
                     top: Val::Percent(1.),
@@ -299,9 +302,9 @@ pub fn update_generation_control_ui(
     for mut text in &mut query {
         let status_section = &mut text.sections[GENERATION_CONTROL_STATUS_TEXT_SECTION_ID];
         (status_section.value, status_section.style.color) = match gen_control.status {
-            GenerationControlStatus::Ongoing => ("Ongoing ('Space' to pause)".into(), Color::GREEN),
+            GenerationControlStatus::Ongoing => ("Ongoing ('Space' to pause)".into(), GREEN.into()),
             GenerationControlStatus::Paused => {
-                ("Paused ('Space' to unpause)".into(), Color::YELLOW_GREEN)
+                ("Paused ('Space' to unpause)".into(), YELLOW_GREEN.into())
             }
         };
 
