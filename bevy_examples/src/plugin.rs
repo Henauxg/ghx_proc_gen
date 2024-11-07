@@ -46,6 +46,7 @@ use bevy_ghx_proc_gen::{
         },
         insert_bundle_from_resource_to_spawned_nodes,
     },
+    proc_gen::ghx_grid::cartesian::coordinates::CartesianCoordinates,
 };
 use bevy_ghx_utils::{camera::toggle_auto_orbit, systems::toggle_visibility};
 use bevy_mod_picking::{picking_core::Pickable, DefaultPickingPlugins};
@@ -80,7 +81,7 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner>
 const DEFAULT_SPAWN_ANIMATION_DURATION: f32 = 0.6;
 const FAST_SPAWN_ANIMATION_DURATION: f32 = 0.1;
 
-impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
+impl<C: CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
     for ProcGenExamplesPlugin<C, A, T>
 {
     fn build(&self, app: &mut App) {

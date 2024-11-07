@@ -4,7 +4,7 @@ use super::{model::ModelInstance, GeneratedNode, Generator};
 use bevy::ecs::component::Component;
 use ghx_grid::{
     coordinate_system::CoordinateSystem,
-    grid::{GridData, GridDefinition},
+    grid::{Grid, GridData},
 };
 
 /// Update sent by a [`crate::generator::Generator`]
@@ -22,21 +22,21 @@ pub enum GenerationUpdate {
 ///
 /// Can be used in a different thread than the generator's thread.
 #[cfg_attr(feature = "bevy", derive(Component))]
-pub struct QueuedStatefulObserver<T: CoordinateSystem> {
-    grid_data: GridData<T, Option<ModelInstance>>,
+pub struct QueuedStatefulObserver<T: CoordinateSystem, G: Grid<T>> {
+    grid_data: GridData<T, Option<ModelInstance>, G>,
     receiver: crossbeam_channel::Receiver<GenerationUpdate>,
 }
 
-impl<T: CoordinateSystem> QueuedStatefulObserver<T> {
+impl<T: CoordinateSystem, G: Grid<T>> QueuedStatefulObserver<T, G> {
     /// Creates a new [`QueuedStatefulObserver`] for a given [`crate::generator::Generator`]
-    pub fn new(generator: &mut Generator<T>) -> Self {
+    pub fn new(generator: &mut Generator<T, G>) -> Self {
         let receiver = generator.create_observer_queue();
         QueuedStatefulObserver::create(receiver, generator.grid())
     }
 
     pub(crate) fn create(
         receiver: crossbeam_channel::Receiver<GenerationUpdate>,
-        grid: &GridDefinition<T>,
+        grid: &G,
     ) -> Self {
         QueuedStatefulObserver {
             grid_data: GridData::new(grid.clone(), vec![None; grid.total_size()]),
@@ -45,7 +45,7 @@ impl<T: CoordinateSystem> QueuedStatefulObserver<T> {
     }
 
     /// Returns a ref to the observer's [`GridData`]
-    pub fn grid_data(&self) -> &GridData<T, Option<ModelInstance>> {
+    pub fn grid_data(&self) -> &GridData<T, Option<ModelInstance>, G> {
         &self.grid_data
     }
 
@@ -92,7 +92,7 @@ pub struct QueuedObserver {
 
 impl QueuedObserver {
     /// Creates a new [`QueuedObserver`] for a given [`crate::generator::Generator`]
-    pub fn new<T: CoordinateSystem>(generator: &mut Generator<T>) -> Self {
+    pub fn new<T: CoordinateSystem, G: Grid<T>>(generator: &mut Generator<T, G>) -> Self {
         let receiver = generator.create_observer_queue();
         QueuedObserver { receiver }
     }

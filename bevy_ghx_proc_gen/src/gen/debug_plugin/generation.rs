@@ -15,15 +15,16 @@ use bevy::{
     render::color::Color,
     time::Time,
 };
-use bevy_ghx_grid::{
-    debug_plugin::markers::{spawn_marker, MarkerDespawnEvent},
-    ghx_grid::{coordinate_system::CoordinateSystem, grid::GridDefinition},
-};
+use bevy_ghx_grid::debug_plugin::markers::{spawn_marker, MarkerDespawnEvent};
 use ghx_proc_gen::{
     generator::{
         model::ModelIndex,
         observer::{GenerationUpdate, QueuedObserver},
         GenerationStatus, Generator,
+    },
+    ghx_grid::{
+        cartesian::{coordinates::CartesianCoordinates, grid::CartesianGrid},
+        grid::Grid,
     },
     GeneratorError, NodeIndex,
 };
@@ -60,13 +61,17 @@ pub struct ActiveGeneration(pub Option<Entity>);
 
 /// Simple system that calculates and add a [`VoidNodes`] component for generator entites which don't have one yet.
 pub fn insert_void_nodes_to_new_generations<
-    C: CoordinateSystem,
+    C: CartesianCoordinates,
     A: AssetsBundleSpawner,
     T: ComponentSpawner,
 >(
     mut commands: Commands,
     mut new_generations: Query<
-        (Entity, &mut Generator<C>, &AssetSpawner<A, T>),
+        (
+            Entity,
+            &mut Generator<C, CartesianGrid<C>>,
+            &AssetSpawner<A, T>,
+        ),
         Without<VoidNodes>,
     >,
 ) {
@@ -82,9 +87,12 @@ pub fn insert_void_nodes_to_new_generations<
 }
 
 /// System used to insert an empty [ErrorMarkers] component into new generation entities
-pub fn insert_error_markers_to_new_generations<C: CoordinateSystem>(
+pub fn insert_error_markers_to_new_generations<C: CartesianCoordinates>(
     mut commands: Commands,
-    mut new_generations: Query<Entity, (With<Generator<C>>, Without<ErrorMarkers>)>,
+    mut new_generations: Query<
+        Entity,
+        (With<Generator<C, CartesianGrid<C>>>, Without<ErrorMarkers>),
+    >,
 ) {
     for gen_entity in new_generations.iter_mut() {
         commands.entity(gen_entity).insert(ErrorMarkers::default());
@@ -92,9 +100,9 @@ pub fn insert_error_markers_to_new_generations<C: CoordinateSystem>(
 }
 
 /// System that will update the currenty active generation if it was [None]
-pub fn update_active_generation<C: CoordinateSystem>(
+pub fn update_active_generation<C: CartesianCoordinates>(
     mut active_generation: ResMut<ActiveGeneration>,
-    generations: Query<Entity, With<Generator<C>>>,
+    generations: Query<Entity, With<Generator<C, CartesianGrid<C>>>>,
 ) {
     if active_generation.0.is_some() {
         return;
@@ -123,9 +131,9 @@ pub fn update_generation_control(
 
 /// - reinitializes the generator if needed
 /// - returns `true` if the generation operation should continue, and `false` if it should stop
-pub fn handle_reinitialization_and_continue<C: CoordinateSystem>(
+pub fn handle_reinitialization_and_continue<C: CartesianCoordinates>(
     generation_control: &mut ResMut<GenerationControl>,
-    generator: &mut Generator<C>,
+    generator: &mut Generator<C, CartesianGrid<C>>,
 ) -> bool {
     if generation_control.need_reinit {
         generation_control.need_reinit = false;
@@ -154,9 +162,9 @@ pub fn handle_reinitialization_and_continue<C: CoordinateSystem>(
 
 /// Function used to display some info about a generation that finished,
 /// as well as to properly handle reinitialization status and pause.
-pub fn handle_generation_done<C: CoordinateSystem>(
+pub fn handle_generation_done<C: CartesianCoordinates>(
     generation_control: &mut ResMut<GenerationControl>,
-    generator: &mut Generator<C>,
+    generator: &mut Generator<C, CartesianGrid<C>>,
     gen_entity: Entity,
     try_count: u32,
 ) {
@@ -175,9 +183,9 @@ pub fn handle_generation_done<C: CoordinateSystem>(
 
 /// Function used to display some info about a generation that failed,
 /// as well as to properly handle reinitialization status and pause.
-pub fn handle_generation_error<C: CoordinateSystem>(
+pub fn handle_generation_error<C: CartesianCoordinates>(
     generation_control: &mut ResMut<GenerationControl>,
-    generator: &mut Generator<C>,
+    generator: &mut Generator<C, CartesianGrid<C>>,
     gen_entity: Entity,
     node_index: NodeIndex,
 ) {
@@ -195,10 +203,10 @@ pub fn handle_generation_error<C: CoordinateSystem>(
 }
 
 /// This system request the full generation to a [`Generator`] component, if it is observed through a [`QueuedObserver`] component, if the current control status is [`GenerationControlStatus::Ongoing`] and if it is currently the [`ActiveGeneration`]
-pub fn generate_all<C: CoordinateSystem>(
+pub fn generate_all<C: CartesianCoordinates>(
     mut generation_control: ResMut<GenerationControl>,
     active_generation: Res<ActiveGeneration>,
-    mut observed_generatiors: Query<&mut Generator<C>, With<QueuedObserver>>,
+    mut observed_generatiors: Query<&mut Generator<C, CartesianGrid<C>>, With<QueuedObserver>>,
 ) {
     let Some(active_generation) = active_generation.0 else {
         return;
@@ -236,12 +244,15 @@ pub fn generate_all<C: CoordinateSystem>(
 /// This system steps a [`Generator`] component if it is  observed through a [`QueuedObserver`] component, if the current control status is [`GenerationControlStatus::Ongoing`], if it is currently the [`ActiveGeneration`] and if the appropriate keys are pressed.
 ///
 /// The keybinds are read from the [`ProcGenKeyBindings`] `Resource`
-pub fn step_by_step_input_update<C: CoordinateSystem>(
+pub fn step_by_step_input_update<C: CartesianCoordinates>(
     keys: Res<ButtonInput<KeyCode>>,
     proc_gen_key_bindings: Res<ProcGenKeyBindings>,
     mut generation_control: ResMut<GenerationControl>,
     active_generation: Res<ActiveGeneration>,
-    mut observed_generations: Query<(&mut Generator<C>, &VoidNodes), With<QueuedObserver>>,
+    mut observed_generations: Query<
+        (&mut Generator<C, CartesianGrid<C>>, &VoidNodes),
+        With<QueuedObserver>,
+    >,
 ) {
     let Some(active_generation) = active_generation.0 else {
         return;
@@ -263,12 +274,15 @@ pub fn step_by_step_input_update<C: CoordinateSystem>(
 }
 
 /// This system steps a [`Generator`] component if it is observed through a [`QueuedObserver`] component, if the current control status is [`GenerationControlStatus::Ongoing`] if it is currently the [`ActiveGeneration`] and if the timer in the [`StepByStepTimed`] `Resource` has finished.
-pub fn step_by_step_timed_update<C: CoordinateSystem>(
+pub fn step_by_step_timed_update<C: CartesianCoordinates>(
     mut generation_control: ResMut<GenerationControl>,
     mut steps_and_timer: ResMut<StepByStepTimed>,
     time: Res<Time>,
     active_generation: Res<ActiveGeneration>,
-    mut observed_generations: Query<(&mut Generator<C>, &VoidNodes), With<QueuedObserver>>,
+    mut observed_generations: Query<
+        (&mut Generator<C, CartesianGrid<C>>, &VoidNodes),
+        With<QueuedObserver>,
+    >,
 ) {
     let Some(active_generation) = active_generation.0 else {
         return;
@@ -295,13 +309,17 @@ pub fn step_by_step_timed_update<C: CoordinateSystem>(
 }
 
 /// System used to spawn nodes, emit [GenerationEvent] and despawn markers, based on data read from a [QueuedObserver] on a generation entity
-pub fn update_generation_view<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner>(
+pub fn update_generation_view<
+    C: CartesianCoordinates,
+    A: AssetsBundleSpawner,
+    T: ComponentSpawner,
+>(
     mut commands: Commands,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
     mut generation_events: EventWriter<GenerationEvent>,
     mut generators: Query<(
         Entity,
-        &GridDefinition<C>,
+        &CartesianGrid<C>,
         &AssetSpawner<A, T>,
         &mut QueuedObserver,
         Option<&Children>,
@@ -369,8 +387,8 @@ pub fn update_generation_view<C: CoordinateSystem, A: AssetsBundleSpawner, T: Co
     }
 }
 
-fn step_generation<C: CoordinateSystem>(
-    generator: &mut Generator<C>,
+fn step_generation<C: CartesianCoordinates>(
+    generator: &mut Generator<C, CartesianGrid<C>>,
     gen_entity: Entity,
     void_nodes: &VoidNodes,
     generation_control: &mut ResMut<GenerationControl>,

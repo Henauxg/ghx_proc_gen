@@ -25,14 +25,21 @@ use bevy_ghx_grid::{
         markers::{GridMarker, MarkerDespawnEvent},
         view::{DebugGridView, DebugGridView2d, DebugGridView3d},
     },
-    ghx_grid::{coordinate_system::CoordinateSystem, direction::Direction, grid::GridDefinition},
+    ghx_grid::{coordinate_system::CoordinateSystem, direction::Direction},
 };
 use bevy_mod_picking::{
     events::Out,
     prelude::{Down, ListenerInput, On, Over, Pointer},
     PickableBundle,
 };
-use ghx_proc_gen::{generator::Generator, NodeIndex};
+use ghx_proc_gen::{
+    generator::Generator,
+    ghx_grid::{
+        cartesian::{coordinates::CartesianCoordinates, grid::CartesianGrid},
+        grid::Grid,
+    },
+    NodeIndex,
+};
 
 use crate::gen::GridNode;
 
@@ -164,7 +171,7 @@ pub fn update_over_cursor_from_generation_events<C: CoordinateSystem>(
 
 /// System used to update cursor positions from picking events
 pub fn picking_update_cursors_position<
-    C: CoordinateSystem,
+    C: CartesianCoordinates,
     CS: CursorMarkerSettings,
     CB: CursorBehavior,
     PE: Event + std::ops::DerefMut<Target = Entity>,
@@ -176,7 +183,7 @@ pub fn picking_update_cursors_position<
     mut marker_events: EventWriter<MarkerDespawnEvent>,
     grid_nodes: Query<(&GridNode, &Parent)>,
     mut cursor: Query<&mut Cursor, With<CB>>,
-    generations: Query<(Entity, &GridDefinition<C>), With<Generator<C>>>,
+    generations: Query<(Entity, &CartesianGrid<C>), With<Generator<C, CartesianGrid<C>>>>,
 ) {
     if let Some(event) = events.read().last() {
         let Ok(mut cursor) = cursor.get_single_mut() else {
@@ -289,7 +296,7 @@ pub struct ActiveCursorTargets {
 }
 
 /// System that spawn & depsanw the cursor targets
-pub fn update_cursor_targets_nodes<C: CoordinateSystem>(
+pub fn update_cursor_targets_nodes<C: CartesianCoordinates>(
     mut local_active_cursor_targets: Local<Option<ActiveCursorTargets>>,
     mut commands: Commands,
     keys: Res<ButtonInput<KeyCode>>,
@@ -298,9 +305,9 @@ pub fn update_cursor_targets_nodes<C: CoordinateSystem>(
     mut marker_events: EventWriter<MarkerDespawnEvent>,
     selection_cursor: Query<&Cursor, With<SelectCursor>>,
     mut over_cursor: Query<&mut Cursor, (With<OverCursor>, Without<SelectCursor>)>,
-    grids_with_cam3d: Query<(&GridDefinition<C>, &DebugGridView), With<DebugGridView3d>>,
+    grids_with_cam3d: Query<(&CartesianGrid<C>, &DebugGridView), With<DebugGridView3d>>,
     grids_with_cam2d: Query<
-        (&GridDefinition<C>, &DebugGridView),
+        (&CartesianGrid<C>, &DebugGridView),
         (With<DebugGridView2d>, Without<DebugGridView3d>),
     >,
     cursor_targets: Query<Entity, With<CursorTarget>>,
@@ -389,14 +396,14 @@ pub fn despawn_cursor_targets(
 }
 
 /// Function used to spawn cursor targets
-pub fn spawn_cursor_targets<C: CoordinateSystem>(
+pub fn spawn_cursor_targets<C: CartesianCoordinates>(
     commands: &mut Commands,
     cursor_target_assets: &Res<CursorTargetAssets>,
     selected_node: &TargetedNode,
     axis: Direction,
-    grids_with_cam3d: &Query<(&GridDefinition<C>, &DebugGridView), With<DebugGridView3d>>,
+    grids_with_cam3d: &Query<(&CartesianGrid<C>, &DebugGridView), With<DebugGridView3d>>,
     grids_with_cam2d: &Query<
-        (&GridDefinition<C>, &DebugGridView),
+        (&CartesianGrid<C>, &DebugGridView),
         (With<DebugGridView2d>, Without<DebugGridView3d>),
     >,
 ) {
@@ -422,12 +429,12 @@ pub fn spawn_cursor_targets<C: CoordinateSystem>(
 }
 
 /// Function used to spawn cursor targets when using a 3d camera
-pub fn spawn_cursor_targets_3d<C: CoordinateSystem>(
+pub fn spawn_cursor_targets_3d<C: CartesianCoordinates>(
     commands: &mut Commands,
     cursor_target_assets: &Res<CursorTargetAssets>,
     axis: Direction,
     selected_node: &TargetedNode,
-    grid: &GridDefinition<C>,
+    grid: &CartesianGrid<C>,
     node_size: &Vec3,
 ) {
     let mut spawn_cursor_target = |x: u32, y: u32, z: u32| {
@@ -486,12 +493,12 @@ pub fn spawn_cursor_targets_3d<C: CoordinateSystem>(
 }
 
 /// Function used to spawn cursor targets when using a 2d camera
-pub fn spawn_cursor_targets_2d<C: CoordinateSystem>(
+pub fn spawn_cursor_targets_2d<C: CartesianCoordinates>(
     commands: &mut Commands,
     cursor_target_assets: &Res<CursorTargetAssets>,
     axis: Direction,
     selected_node: &TargetedNode,
-    grid: &GridDefinition<C>,
+    grid: &CartesianGrid<C>,
     node_size: &Vec3,
 ) {
     let mut spawn_cursor_target = |x: u32, y: u32, z: u32| {

@@ -5,8 +5,9 @@ use std::{
 };
 
 use ghx_grid::{
-    coordinate_system::{Cartesian2D, Cartesian3D, CoordinateSystem},
-    direction::Direction,
+    cartesian::coordinates::{Cartesian2D, Cartesian3D},
+    coordinate_system::CoordinateSystem,
+    direction::{Direction, DirectionTrait},
 };
 use ndarray::{Array, Ix1, Ix2};
 
@@ -37,7 +38,7 @@ pub const CARTESIAN_2D_ROTATION_AXIS: Direction = Direction::ZForward;
 pub struct RulesBuilder<C: CoordinateSystem> {
     models: ModelCollection<C>,
     socket_collection: SocketCollection,
-    rotation_axis: Direction,
+    rotation_axis: C::Direction,
     coord_system: C,
 }
 
@@ -49,7 +50,7 @@ impl RulesBuilder<Cartesian2D> {
     /// Create simple `Rules` for a chess-like pattern
     /// ```
     /// use ghx_proc_gen::{generator::{socket::{SocketsCartesian2D, SocketCollection}, rules::{Rules, RulesBuilder}, model::ModelCollection}};
-    /// use ghx_grid::coordinate_system::Cartesian2D;
+    /// use ghx_grid::cartesian::coordinates::Cartesian2D;
     ///
     /// let mut sockets = SocketCollection::new();
     /// let (white, black) = (sockets.create(), sockets.create());
@@ -80,7 +81,7 @@ impl RulesBuilder<Cartesian3D> {
     ///
     /// Create simple `Rules` to describe an empty room with variable length pillars (with Y up in a right-handed coordinate system).
     /// ```
-    /// use ghx_grid::{grid::GridDefinition, coordinate_system::Cartesian2D};
+    /// use ghx_grid::cartesian::coordinates::{Cartesian2D, Cartesian3D};
     /// use ghx_proc_gen::generator::{socket::{SocketsCartesian3D, SocketCollection}, rules::{Rules, RulesBuilder}, model::ModelCollection};
     ///
     /// let mut sockets = SocketCollection::new();
@@ -209,7 +210,7 @@ impl<C: CoordinateSystem> Rules<C> {
     fn new(
         models: ModelCollection<C>,
         socket_collection: SocketCollection,
-        rotation_axis: Direction,
+        rotation_axis: C::Direction,
         coord_system: C,
     ) -> Result<Rules<C>, RulesBuilderError> {
         let original_models_count = models.models_count();
@@ -223,11 +224,11 @@ impl<C: CoordinateSystem> Rules<C> {
         let mut sockets_to_models = HashMap::new();
         // Using a BTreeSet because HashSet order is not deterministic. Performance impact is non-existant since `sockets_to_models` is discarded after building the Rules.
         let empty_in_all_directions: Array<BTreeSet<ModelVariantIndex>, Ix1> =
-            Array::from_elem(coord_system.directions().len(), BTreeSet::new());
+            Array::from_elem(coord_system.directions_count(), BTreeSet::new());
         for (model_index, model) in model_variations.iter().enumerate() {
             for &direction in coord_system.directions() {
-                let opposite_dir = direction.opposite() as usize;
-                for socket in &model.sockets()[direction as usize] {
+                let opposite_dir: usize = direction.opposite().into();
+                for socket in &model.sockets()[direction.into()] {
                     let compatible_models = sockets_to_models
                         .entry(socket)
                         .or_insert(empty_in_all_directions.clone());
@@ -237,24 +238,24 @@ impl<C: CoordinateSystem> Rules<C> {
         }
 
         let mut allowed_neighbours = Array::from_elem(
-            (model_variations.len(), coord_system.directions().len()),
+            (model_variations.len(), coord_system.directions_count()),
             Vec::new(),
         );
         for (model_index, model) in model_variations.iter().enumerate() {
-            for &direction in coord_system.directions() {
+            for direction in 0..coord_system.directions_count() {
                 // We filter unique models with a Set, but waht we want in the Rules is a Vec for access speed, caching, and iteration determinism.
                 let mut unique_models = HashSet::new();
                 // For each socket of the model in this direction: get all the sockets that are compatible for connection
-                for socket in &model.sockets()[direction as usize] {
+                for socket in &model.sockets()[direction] {
                     if let Some(compatible_sockets) = socket_collection.get_compatibles(*socket) {
                         for compatible_socket in compatible_sockets {
                             // For each of those: get all the models that have this socket from direction
                             // `sockets_to_models` may not have an entry for `compatible_socket` depending on user input data (socket present in sockets_connections but not in a model)
                             if let Some(allowed_models) = sockets_to_models.get(&compatible_socket)
                             {
-                                for allowed_model in &allowed_models[direction as usize] {
+                                for allowed_model in &allowed_models[direction] {
                                     if unique_models.insert(*allowed_model) {
-                                        allowed_neighbours[(model_index, direction as usize)]
+                                        allowed_neighbours[(model_index, direction)]
                                             .push(*allowed_model);
                                     }
                                 }
@@ -306,12 +307,12 @@ impl<C: CoordinateSystem> Rules<C> {
     }
 
     #[inline]
-    pub(crate) fn allowed_models(
+    pub(crate) fn allowed_models<Direction: Into<usize>>(
         &self,
         model: ModelVariantIndex,
         direction: Direction,
     ) -> &Vec<ModelVariantIndex> {
-        &self.allowed_neighbours[(model, direction as usize)]
+        &self.allowed_neighbours[(model, direction.into())]
     }
 
     /// Returns the number of models (expanded from the input models) present in the rules

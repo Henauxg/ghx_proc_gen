@@ -22,8 +22,8 @@ bevy = ["dep:bevy", "ghx_grid/bevy"]
 reflect = ["bevy", "ghx_grid/reflect"]
 
 [dependencies]
-# Internal dependencies
-ghx_grid = { version = "0.2.0", features = [] }
+# Owned dependencies
+ghx_grid = { version = "0.3.2", features = [] }
 
 # External dependencies
 bitvec = "1.0.1"

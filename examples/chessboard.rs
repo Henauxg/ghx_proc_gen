@@ -2,17 +2,13 @@ use std::error::Error;
 
 use ghx_proc_gen::{
     generator::{
+        builder::GeneratorBuilder,
         model::ModelCollection,
         rules::RulesBuilder,
         socket::{SocketCollection, SocketsCartesian2D},
     },
-    ghx_grid::{
-        coordinate_system::Cartesian2D,
-        grid::{GridDefinition, GridPosition},
-    },
+    ghx_grid::cartesian::{coordinates::Cartesian2D, grid::CartesianGrid},
 };
-
-use ghx_proc_gen::generator::builder::GeneratorBuilder;
 
 fn main() -> Result<(), Box<dyn Error>> {
     // A SocketCollection is what we use to create sockets and define their connections
@@ -36,14 +32,15 @@ fn main() -> Result<(), Box<dyn Error>> {
         .unwrap();
 
     // Like a chess board, let's do an 8x8 2d grid
-    let grid = GridDefinition::new_cartesian_2d(8, 8, false, false);
+    let grid = CartesianGrid::new_cartesian_2d(8, 8, false, false);
+    // Let's ensure that we make a chessboard, with a black square bottom-left
+    let initial_nodes = vec![(grid.get_index_2d(0, 0), black_model)];
 
     // There many more parameters you can tweak on a Generator before building it, explore the API.
     let mut generator = GeneratorBuilder::new()
         .with_rules(rules)
         .with_grid(grid)
-        // Let's ensure that we make a chessboard, with a black square bottom-left
-        .with_initial_nodes(vec![(GridPosition::new_xy(0, 0), black_model)])?
+        .with_initial_nodes(initial_nodes)?
         .build()?;
 
     // Here we directly generate the whole grid, and ask for the result to be returned.

@@ -1,20 +1,19 @@
 use bevy::prelude::*;
 
 use bevy_ghx_proc_gen::{
-    bevy_ghx_grid::ghx_grid::{
-        coordinate_system::Cartesian2D,
-        grid::{GridDefinition, GridPosition},
-    },
     gen::{
         assets::{AssetSpawner, RulesModelsAssets},
         default_bundles::PbrMesh,
         simple_plugin::ProcGenSimplePlugin,
     },
-    proc_gen::generator::{
-        builder::GeneratorBuilder,
-        model::ModelCollection,
-        rules::RulesBuilder,
-        socket::{SocketCollection, SocketsCartesian2D},
+    proc_gen::{
+        generator::{
+            builder::GeneratorBuilder,
+            model::ModelCollection,
+            rules::RulesBuilder,
+            socket::{SocketCollection, SocketsCartesian2D},
+        },
+        ghx_grid::cartesian::{coordinates::Cartesian2D, grid::CartesianGrid},
     },
     GeneratorBundle,
 };
@@ -65,14 +64,14 @@ fn setup_generator(
         .unwrap();
 
     // Like a chess board, let's do an 8x8 2d grid
-    let grid = GridDefinition::new_cartesian_2d(8, 8, false, false);
+    let grid = CartesianGrid::new_cartesian_2d(8, 8, false, false);
 
     // There many more parameters you can tweak on a Generator before building it, explore the API.
     let generator = GeneratorBuilder::new()
         .with_rules(rules)
         .with_grid(grid.clone())
         // Let's ensure that we make a chessboard, with a black square bottom-left
-        .with_initial_nodes(vec![(GridPosition::new_xy(0, 0), black_model)])
+        .with_initial_nodes(vec![(0, black_model)])
         .unwrap()
         .build()
         .unwrap();

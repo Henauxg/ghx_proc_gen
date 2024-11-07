@@ -9,6 +9,8 @@ pub mod gen;
 pub use bevy_ghx_grid;
 pub use ghx_proc_gen as proc_gen;
 
+use ghx_proc_gen::ghx_grid::cartesian::{coordinates::CartesianCoordinates, grid::CartesianGrid};
+
 #[cfg(feature = "picking")]
 pub use bevy_mod_picking;
 
@@ -16,7 +18,6 @@ pub use bevy_mod_picking;
 pub use bevy_egui;
 
 use bevy::{ecs::bundle::Bundle, prelude::SpatialBundle};
-use bevy_ghx_grid::ghx_grid::{coordinate_system::CoordinateSystem, grid::GridDefinition};
 use gen::assets::{AssetSpawner, AssetsBundleSpawner, ComponentSpawner};
 use proc_gen::generator::Generator;
 
@@ -24,13 +25,13 @@ use proc_gen::generator::Generator;
 ///
 /// If using [`gen::simple_plugin::ProcGenSimplePlugin`] or [`gen::debug_plugin::ProcGenDebugPlugin`], this is the main `Bundle` to use.
 #[derive(Bundle)]
-pub struct GeneratorBundle<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> {
+pub struct GeneratorBundle<C: CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner> {
     /// For positional rendering of the grid
     pub spatial: SpatialBundle,
-    /// Grid definition (Should be the same [`bevy_ghx_grid::ghx_grid::grid::GridDefinition`] as in the generator)
-    pub grid: GridDefinition<C>,
+    /// Grid definition (should be the same grid as in the generator)
+    pub grid: CartesianGrid<C>,
     /// Generator
-    pub generator: Generator<C>,
+    pub generator: Generator<C, CartesianGrid<C>>,
     /// Assets information used when spawning nodes
     pub asset_spawner: AssetSpawner<A, T>,
 }
