@@ -1,4 +1,4 @@
-use std::f32::consts::PI;
+use std::f32::consts::{FRAC_PI_2, PI};
 
 use bevy::{
     color::palettes::css::{GRAY, ORANGE_RED},
@@ -69,6 +69,7 @@ fn setup_scene(mut commands: Commands) {
         },
         state: PanOrbitState {
             radius,
+            pitch: -FRAC_PI_2 / 2.,
             ..Default::default()
         },
         ..Default::default()
