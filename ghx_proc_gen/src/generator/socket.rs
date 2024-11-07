@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use ghx_grid::coordinate_system::{Cartesian2D, Cartesian3D};
+use ghx_grid::cartesian::coordinates::{Cartesian2D, Cartesian3D};
 
 use super::model::{ModelRotation, ModelTemplate, ALL_MODEL_ROTATIONS};
 

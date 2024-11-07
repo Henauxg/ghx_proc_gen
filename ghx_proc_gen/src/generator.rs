@@ -71,7 +71,7 @@ pub enum GenerationStatus {
     Done,
 }
 
-/// Output of a [`Generator`] in the context of its [`ghx_grid::grid::GridDefinition`].
+/// Output of a [`Generator`] in the context of its [`ghx_grid::grid::Grid`].
 #[derive(Clone, Copy, Debug)]
 pub struct GeneratedNode {
     /// Index of the node in the grid
@@ -144,12 +144,12 @@ impl<C: CoordinateSystem, G: Grid<C>> Generator<C, G> {
         }
     }
 
-    /// Returns the `max_retry_count`: how many time the [`Generator`] should retry to generate the [`GridDefinition`] when a contradiction is encountered
+    /// Returns the `max_retry_count`: how many time the [`Generator`] should retry to generate the [`Grid`] when a contradiction is encountered
     pub fn max_retry_count(&self) -> u32 {
         self.max_retry_count
     }
 
-    /// Specifies how many time the [`Generator`] should retry to generate the [`GridDefinition`] when a contradiction is encountered
+    /// Specifies how many time the [`Generator`] should retry to generate the [`Grid`] when a contradiction is encountered
     pub fn set_max_retry_count(&mut self, max_retry_count: u32) {
         self.max_retry_count = max_retry_count;
     }
@@ -159,7 +159,7 @@ impl<C: CoordinateSystem, G: Grid<C>> Generator<C, G> {
         self.internal.seed
     }
 
-    /// Returns the [`GridDefinition`] used by the generator
+    /// Returns the [`Grid`] used by the generator
     pub fn grid(&self) -> &G {
         &self.internal.grid
     }

@@ -5,15 +5,15 @@ use bevy::{log::LogPlugin, pbr::DirectionalLightShadowMap, prelude::*};
 use bevy_examples::{plugin::ProcGenExamplesPlugin, utils::load_assets};
 
 use bevy_ghx_proc_gen::{
-    bevy_ghx_grid::{
-        debug_plugin::{view::DebugGridView, DebugGridView3dBundle},
-        ghx_grid::{coordinate_system::Cartesian3D, grid::GridDefinition},
-    },
+    bevy_ghx_grid::debug_plugin::{view::DebugGridView, DebugGridView3dBundle},
     gen::{
         assets::{AssetSpawner, RulesModelsAssets},
         debug_plugin::GenerationViewMode,
     },
-    proc_gen::generator::{builder::GeneratorBuilder, rules::RulesBuilder},
+    proc_gen::{
+        generator::{builder::GeneratorBuilder, rules::RulesBuilder},
+        ghx_grid::cartesian::{coordinates::Cartesian3D, grid::CartesianGrid},
+    },
     GeneratorBundle,
 };
 use bevy_ghx_utils::camera::{update_pan_orbit_camera, PanOrbitCamera};
@@ -126,7 +126,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
             .build()
             .unwrap(),
     );
-    let grid = GridDefinition::new_cartesian_3d(GRID_X, GRID_HEIGHT, GRID_Z, false, false, false);
+    let grid = CartesianGrid::new_cartesian_3d(GRID_X, GRID_HEIGHT, GRID_Z, false, false, false);
     let gen_builder = GeneratorBuilder::new()
         // We share the Rules between all the generators
         .with_shared_rules(rules.clone())

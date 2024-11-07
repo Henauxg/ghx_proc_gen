@@ -8,6 +8,7 @@ use bevy::{
     time::{Timer, TimerMode},
 };
 use bevy_ghx_grid::ghx_grid::coordinate_system::CoordinateSystem;
+use ghx_proc_gen::ghx_grid::cartesian::coordinates::CartesianCoordinates;
 
 use self::{
     cursor::{
@@ -118,7 +119,7 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> ProcGenDe
     }
 }
 
-impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
+impl<C: CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
     for ProcGenDebugPlugin<C, A, T>
 {
     // TODO Clean: Split into multiple plugins

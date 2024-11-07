@@ -11,11 +11,13 @@ use bevy_egui::{
     egui::{self, Color32, Pos2},
     EguiContexts,
 };
-use bevy_ghx_grid::ghx_grid::coordinate_system::CoordinateSystem;
-use ghx_proc_gen::generator::{
-    model::{ModelInstance, ModelRotation},
-    rules::ModelInfo,
-    Generator,
+use ghx_proc_gen::{
+    generator::{
+        model::{ModelInstance, ModelRotation},
+        rules::ModelInfo,
+        Generator,
+    },
+    ghx_grid::cartesian::{coordinates::CartesianCoordinates, grid::CartesianGrid},
 };
 
 use crate::gen::GridNode;
@@ -79,12 +81,12 @@ pub fn toggle_editor(mut editor_config: ResMut<EditorConfig>) {
 }
 
 /// System used to draw the editor egui window
-pub fn draw_edition_panel<C: CoordinateSystem>(
+pub fn draw_edition_panel<C: CartesianCoordinates>(
     editor_context: ResMut<EditorContext>,
     mut contexts: EguiContexts,
     active_generation: Res<ActiveGeneration>,
     mut brush_events: EventWriter<BrushEvent>,
-    generations: Query<&mut Generator<C>>,
+    generations: Query<&mut Generator<C, CartesianGrid<C>>>,
     selection_cursor: Query<(&Cursor, &CursorInfo), With<SelectCursor>>,
 ) {
     let Some(active_generation) = active_generation.0 else {
@@ -251,11 +253,11 @@ pub fn update_painting_state(
 }
 
 /// System issuing the generation requests to the geenrator based on the painting state
-pub fn paint<C: CoordinateSystem>(
+pub fn paint<C: CartesianCoordinates>(
     editor_context: ResMut<EditorContext>,
     active_generation: Res<ActiveGeneration>,
     mut node_over_events: EventReader<NodeOverEvent>,
-    mut generations: Query<&mut Generator<C>>,
+    mut generations: Query<&mut Generator<C, CartesianGrid<C>>>,
     cursor_targets: Query<&GridNode, With<CursorTarget>>,
 ) {
     if !editor_context.painting {

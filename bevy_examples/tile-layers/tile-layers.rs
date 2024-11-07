@@ -19,15 +19,18 @@ use bevy_examples::{plugin::ProcGenExamplesPlugin, utils::load_assets};
 use bevy_ghx_proc_gen::{
     bevy_ghx_grid::{
         debug_plugin::{view::DebugGridView, DebugGridView2dBundle},
-        ghx_grid::{coordinate_system::Cartesian3D, direction::Direction, grid::GridDefinition},
+        ghx_grid::direction::Direction,
     },
     gen::{
         assets::{AssetSpawner, RulesModelsAssets},
         debug_plugin::GenerationViewMode,
     },
-    proc_gen::generator::{
-        builder::GeneratorBuilder, node_heuristic::NodeSelectionHeuristic, rules::RulesBuilder,
-        ModelSelectionHeuristic, RngMode,
+    proc_gen::{
+        generator::{
+            builder::GeneratorBuilder, node_heuristic::NodeSelectionHeuristic, rules::RulesBuilder,
+            ModelSelectionHeuristic, RngMode,
+        },
+        ghx_grid::cartesian::{coordinates::Cartesian3D, grid::CartesianGrid},
     },
     GeneratorBundle,
 };
@@ -74,7 +77,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         .with_rotation_axis(Direction::ZForward)
         .build()
         .unwrap();
-    let grid = GridDefinition::new_cartesian_3d(GRID_X, GRID_Y, GRID_Z, false, false, false);
+    let grid = CartesianGrid::new_cartesian_3d(GRID_X, GRID_Y, GRID_Z, false, false, false);
     let mut gen_builder = GeneratorBuilder::new()
         .with_rules(rules)
         .with_grid(grid.clone())

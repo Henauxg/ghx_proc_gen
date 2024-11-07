@@ -5,10 +5,10 @@ use bevy::{
 };
 
 use bevy_ghx_proc_gen::{
-    bevy_ghx_grid::ghx_grid::direction::GridDelta,
     gen::assets::{
         AssetsBundleSpawner, ComponentSpawner, ModelAsset, NoComponents, RulesModelsAssets,
     },
+    proc_gen::ghx_grid::cartesian::coordinates::GridDelta,
 };
 
 /// Used to define an asset (not yet loaded) for a model: via an asset path, and an optionnal grid offset when spawned in Bevy

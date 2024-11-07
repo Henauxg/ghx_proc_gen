@@ -18,23 +18,23 @@ use super::{
 /// Default retry count for the generator
 pub const DEFAULT_RETRY_COUNT: u32 = 50;
 
-/// Internal type used to provide a type-safe builder with compatible [`GridDefinition`] and [`Rules`]
+/// Internal type used to provide a type-safe builder with compatible [`Grid`] and [`Rules`]
 #[derive(Copy, Clone)]
 pub struct Set;
-/// Internal type used to provide a type-safe builder with compatible [`GridDefinition`] and [`Rules`]
+/// Internal type used to provide a type-safe builder with compatible [`Grid`] and [`Rules`]
 #[derive(Copy, Clone)]
 pub struct Unset;
 
 /// Used to instantiate a new [`Generator`].
 ///
-/// [`Rules`] and [`GridDefinition`] are the two non-optionnal structs that are needed before being able to call `build`.
+/// [`Rules`] and [`Grid`] are the two non-optionnal structs that are needed before being able to call `build`.
 ///
 /// ### Example
 ///
 /// Create a `Generator` from a `GeneratorBuilder`.
 /// ```
 /// use ghx_proc_gen::{generator::{builder::GeneratorBuilder, rules::{Rules, RulesBuilder}, socket::{SocketsCartesian2D, SocketCollection}, model::ModelCollection}};
-/// use ghx_grid::grid::GridDefinition;
+/// use ghx_grid::cartesian::grid::CartesianGrid;
 ///
 /// let mut sockets = SocketCollection::new();
 /// let a = sockets.create();
@@ -45,7 +45,7 @@ pub struct Unset;
 ///
 /// let rules = RulesBuilder::new_cartesian_2d(models,sockets).build().unwrap();
 ///
-/// let grid = GridDefinition::new_cartesian_2d(10, 10, false, false);
+/// let grid = CartesianGrid::new_cartesian_2d(10, 10, false, false);
 /// let mut generator = GeneratorBuilder::new()
 ///    .with_rules(rules)
 ///    .with_grid(grid)
@@ -118,7 +118,7 @@ impl<C: CoordinateSystem, G: Grid<C>> GeneratorBuilder<Unset, Unset, C, G> {
 }
 
 impl<C: CoordinateSystem, G: Grid<C>> GeneratorBuilder<Unset, Set, C, G> {
-    /// Sets the [`GridDefinition`] to be used by the [`Generator`].
+    /// Sets the [`Grid`] to be used by the [`Generator`].
     pub fn with_grid(self, grid: G) -> GeneratorBuilder<Set, Set, C, G> {
         GeneratorBuilder {
             grid: Some(grid),
@@ -137,7 +137,7 @@ impl<C: CoordinateSystem, G: Grid<C>> GeneratorBuilder<Unset, Set, C, G> {
 }
 
 impl<G, R, C: CoordinateSystem, T: Grid<C>> GeneratorBuilder<G, R, C, T> {
-    /// Specifies how many time the [`Generator`] should retry to generate the [`GridDefinition`] when a contradiction is encountered. Set to [`DEFAULT_RETRY_COUNT`] by default.
+    /// Specifies how many time the [`Generator`] should retry to generate the [`Grid`] when a contradiction is encountered. Set to [`DEFAULT_RETRY_COUNT`] by default.
     pub fn with_max_retry_count(mut self, max_retry_count: u32) -> Self {
         self.max_retry_count = max_retry_count;
         self

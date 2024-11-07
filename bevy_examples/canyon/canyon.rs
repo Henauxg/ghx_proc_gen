@@ -6,17 +6,17 @@ use bevy_examples::{
     anim::SpawningScaleAnimation, plugin::ProcGenExamplesPlugin, utils::load_assets,
 };
 use bevy_ghx_proc_gen::{
-    bevy_ghx_grid::{
-        debug_plugin::{view::DebugGridView, DebugGridView3dBundle},
-        ghx_grid::{coordinate_system::Cartesian3D, grid::GridDefinition},
-    },
+    bevy_ghx_grid::debug_plugin::{view::DebugGridView, DebugGridView3dBundle},
     gen::{
         assets::AssetSpawner,
         debug_plugin::{GenerationControl, GenerationViewMode},
     },
-    proc_gen::generator::{
-        builder::GeneratorBuilder, node_heuristic::NodeSelectionHeuristic, rules::RulesBuilder,
-        ModelSelectionHeuristic, RngMode,
+    proc_gen::{
+        generator::{
+            builder::GeneratorBuilder, node_heuristic::NodeSelectionHeuristic, rules::RulesBuilder,
+            ModelSelectionHeuristic, RngMode,
+        },
+        ghx_grid::cartesian::{coordinates::Cartesian3D, grid::CartesianGrid},
     },
     GeneratorBundle,
 };
@@ -118,7 +118,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
     let rules = RulesBuilder::new_cartesian_3d(models, socket_collection)
         .build()
         .unwrap();
-    let grid = GridDefinition::new_cartesian_3d(GRID_X, GRID_HEIGHT, GRID_Z, false, false, false);
+    let grid = CartesianGrid::new_cartesian_3d(GRID_X, GRID_HEIGHT, GRID_Z, false, false, false);
 
     let mut initial_constraints = grid.new_grid_data(None);
     // Force void nodes on the upmost layer
@@ -139,14 +139,12 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
     let water_ref = Some(water_instance);
     for x in 2 * GRID_X / 5..3 * GRID_X / 5 {
         for z in 2 * GRID_Z / 5..3 * GRID_Z / 5 {
-            initial_constraints.set((x, 0, z), water_ref);
+            *initial_constraints.get_3d_mut(x, 0, z) = water_ref;
         }
     }
     // We could hope for a water bridge, or force one !
-    initial_constraints.set(
-        (GRID_X / 2, GRID_HEIGHT / 2, GRID_Z / 2),
-        Some(bridge_instance),
-    );
+    *initial_constraints.get_3d_mut(GRID_X / 2, GRID_HEIGHT / 2, GRID_Z / 2) =
+        Some(bridge_instance);
 
     let mut gen_builder = GeneratorBuilder::new()
         .with_rules(rules)

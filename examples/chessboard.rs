@@ -7,7 +7,7 @@ use ghx_proc_gen::{
         rules::RulesBuilder,
         socket::{SocketCollection, SocketsCartesian2D},
     },
-    ghx_grid::{coordinate_system::Cartesian2D, grid::CartesianGrid},
+    ghx_grid::cartesian::{coordinates::Cartesian2D, grid::CartesianGrid},
 };
 
 fn main() -> Result<(), Box<dyn Error>> {

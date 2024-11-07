@@ -1,7 +1,8 @@
 use std::{borrow::Cow, collections::HashSet, fmt, marker::PhantomData};
 
 use ghx_grid::{
-    coordinate_system::{Cartesian2D, Cartesian3D, CoordinateSystem},
+    cartesian::coordinates::{Cartesian2D, Cartesian3D},
+    coordinate_system::CoordinateSystem,
     direction::{Direction, DirectionTrait},
 };
 #[cfg(feature = "debug-traces")]

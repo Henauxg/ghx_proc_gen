@@ -13,8 +13,8 @@ use ghx_proc_gen::{
         GenerationStatus, ModelSelectionHeuristic,
     },
     ghx_grid::{
-        coordinate_system::Cartesian2D,
-        grid::{CartesianGrid, GridData},
+        cartesian::{coordinates::Cartesian2D, grid::CartesianGrid},
+        grid::GridData,
     },
 };
 
