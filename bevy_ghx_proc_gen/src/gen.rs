@@ -8,7 +8,9 @@ use bevy::{
     },
     hierarchy::BuildChildren,
     math::Vec3,
+    prelude::Without,
 };
+use debug_plugin::picking::CursorTarget;
 use ghx_proc_gen::{
     generator::model::ModelInstance,
     ghx_grid::cartesian::{coordinates::CartesianCoordinates, grid::CartesianGrid},
@@ -64,7 +66,7 @@ pub struct GridNode(pub NodeIndex);
 /// ```
 pub fn insert_default_bundle_to_spawned_nodes<B: Bundle + Default>(
     mut commands: Commands,
-    spawned_nodes: Query<Entity, Added<GridNode>>,
+    spawned_nodes: Query<Entity, (Added<GridNode>, Without<CursorTarget>)>,
 ) {
     for node in spawned_nodes.iter() {
         commands.entity(node).try_insert(B::default());
@@ -94,7 +96,7 @@ pub fn insert_default_bundle_to_spawned_nodes<B: Bundle + Default>(
 pub fn insert_bundle_from_resource_to_spawned_nodes<B: Bundle + Resource + Clone>(
     mut commands: Commands,
     bundle_to_clone: Res<B>,
-    spawned_nodes: Query<Entity, Added<GridNode>>,
+    spawned_nodes: Query<Entity, (Added<GridNode>, Without<CursorTarget>)>,
 ) {
     for node in spawned_nodes.iter() {
         commands.entity(node).try_insert(bundle_to_clone.clone());
