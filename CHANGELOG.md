@@ -1,6 +1,6 @@
 # Changelog
 
-## Version 0.4.0 (TBD)
+## Version 0.4.0 (2024-11-07)
 
 ###  All crates
 
@@ -8,16 +8,11 @@
 - Updated bevy to 0.14
   - Thanks to @a-panda-miner for the PR [#4](https://github.com/Henauxg/ghx_proc_gen/pull/4)
 
-### `ghx_proc_gen` crate:
-
-
 ### `bevy_ghx_proc_gen` crate:
 
+- Fixed: entities with `CursorTarget` are now filtered out from spawned nodes utils systems (`insert_bundle_from_resource_to_spawned_nodes`, `insert_default_bundle_to_spawned_nodes`)
 
-### Examples
-
-
-## Version 0.3.0 (2024-011-07)
+## Version 0.3.0 (2024-11-07)
 
 ###  All crates
 
