@@ -11,11 +11,10 @@ use bevy::{
     hierarchy::{BuildChildren, DespawnRecursiveExt, Parent},
     input::{keyboard::KeyCode, ButtonInput},
     math::{primitives::Cuboid, Vec2, Vec3},
-    pbr::{NotShadowCaster, PbrBundle, StandardMaterial},
-    prelude::{AlphaMode, Deref, DerefMut},
+    pbr::{MeshMaterial3d, NotShadowCaster, StandardMaterial},
+    prelude::{AlphaMode, Deref, DerefMut, Mesh3d, PickingBehavior, PointerButton, TextUiWriter},
     render::mesh::Mesh,
-    sprite::{Sprite, SpriteBundle},
-    text::Text,
+    sprite::Sprite,
     transform::components::Transform,
     utils::default,
 };
@@ -27,11 +26,6 @@ use bevy_ghx_grid::{
         view::{DebugGridView, DebugGridView2d, DebugGridView3d},
     },
     ghx_grid::{coordinate_system::CoordinateSystem, direction::Direction},
-};
-use bevy_mod_picking::{
-    events::Out,
-    prelude::{Down, ListenerInput, On, Over, Pointer},
-    PickableBundle,
 };
 use ghx_proc_gen::{
     generator::Generator,
@@ -103,10 +97,9 @@ pub fn insert_cursor_picking_handlers_to_grid_nodes<C: CoordinateSystem>(
     mut commands: Commands,
     spawned_nodes: Query<Entity, Added<GridNode>>,
 ) {
-    use bevy_mod_picking::{pointer::PointerButton, prelude::ListenerMut};
-
     for entity in spawned_nodes.iter() {
         commands.entity(entity).try_insert((
+            // TODO
             On::<Pointer<Over>>::send_event::<NodeOverEvent>(),
             On::<Pointer<Out>>::send_event::<NodeOutEvent>(),
             On::<Pointer<Down>>::run(
@@ -123,12 +116,13 @@ pub fn insert_cursor_picking_handlers_to_grid_nodes<C: CoordinateSystem>(
 
 /// System that update the over cursor UI panel
 pub fn update_over_cursor_panel_text(
-    mut cursors_panel_text: Query<&mut Text, With<CursorsPanelText>>,
+    mut writer: TextUiWriter,
+    mut cursors_panel_text: Query<Entity, With<CursorsPanelText>>,
     updated_cursors: Query<(&CursorInfo, &Cursor), (Changed<CursorInfo>, With<OverCursor>)>,
 ) {
     if let Ok((cursor_info, cursor)) = updated_cursors.get_single() {
-        for mut text in &mut cursors_panel_text {
-            let ui_text = &mut text.sections[OVER_CURSOR_SECTION_INDEX].value;
+        for panel_entity in &mut cursors_panel_text {
+            let mut ui_text = writer.text(panel_entity, OVER_CURSOR_SECTION_INDEX);
             match &cursor.0 {
                 Some(overed_node) => {
                     *ui_text = format!(
@@ -442,12 +436,9 @@ pub fn spawn_cursor_targets_3d<C: CartesianCoordinates>(
                 GridNode(grid.index_from_coords(x, y, z)),
                 CursorTarget,
                 NotShadowCaster,
-                PbrBundle {
-                    transform: Transform::from_translation(translation).with_scale(*node_size),
-                    mesh: cursor_target_assets.target_mesh_3d.clone(),
-                    material: cursor_target_assets.target_mat_3d.clone(),
-                    ..default()
-                },
+                Transform::from_translation(translation).with_scale(*node_size),
+                Mesh3d(cursor_target_assets.target_mesh_3d.clone_weak()),
+                MeshMaterial3d(cursor_target_assets.target_mat_3d.clone_weak()),
             ))
             .id();
         commands
@@ -506,17 +497,14 @@ pub fn spawn_cursor_targets_2d<C: CartesianCoordinates>(
             .spawn((
                 GridNode(grid.index_from_coords(x, y, z)),
                 CursorTarget,
+                Transform::from_translation(translation).with_scale(*node_size),
                 // TODO: Here MaterialMesh2dBundle + PickableBundle::default() did not interact with picking. Not sure why yet. Using Sprite instead.
-                SpriteBundle {
-                    transform: Transform::from_translation(translation).with_scale(*node_size),
-                    sprite: Sprite {
-                        color: cursor_target_assets.color,
-                        custom_size: Some(Vec2::splat(cursor_target_assets.base_size)),
-                        ..default()
-                    },
+                Sprite {
+                    color: cursor_target_assets.color,
+                    custom_size: Some(Vec2::splat(cursor_target_assets.base_size)),
                     ..default()
                 },
-                PickableBundle::default(),
+                PickingBehavior::default(),
             ))
             .id();
         commands

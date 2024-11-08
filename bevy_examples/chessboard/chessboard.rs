@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 use bevy_ghx_proc_gen::{
+    bevy_ghx_grid::ghx_grid::cartesian::coordinates::CartesianPosition,
     gen::{
         assets::{AssetSpawner, RulesModelsAssets},
         default_bundles::PbrMesh,
@@ -71,7 +72,7 @@ fn setup_generator(
         .with_rules(rules)
         .with_grid(grid.clone())
         // Let's ensure that we make a chessboard, with a black square bottom-left
-        .with_initial_nodes(vec![(0, black_model)])
+        .with_initial_nodes(vec![(CartesianPosition::new_xy(0, 0), black_model)])
         .unwrap()
         .build()
         .unwrap();
@@ -98,15 +99,13 @@ fn setup_generator(
         },
     );
 
-    // Add the GeneratorBundle, the plugin will generate and spawn the nodes
-    commands.spawn(GeneratorBundle {
-        spatial: SpatialBundle::from_transform(Transform::from_translation(Vec3::new(
-            -4., -4., 0.,
-        ))),
+    // Add the generator & grid components the plugin will generate and spawn the nodes
+    commands.spawn((
+        Transform::from_translation(Vec3::new(-4., -4., 0.)),
         grid,
         generator,
-        asset_spawner: AssetSpawner::new(models_assets, NODE_SIZE, Vec3::ONE),
-    });
+        AssetSpawner::new(models_assets, NODE_SIZE, Vec3::ONE),
+    ));
 }
 
 fn main() {
