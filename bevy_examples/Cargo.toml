@@ -8,12 +8,12 @@ exclude = ["assets/"]
 [dependencies]
 # ----- Internal dependencies
 bevy_ghx_proc_gen = { path = "../bevy_ghx_proc_gen", default-features = true }
-bevy_ghx_utils = { version = "0.4.1", default-features = true }
+bevy_ghx_utils = { path = "../../bevy_ghx_utils", version = "0.5.0", default-features = true }
 
 # ----- External dependencies
 tracing-subscriber = "0.3.18"
 rand = "0.8.5"
-bevy = { version = "0.14.0", default-features = false, features = [
+bevy = { version = "0.15.0-rc.3", default-features = false, features = [
 	# Default features:
 
 	"multi_threaded",     # Run with multithreading
@@ -43,12 +43,12 @@ bevy = { version = "0.14.0", default-features = false, features = [
 	# Development/Debug features:
 	"dynamic_linking", # Dynamic linking for faster compile-times
 ] }
-bevy_mod_picking = { version = "0.20.0", default-features = false, features = [
-	"backend_raycast",
-	"backend_bevy_ui",
-	"backend_sprite",
-	"backend_egui",
-] }
+# bevy_mod_picking = { version = "0.20.0", default-features = false, features = [
+# 	"backend_raycast",
+# 	"backend_bevy_ui",
+# 	"backend_sprite",
+# 	"backend_egui",
+# ] }
 
 
 [[example]]

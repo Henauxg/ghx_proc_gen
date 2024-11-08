@@ -31,7 +31,7 @@ use super::{
 };
 
 #[cfg(feature = "picking")]
-use bevy_mod_picking::PickableBundle;
+use bevy::prelude::PickingBehavior;
 
 #[cfg(feature = "picking")]
 use self::picking::{
@@ -45,15 +45,15 @@ use self::picking::{
 #[cfg(feature = "picking")]
 pub mod picking;
 
-#[cfg(feature = "egui-edit")]
-use self::egui_editor::{
-    draw_edition_panel, editor_enabled, paint, update_brush, update_painting_state, BrushEvent,
-    EditorConfig, EditorContext,
-};
+// #[cfg(feature = "egui-edit")]
+// use self::egui_editor::{
+//     draw_edition_panel, editor_enabled, paint, update_brush, update_painting_state, BrushEvent,
+//     EditorConfig, EditorContext,
+// };
 
 /// Module providing a small egui editor, enabled with the `egui-edit` feature
-#[cfg(feature = "egui-edit")]
-pub mod egui_editor;
+// #[cfg(feature = "egui-edit")]
+// pub mod egui_editor;
 
 /// Module providing all the grid cursors features
 pub mod cursor;
@@ -142,10 +142,10 @@ impl<C: CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner> Plugi
 
         app.add_event::<GenerationEvent>();
 
-        #[cfg(feature = "egui-edit")]
-        app.init_resource::<EditorConfig>()
-            .init_resource::<EditorContext>()
-            .add_event::<BrushEvent>();
+        // #[cfg(feature = "egui-edit")]
+        // app.init_resource::<EditorConfig>()
+        //     .init_resource::<EditorContext>()
+        //     .add_event::<BrushEvent>();
 
         #[cfg(feature = "picking")]
         app.init_resource::<CursorTargetAssets>()
@@ -183,7 +183,7 @@ impl<C: CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner> Plugi
             .add_systems(
                 Update,
                 (
-                    insert_default_bundle_to_spawned_nodes::<PickableBundle>,
+                    insert_default_bundle_to_spawned_nodes::<PickingBehavior>,
                     (
                         update_cursor_targets_nodes::<C>,
                         insert_cursor_picking_handlers_to_grid_nodes::<C>,
@@ -213,18 +213,18 @@ impl<C: CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner> Plugi
                     .before(update_cursors_info_from_generation_events::<C>),
             );
 
-        #[cfg(feature = "egui-edit")]
-        app.add_systems(
-            Update,
-            (
-                draw_edition_panel::<C>,
-                update_brush,
-                update_painting_state,
-                paint::<C>,
-            )
-                .chain()
-                .run_if(editor_enabled),
-        );
+        // #[cfg(feature = "egui-edit")]
+        // app.add_systems(
+        //     Update,
+        //     (
+        //         draw_edition_panel::<C>,
+        //         update_brush,
+        //         update_painting_state,
+        //         paint::<C>,
+        //     )
+        //         .chain()
+        //         .run_if(editor_enabled),
+        // );
 
         match self.cursor_ui_mode {
             CursorUiMode::None => (),

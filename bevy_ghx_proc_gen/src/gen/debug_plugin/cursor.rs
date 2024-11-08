@@ -13,14 +13,12 @@ use bevy::{
     hierarchy::BuildChildren,
     input::{keyboard::KeyCode, ButtonInput},
     log::warn,
+    prelude::{Text, TextUiWriter},
     render::camera::Camera,
-    text::{BreakLineOn, Text, TextSection, TextStyle},
+    text::{LineBreak, TextColor, TextFont, TextLayout, TextSpan},
     time::{Time, Timer, TimerMode},
     transform::components::GlobalTransform,
-    ui::{
-        node_bundles::{NodeBundle, TextBundle},
-        BackgroundColor, PositionType, Style, UiRect, Val,
-    },
+    ui::{BackgroundColor, Node, PositionType, UiRect, Val},
     utils::default,
 };
 use bevy_ghx_grid::{
@@ -37,7 +35,7 @@ use ghx_proc_gen::{
 };
 
 #[cfg(feature = "picking")]
-use bevy_mod_picking::picking_core::Pickable;
+use bevy::prelude::PickingBehavior;
 
 use super::{
     generation::{ActiveGeneration, GenerationEvent},
@@ -159,17 +157,14 @@ pub fn setup_cursors_panel(mut commands: Commands, ui_config: Res<GridCursorsUiS
         .spawn((
             CursorsPanelRoot,
             Name::new("CursorsPanelRoot"),
-            NodeBundle {
-                background_color: BackgroundColor(ui_config.background_color),
-                style: Style {
-                    position_type: PositionType::Absolute,
-                    right: Val::Percent(1.),
-                    bottom: Val::Percent(1.),
-                    top: Val::Auto,
-                    left: Val::Auto,
-                    padding: UiRect::all(Val::Px(4.0)),
-                    ..default()
-                },
+            BackgroundColor(ui_config.background_color),
+            Node {
+                position_type: PositionType::Absolute,
+                right: Val::Percent(1.),
+                bottom: Val::Percent(1.),
+                top: Val::Auto,
+                left: Val::Auto,
+                padding: UiRect::all(Val::Px(4.0)),
                 ..default()
             },
         ))
@@ -177,31 +172,20 @@ pub fn setup_cursors_panel(mut commands: Commands, ui_config: Res<GridCursorsUiS
     let text = commands
         .spawn((
             CursorsPanelText,
-            TextBundle {
-                text: Text::from_sections([
-                    // Over cursor
-                    TextSection {
-                        value: " N/A".into(),
-                        style: TextStyle {
-                            font_size: ui_config.font_size,
-                            color: ui_config.text_color,
-                            ..default()
-                        },
-                    },
-                    // Selection cursor
-                    TextSection {
-                        value: " N/A".into(),
-                        style: TextStyle {
-                            font_size: ui_config.font_size,
-                            color: ui_config.text_color,
-                            ..default()
-                        },
-                    },
-                ]),
+            TextLayout::default(),
+            TextFont {
+                font_size: ui_config.font_size,
                 ..Default::default()
             },
+            TextColor(ui_config.text_color),
         ))
+        // TODO TextSpan Does TextSpan needs text font and color ?
+        // Over cursor
+        .with_child((TextSpan::new(" N/A"),))
+        // Selection cursor
+        .with_child((TextSpan::new(" N/A"),))
         .id();
+
     commands.entity(root).add_child(text);
 }
 
@@ -211,11 +195,11 @@ pub fn setup_cursors_overlays(mut commands: Commands) {
         .spawn((
             CursorsOverlaysRoot,
             Name::new("CursorsOverlaysRoot"),
-            NodeBundle { ..default() },
+            Node { ..default() },
         ))
         .id();
     #[cfg(feature = "picking")]
-    commands.entity(root).insert(Pickable::IGNORE);
+    commands.entity(root).insert(PickingBehavior::IGNORE);
 }
 
 /// Setup system to spawn a cursor and its overlay
@@ -232,20 +216,13 @@ pub fn setup_cursor<C: CoordinateSystem, CI: CursorBehavior>(
         return;
     };
 
-    let cursor_overlay_entity = commands
-        .spawn((
-            CursorOverlay { cursor_entity },
-            // https://github.com/bevyengine/bevy/issues/11572
-            // If we only add the node later, Bevy panics in 0.12.1
-            TextBundle { ..default() },
-        ))
-        .id();
+    let cursor_overlay_entity = commands.spawn(CursorOverlay { cursor_entity }).id();
     commands.entity(root).add_child(cursor_overlay_entity);
 
     #[cfg(feature = "picking")]
     commands
         .entity(cursor_overlay_entity)
-        .insert(Pickable::IGNORE);
+        .insert(PickingBehavior::IGNORE);
 }
 
 /// System updating all the [CursorInfo] components when [Cursor] components are changed
@@ -308,12 +285,13 @@ pub fn update_cursors_info_from_generation_events<C: CartesianCoordinates>(
 
 /// System updating the selection cursor panel UI based on changes in [CursorInfo]
 pub fn update_selection_cursor_panel_text(
-    mut cursors_panel_text: Query<&mut Text, With<CursorsPanelText>>,
+    mut writer: TextUiWriter,
+    mut cursors_panel_text: Query<Entity, With<CursorsPanelText>>,
     updated_cursors: Query<(&CursorInfo, &Cursor), (Changed<CursorInfo>, With<SelectCursor>)>,
 ) {
     if let Ok((cursor_info, cursor)) = updated_cursors.get_single() {
-        for mut text in &mut cursors_panel_text {
-            let ui_text = &mut text.sections[SELECTION_CURSOR_SECTION_INDEX].value;
+        for panel_entity in &mut cursors_panel_text {
+            let mut ui_text = writer.text(panel_entity, SELECTION_CURSOR_SECTION_INDEX);
             match &cursor.0 {
                 Some(grid_cursor) => {
                     *ui_text = format!(
@@ -673,48 +651,43 @@ pub fn update_cursors_overlays(
         let Ok((cursor_info, cursor)) = cursors.get(overlay.cursor_entity) else {
             continue;
         };
+        // TODO Bevy 0.15 might need to tweak the behavior to remove/update some components when there is no overlay
         let Some(grid_cursor) = &cursor.0 else {
             // No cursor => no text overlay
-            commands.entity(overlay_entity).insert(TextBundle {
-                ..Default::default()
-            });
+            commands.entity(overlay_entity).insert(Text::default());
             continue;
         };
         let Ok(marker_gtransform) = markers.get(grid_cursor.marker) else {
             // No marker => no text overlay
-            commands.entity(overlay_entity).insert(TextBundle {
-                ..Default::default()
-            });
+            commands.entity(overlay_entity).insert(Text::default());
             continue;
         };
-        let Some(viewport_pos) =
+        let Ok(viewport_pos) =
             camera.world_to_viewport(cam_gtransform, marker_gtransform.translation())
         else {
             continue;
         };
 
         let text = cursor_info_to_string(&grid_cursor, cursor_info);
-        commands.entity(overlay_entity).insert(TextBundle {
-            background_color: BackgroundColor(ui_config.background_color),
-            text: Text {
-                linebreak_behavior: BreakLineOn::NoWrap,
-                sections: vec![TextSection {
-                    value: text,
-                    style: TextStyle {
-                        font_size: ui_config.font_size,
-                        color: ui_config.text_color,
-                        ..Default::default()
-                    },
-                }],
-                ..Default::default()
+        commands.entity(overlay_entity).insert((
+            // TODO bevy 0.15: Insert background once ?
+            BackgroundColor(ui_config.background_color),
+            TextLayout {
+                linebreak: LineBreak::NoWrap,
+                ..default()
             },
-            style: Style {
+            TextColor(ui_config.text_color),
+            TextFont {
+                font_size: ui_config.font_size,
+                ..default()
+            },
+            Text(text),
+            Node {
                 position_type: PositionType::Absolute,
                 left: Val::Px(viewport_pos.x + 5.0),
                 top: Val::Px(viewport_pos.y + 5.0),
-                ..Default::default()
+                ..default()
             },
-            ..Default::default()
-        });
+        ));
     }
 }
