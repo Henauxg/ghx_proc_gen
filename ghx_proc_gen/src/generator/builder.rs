@@ -223,7 +223,7 @@ impl<C: CoordinateSystem, G: Grid<C>> GeneratorBuilder<Set, Set, C, G> {
     /// Registers some [`NodeRef`] [`ModelVariantRef`] pairs to be spawned initially by the [`Generator`]. These nodes will be spawned when the generator reinitializes too.
     ///
     /// See [`GeneratorBuilder::with_initial_nodes_raw`] for a bit more performant but more constrained method. The performance difference only matters during this method call in the `GeneratorBuilder`, during generation all the initial nodes are already converted to their raw format.
-    pub fn with_initial_nodes<N: NodeRef<C>, M: ModelVariantRef<C>>(
+    pub fn with_initial_nodes<N: NodeRef<C, G>, M: ModelVariantRef<C>>(
         mut self,
         initial_nodes: Vec<(N, M)>,
     ) -> Result<Self, GeneratorBuilderError> {
