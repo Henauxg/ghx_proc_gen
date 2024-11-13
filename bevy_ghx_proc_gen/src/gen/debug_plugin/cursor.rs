@@ -42,7 +42,7 @@ use super::{
     GridCursorsUiSettings, ProcGenKeyBindings,
 };
 
-/// Marker component to be put on a [Camera] to signal that it should be used to display curosr overlays
+/// Marker component to be put on a [Camera] to signal that it should be used to display cursor overlays
 ///
 /// - **Not needed** if only a single camera is used.
 /// - If used, should not be present on more than 1 camera
@@ -565,7 +565,7 @@ pub fn move_selection_from_keybinds<C: CartesianCoordinates>(
     }
 }
 
-/// Utility function to spanw a [GridMarker]
+/// Utility function to spawn a [GridMarker]
 pub fn spawn_marker_and_create_cursor(
     commands: &mut Commands,
     grid_entity: Entity,

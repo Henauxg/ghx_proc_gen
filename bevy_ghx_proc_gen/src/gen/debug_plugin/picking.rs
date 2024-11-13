@@ -5,20 +5,22 @@ use bevy::{
         component::Component,
         entity::Entity,
         event::{Event, EventReader, EventWriter},
-        query::{Added, Changed, With, Without},
+        query::{Changed, With, Without},
         system::{Commands, Local, Query, Res, ResMut, Resource},
     },
     hierarchy::{BuildChildren, DespawnRecursiveExt, Parent},
     input::{keyboard::KeyCode, ButtonInput},
     math::{primitives::Cuboid, Vec2, Vec3},
     pbr::{MeshMaterial3d, NotShadowCaster, StandardMaterial},
-    prelude::{AlphaMode, Deref, DerefMut, Mesh3d, PickingBehavior, PointerButton, TextUiWriter},
+    prelude::{
+        AlphaMode, Deref, DerefMut, Down, Mesh3d, OnAdd, Out, Over, PickingBehavior, Pointer,
+        PointerButton, TextUiWriter, Trigger,
+    },
     render::mesh::Mesh,
     sprite::Sprite,
     transform::components::Transform,
     utils::default,
 };
-
 use bevy_ghx_grid::{
     debug_plugin::{
         get_translation_from_grid_coords_3d,
@@ -32,6 +34,7 @@ use ghx_proc_gen::{
     ghx_grid::cartesian::{coordinates::CartesianCoordinates, grid::CartesianGrid},
     NodeIndex,
 };
+use std::fmt::Debug;
 
 use crate::gen::GridNode;
 
@@ -71,47 +74,56 @@ impl CursorBehavior for OverCursor {
 }
 
 /// Event raised when a node starts being overed by a mouse pointer
-#[derive(Event, Deref, DerefMut)]
+#[derive(Event, Deref, DerefMut, Debug, Clone)]
 pub struct NodeOverEvent(pub Entity);
-impl From<ListenerInput<Pointer<Over>>> for NodeOverEvent {
-    fn from(event: ListenerInput<Pointer<Over>>) -> Self {
-        NodeOverEvent(event.listener())
+impl From<Entity> for NodeOverEvent {
+    fn from(target: Entity) -> Self {
+        NodeOverEvent(target)
     }
 }
 
 /// Event raised when a node stops being overed by a mouse pointer
 #[derive(Event, Deref, DerefMut)]
 pub struct NodeOutEvent(pub Entity);
-impl From<ListenerInput<Pointer<Out>>> for NodeOutEvent {
-    fn from(event: ListenerInput<Pointer<Out>>) -> Self {
-        NodeOutEvent(event.listener())
+impl From<Entity> for NodeOutEvent {
+    fn from(target: Entity) -> Self {
+        NodeOutEvent(target)
     }
 }
 
 /// Event raised when a node is selected by a mouse pointer
 #[derive(Event, Deref, DerefMut)]
 pub struct NodeSelectedEvent(pub Entity);
+impl From<Entity> for NodeSelectedEvent {
+    fn from(target: Entity) -> Self {
+        NodeSelectedEvent(target)
+    }
+}
 
 /// System that inserts picking event handlers to entites with an added [GridNode] component
 pub fn insert_cursor_picking_handlers_to_grid_nodes<C: CoordinateSystem>(
+    trigger: Trigger<OnAdd, GridNode>,
     mut commands: Commands,
-    spawned_nodes: Query<Entity, Added<GridNode>>,
 ) {
-    for entity in spawned_nodes.iter() {
-        commands.entity(entity).try_insert((
-            // TODO
-            On::<Pointer<Over>>::send_event::<NodeOverEvent>(),
-            On::<Pointer<Out>>::send_event::<NodeOutEvent>(),
-            On::<Pointer<Down>>::run(
-                move |event: ListenerMut<Pointer<Down>>,
-                      mut selection_events: EventWriter<NodeSelectedEvent>| {
-                    if event.button == PointerButton::Primary {
-                        selection_events.send(NodeSelectedEvent(event.listener()));
-                    }
-                },
-            ),
-        ));
-    }
+    commands
+        .entity(trigger.entity())
+        .observe(retransmit_event::<Pointer<Over>, NodeOverEvent>)
+        .observe(retransmit_event::<Pointer<Out>, NodeOutEvent>)
+        .observe(
+            |trigger: Trigger<Pointer<Down>>,
+             mut selection_events: EventWriter<NodeSelectedEvent>| {
+                if trigger.button == PointerButton::Primary {
+                    selection_events.send(NodeSelectedEvent(trigger.entity()));
+                }
+            },
+        );
+}
+
+fn retransmit_event<PE: Event + Clone, NE: Event + From<Entity>>(
+    pointer_ev_trigger: Trigger<PE>,
+    mut events: EventWriter<NE>,
+) {
+    events.send(NE::from(pointer_ev_trigger.entity()));
 }
 
 /// System that update the over cursor UI panel

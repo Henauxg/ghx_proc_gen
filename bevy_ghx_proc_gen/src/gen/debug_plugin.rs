@@ -184,11 +184,7 @@ impl<C: CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner> Plugi
                 Update,
                 (
                     insert_default_bundle_to_spawned_nodes::<PickingBehavior>,
-                    (
-                        update_cursor_targets_nodes::<C>,
-                        insert_cursor_picking_handlers_to_grid_nodes::<C>,
-                    )
-                        .chain(),
+                    update_cursor_targets_nodes::<C>,
                     (
                         picking_remove_previous_over_cursor::<C>,
                         picking_update_cursors_position::<
@@ -211,7 +207,8 @@ impl<C: CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner> Plugi
                 PostUpdate,
                 update_over_cursor_from_generation_events::<C>
                     .before(update_cursors_info_from_generation_events::<C>),
-            );
+            )
+            .add_observer(insert_cursor_picking_handlers_to_grid_nodes::<C>);
 
         // #[cfg(feature = "egui-edit")]
         // app.add_systems(
