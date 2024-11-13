@@ -55,7 +55,7 @@ pub fn animate_scale(
     mut spawning_nodes: Query<(Entity, &mut Transform, &mut SpawningScaleAnimation)>,
 ) {
     for (entity, mut transform, mut animation) in spawning_nodes.iter_mut() {
-        animation.advance(time.delta_seconds());
+        animation.advance(time.delta_secs());
         if animation.ended() {
             commands.entity(entity).remove::<SpawningScaleAnimation>();
             transform.scale = animation.final_value();
