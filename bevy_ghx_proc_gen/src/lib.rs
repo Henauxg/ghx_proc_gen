@@ -50,7 +50,7 @@ pub mod spawner_plugin;
 /// Adds default [`BundleInserter`] implementations for some common types.
 ///
 /// **WARNING**: those default implementations each assume a specific `Rotation Axis` for the `Models` (Z+ for 2d, Y+ for 3d)
-#[cfg(feature = "default-assets-bundle-spawners")]
+#[cfg(feature = "default-bundle-inserters")]
 pub mod default_bundles;
 
 #[cfg(feature = "egui-edit")]

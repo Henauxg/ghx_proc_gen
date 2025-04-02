@@ -24,6 +24,8 @@
 - Added `BundleInserter` trait
 - Changed: generation runner plugins( simple & debug) now emit bevy `Event` to signal generations and resets: `GridGeneratedEvent`, `GenerationResetEvent` and `NodesGeneratedEvent`
 - Added `ProcGenSpawnerPlugin` to spawn the node entities with observers
+- Renamed the `default-assets-bundle-spawners` cargo feature to `default-bundle-inserters`
+
 - Changed: remove `bevy_mod_picking_dependency` and use bevy 0.15 internal picking features
 - Updated `bevy_egui` from 0.28.0 to 0.33.0
 

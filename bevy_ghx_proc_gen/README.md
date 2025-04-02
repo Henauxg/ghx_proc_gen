@@ -18,11 +18,14 @@ cargo add bevy_ghx_proc_gen
 ```
 
 Steps `1` to `3` are the same as in the `ghx_proc_gen`  [Quickstart](../README.md#quickstart).
-1) To automatically spawn our assets for us, we use the `ProcGenSimplePlugin`
+1) To automatically spawn our assets for us, we use the provided plugins
 ```rust
-  app.add_plugins(ProcGenSimplePlugin::<Cartesian2D, PbrMesh>::new());
+    app.add_plugins((
+        ProcGenSimpleRunnerPlugin::<Cartesian2D>::new(),
+        ProcGenSpawnerPlugin::<Cartesian2D, PbrMesh>::new(),
+    ));
 ```
-1) To see something in the Bevy viewport, we setup assets in a `RulesModelsAssets`:
+1) To see something in the Bevy viewport, we setup assets in a `ModelsAssets`:
 ```rust
 fn setup_generator(
     mut commands: Commands,
@@ -32,12 +35,14 @@ fn setup_generator(
   // ... Steps 1 to 3: Generator setup ...
 
   // Simple procedural cube mesh and materials.
-  let cube_mesh = meshes.add(Mesh::from(shape::Cube { size: CUBE_SIZE }));
-  let white_mat = materials.add(Color::WHITE.into());
-  let black_mat = materials.add(Color::BLACK.into());*
+  let cube_mesh = meshes.add(Mesh::from(Cuboid {
+      half_size: Vec3::splat(CUBE_SIZE / 2.),
+  }));
+  let white_mat = materials.add(Color::WHITE);
+  let black_mat = materials.add(Color::BLACK);
   // We create our models asset here, in a separate collection for the sake of simplicity.
   // (We could also declare them with our models)
-  let mut models_assets = RulesModelsAssets::<PbrMesh>::new();
+  let mut models_assets = ModelsAssets::<PbrMesh>::new();
   models_assets.add_asset(0, PbrMesh {
           mesh: cube_mesh.clone(),
           material: white_mat,
@@ -54,14 +59,12 @@ fn setup_generator(
 ```
 3) Spawn an `Entity` with a `GeneratorBundle`:
 ```rust
-  // The ProcGenSimplePlugin will detect this, generate and spawn the nodes. 
+  // The plugins will detect this, run the generator and spawn the nodes. 
   commands.spawn(GeneratorBundle {
-      spatial: SpatialBundle::from_transform(Transform::from_translation(Vec3::new(
-          -grid.size_x() as f32 / 2., -grid.size_y() as f32 / 2., 0.,
-      ))),
+      Transform::from_translation(Vec3::new(-4., -4., 0.)),
       grid,
       generator,
-      asset_spawner: AssetSpawner::new(models_assets, NODE_SIZE, Vec3::ONE),
+      NodesSpawner::new(models_assets, NODE_SIZE, Vec3::ONE),
   });
 ```
 <p align="center">
@@ -99,11 +102,11 @@ https://github.com/Henauxg/ghx_proc_gen/assets/19689618/5fa26a8f-7454-4574-9cc3-
 
 *Find the list and description in [Cargo.toml](Cargo.toml)*
 
-- `default-assets-bundle-spawners`: This feature compiles simple `AssetBundleSpawner impl` for a few basic types. Disable the feature if you don't need them, or want to customize their implementation.
+- `default-bundle-inserters `: This feature compiles simple `BundleInserter impl` for a few basic types. Disable the feature if you don't need them, or want to customize their implementation.
 - `reflect`: simply derives `Reflect` on common structs of the crate.
 - `simple-plugin`: compiles the simple plugin and its systems.
 - `debug-plugin`: compiles the debug plugin, the grid debug plugin and their systems.
-- `picking`: Enables picking through `bevy_mod_picking`. Used by the debug-plugin if enabled.
+- `picking`: Enables picking. Used by the debug-plugin if enabled.
 - `egui-edit`: Enables an `egui` editor panel to inspect nodes and paint models
 
 *See also the [main crate](../README.md#cargo-features) cargo features*
@@ -114,6 +117,7 @@ Compatibility with Bevy versions:
 
 | ghx_proc_gen | bevy_ghx_proc_gen | bevy |
 | :----------- | :---------------- | :--- |
+| 0.5          | 0.5               | 0.15 |
 | 0.4          | 0.4               | 0.14 |
 | 0.2-0.3      | 0.2-0.3           | 0.13 |
 | 0.1          | 0.1               | 0.12 |

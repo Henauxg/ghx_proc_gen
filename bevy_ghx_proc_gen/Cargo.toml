@@ -16,7 +16,7 @@ default = [
     "debug-plugin",
     "picking",
     "egui-edit",
-    "default-assets-bundle-spawners",
+    "default-bundle-inserters",
 ]
 # Enables some reflect derives in ghx_proc_gen
 reflect = ["ghx_proc_gen/reflect", "bevy_ghx_grid/reflect"]
@@ -29,14 +29,14 @@ debug-plugin = [
     "bevy/bevy_ui",               # A custom ECS-driven UI framework
 
 ]
-# Enables picking through bevy_mod_picking. Used by the debug-plugin if enabled.
+# Enables picking. Used by the debug-plugin if enabled.
 picking = [
     "bevy/bevy_picking", # Provides picking functionality
 ]
 # Enables an egui editor panel to inspect nodes and paint models
 egui-edit = ["dep:bevy_egui", "picking"]
 # Adds some default assets bundle spawners for basic types: Handle<Image>, Handle<Scene>, MaterialMesh and PbrMesh
-default-assets-bundle-spawners = [
+default-bundle-inserters = [
     "bevy/bevy_scene",  # Scenes management
     "bevy/bevy_sprite", # 2D (sprites) rendering
     "bevy/bevy_pbr",    # 3D (physically-based) rendering
