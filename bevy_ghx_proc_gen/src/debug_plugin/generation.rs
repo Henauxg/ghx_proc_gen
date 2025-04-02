@@ -1,24 +1,19 @@
-use std::collections::HashSet;
-
 use bevy::{
     color::{palettes::css::RED, Color},
     ecs::{
-        component::Component,
         entity::Entity,
-        event::{Event, EventWriter},
+        event::EventWriter,
         query::{With, Without},
-        system::{Commands, Query, Res, ResMut, Resource},
+        system::{Commands, Query, Res, ResMut},
     },
-    hierarchy::{Children, DespawnRecursiveExt},
     input::{keyboard::KeyCode, ButtonInput},
     log::{info, warn},
-    prelude::{Deref, DerefMut},
+    prelude::{Component, Deref, DerefMut, Resource},
     time::Time,
 };
 use bevy_ghx_grid::debug_plugin::markers::{spawn_marker, MarkerDespawnEvent};
 use ghx_proc_gen::{
     generator::{
-        model::ModelIndex,
         observer::{GenerationUpdate, QueuedObserver},
         GenerationStatus, Generator,
     },
@@ -26,62 +21,19 @@ use ghx_proc_gen::{
     GeneratorError, NodeIndex,
 };
 
-use crate::gen::GridNode;
+use crate::{GenerationResetEvent, NodesGeneratedEvent, VoidNodes};
 
-use super::{
-    spawn_node, AssetSpawner, AssetsBundleSpawner, ComponentSpawner, GenerationControl,
-    GenerationControlStatus, ProcGenKeyBindings, StepByStepTimed,
-};
-
-/// Component used to store model indexes of models with no assets, just to be able to skip their generation when stepping
-#[derive(Component, Default, Deref, DerefMut)]
-pub struct VoidNodes(pub HashSet<ModelIndex>);
+use super::{GenerationControl, GenerationControlStatus, ProcGenKeyBindings, StepByStepTimed};
 
 /// Component used to store a collection of [`bevy_ghx_grid::debug_plugin::markers::GridMarker`] entities
 #[derive(Component, Default, Deref, DerefMut)]
 pub struct ErrorMarkers(pub Vec<Entity>);
-
-/// Event relating to a generation
-#[derive(Event, Clone, Copy, Debug)]
-pub enum GenerationEvent {
-    /// The generation with the specified entity was reinitialized
-    Reinitialized(Entity),
-    /// The generation with the specified entity was updated on the specified node
-    Updated(Entity, NodeIndex),
-}
 
 /// Resource used to track the currently active generation.
 ///
 /// The contained option can be [None] if no generation is active
 #[derive(Resource, Default)]
 pub struct ActiveGeneration(pub Option<Entity>);
-
-/// Simple system that calculates and add a [`VoidNodes`] component for generator entites which don't have one yet.
-pub fn insert_void_nodes_to_new_generations<
-    C: CartesianCoordinates,
-    A: AssetsBundleSpawner,
-    T: ComponentSpawner,
->(
-    mut commands: Commands,
-    mut new_generations: Query<
-        (
-            Entity,
-            &mut Generator<C, CartesianGrid<C>>,
-            &AssetSpawner<A, T>,
-        ),
-        Without<VoidNodes>,
-    >,
-) {
-    for (gen_entity, generation, asset_spawner) in new_generations.iter_mut() {
-        let mut void_nodes = HashSet::new();
-        for model_index in 0..generation.rules().original_models_count() {
-            if !asset_spawner.assets.contains_key(&model_index) {
-                void_nodes.insert(model_index);
-            }
-        }
-        commands.entity(gen_entity).insert(VoidNodes(void_nodes));
-    }
-}
 
 /// System used to insert an empty [ErrorMarkers] component into new generation entities
 pub fn insert_error_markers_to_new_generations<C: CartesianCoordinates>(
@@ -247,7 +199,7 @@ pub fn step_by_step_input_update<C: CartesianCoordinates>(
     mut generation_control: ResMut<GenerationControl>,
     active_generation: Res<ActiveGeneration>,
     mut observed_generations: Query<
-        (&mut Generator<C, CartesianGrid<C>>, &VoidNodes),
+        (&mut Generator<C, CartesianGrid<C>>, Option<&VoidNodes>),
         With<QueuedObserver>,
     >,
 ) {
@@ -277,7 +229,7 @@ pub fn step_by_step_timed_update<C: CartesianCoordinates>(
     time: Res<Time>,
     active_generation: Res<ActiveGeneration>,
     mut observed_generations: Query<
-        (&mut Generator<C, CartesianGrid<C>>, &VoidNodes),
+        (&mut Generator<C, CartesianGrid<C>>, Option<&VoidNodes>),
         With<QueuedObserver>,
     >,
 ) {
@@ -305,28 +257,18 @@ pub fn step_by_step_timed_update<C: CartesianCoordinates>(
     }
 }
 
-/// System used to spawn nodes, emit [GenerationEvent] and despawn markers, based on data read from a [QueuedObserver] on a generation entity
-pub fn update_generation_view<
-    C: CartesianCoordinates,
-    A: AssetsBundleSpawner,
-    T: ComponentSpawner,
->(
+/// System used to spawn nodes, emit [GenerationResetEvent] & [NodesGeneratedEvent] and despawn markers, based on data read from a [QueuedObserver] on a generation entity
+pub fn dequeue_generation_updates<C: CartesianCoordinates>(
     mut commands: Commands,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
-    mut generation_events: EventWriter<GenerationEvent>,
     mut generators: Query<(
         Entity,
         &CartesianGrid<C>,
-        &AssetSpawner<A, T>,
         &mut QueuedObserver,
-        Option<&Children>,
         Option<&mut ErrorMarkers>,
     )>,
-    existing_nodes: Query<Entity, With<GridNode>>,
 ) {
-    for (grid_entity, grid, asset_spawner, mut observer, children, mut error_markers) in
-        generators.iter_mut()
-    {
+    for (grid_entity, grid, mut observer, mut error_markers) in generators.iter_mut() {
         let mut reinitialized = false;
         let mut nodes_to_spawn = Vec::new();
         for update in observer.dequeue_all() {
@@ -352,15 +294,7 @@ pub fn update_generation_view<
         }
 
         if reinitialized {
-            generation_events.send(GenerationEvent::Reinitialized(grid_entity));
-            if let Some(children) = children {
-                for &child in children.iter() {
-                    if let Ok(node) = existing_nodes.get(child) {
-                        commands.entity(node).despawn_recursive();
-                    }
-                }
-            }
-
+            commands.trigger_targets(GenerationResetEvent, grid_entity);
             if let Some(error_markers) = error_markers.as_mut() {
                 for marker in error_markers.iter() {
                     marker_events.send(MarkerDespawnEvent::Marker(*marker));
@@ -369,17 +303,8 @@ pub fn update_generation_view<
             }
         }
 
-        for grid_node in nodes_to_spawn {
-            generation_events.send(GenerationEvent::Updated(grid_entity, grid_node.node_index));
-
-            spawn_node(
-                &mut commands,
-                grid_entity,
-                &grid,
-                asset_spawner,
-                &grid_node.model_instance,
-                grid_node.node_index,
-            );
+        if !nodes_to_spawn.is_empty() {
+            commands.trigger_targets(NodesGeneratedEvent(nodes_to_spawn), grid_entity);
         }
     }
 }
@@ -387,7 +312,7 @@ pub fn update_generation_view<
 fn step_generation<C: CartesianCoordinates>(
     generator: &mut Generator<C, CartesianGrid<C>>,
     gen_entity: Entity,
-    void_nodes: &VoidNodes,
+    void_nodes: Option<&VoidNodes>,
     generation_control: &mut ResMut<GenerationControl>,
 ) {
     loop {
@@ -400,9 +325,12 @@ fn step_generation<C: CartesianCoordinates>(
             Ok((status, nodes_to_spawn)) => {
                 for grid_node in nodes_to_spawn {
                     // We still collect the generated nodes here even though we don't really use them to spawn entities. We just check them for void nodes (for visualization purposes)
-                    if !void_nodes.contains(&grid_node.model_instance.model_index) {
-                        non_void_spawned = true;
-                    }
+                    non_void_spawned = match void_nodes {
+                        Some(void_nodes) => {
+                            !void_nodes.contains(&grid_node.model_instance.model_index)
+                        }
+                        None => true,
+                    };
                 }
                 match status {
                     GenerationStatus::Ongoing => {}

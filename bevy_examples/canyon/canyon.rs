@@ -12,10 +12,7 @@ use bevy_examples::{
 };
 use bevy_ghx_proc_gen::{
     bevy_ghx_grid::debug_plugin::{view::DebugGridView, DebugGridView3dBundle},
-    gen::{
-        assets::AssetSpawner,
-        debug_plugin::{GenerationControl, GenerationViewMode},
-    },
+    debug_plugin::{GenerationControl, GenerationViewMode},
     proc_gen::{
         generator::{
             builder::GeneratorBuilder, node_heuristic::NodeSelectionHeuristic, rules::RulesBuilder,
@@ -23,29 +20,29 @@ use bevy_ghx_proc_gen::{
         },
         ghx_grid::cartesian::{coordinates::Cartesian3D, grid::CartesianGrid},
     },
-    GeneratorBundle,
+    spawner_plugin::NodesSpawner,
 };
-use bevy_ghx_utils::camera::{update_pan_orbit_camera, PanOrbitCameraBundle, PanOrbitState};
+use bevy_ghx_utils::camera::{update_pan_orbit_camera, PanOrbitState};
 
 use rand::Rng;
-use rules::{CustomComponents, RotationRandomizer, ScaleRandomizer, WindRotation};
+use rules::{RotationRandomizer, ScaleRandomizer, WindRotation};
 
 use crate::rules::rules_and_assets;
 
 mod rules;
 
-// --------------------------------------------
-/// Change this value to change the way the generation is visualized
+// -----------------  Configurable values ---------------------------
+/// Modify this value to control the way the generation is visualized
 const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::Final;
 
-/// Change to visualize void nodes with a transparent asset
+/// Modify to visualize void nodes with a transparent asset
 const SEE_VOID_NODES: bool = false;
 
-/// Change this to change the map size.
+/// Modify these values to control the map size.
 const GRID_HEIGHT: u32 = 6;
 const GRID_X: u32 = 30;
 const GRID_Z: u32 = 30;
-// --------------------------------------------
+// ------------------------------------------------------------------
 
 const ASSETS_PATH: &str = "canyon";
 /// Size of a block in world units
@@ -61,53 +58,49 @@ fn setup_scene(mut commands: Commands) {
     let camera_position = Vec3::new(0., 1.5 * GRID_HEIGHT as f32, 1.5 * GRID_Z as f32 / 2.);
     let look_target = Vec3::new(0., -10., 0.);
     let radius = (look_target - camera_position).length();
-    commands.spawn((PanOrbitCameraBundle {
-        camera: Camera3dBundle {
-            transform: Transform::from_translation(camera_position)
-                .looking_at(look_target, Vec3::Y),
-            ..default()
-        },
-        state: PanOrbitState {
+    commands.spawn((
+        Name::new("Camera"),
+        Transform::from_translation(camera_position).looking_at(look_target, Vec3::Y),
+        PanOrbitState {
             radius,
             pitch: -FRAC_PI_2 / 2.,
-            ..Default::default()
+            ..default()
         },
-        ..Default::default()
-    },));
+    ));
 
     // Scene lights
     commands.insert_resource(AmbientLight {
         color: Color::Srgba(ORANGE_RED),
         brightness: 0.05,
     });
-    commands.spawn(DirectionalLightBundle {
-        directional_light: DirectionalLight {
+    commands.spawn((
+        Name::new("Main light"),
+        Transform {
+            translation: Vec3::new(5.0, 10.0, 2.0),
+            rotation: Quat::from_euler(EulerRot::ZYX, 0., -PI / 5., -PI / 3.),
+            ..default()
+        },
+        DirectionalLight {
             shadows_enabled: true,
             illuminance: 4000.,
             color: Color::srgb(1.0, 0.85, 0.65),
             ..default()
         },
-        transform: Transform {
+    ));
+    commands.spawn((
+        Name::new("Back light"),
+        Transform {
             translation: Vec3::new(5.0, 10.0, 2.0),
-            rotation: Quat::from_euler(EulerRot::ZYX, 0., -PI / 5., -PI / 3.),
+            rotation: Quat::from_euler(EulerRot::ZYX, 0., PI * 4. / 5., -PI / 3.),
             ..default()
         },
-        ..default()
-    });
-    commands.spawn(DirectionalLightBundle {
-        directional_light: DirectionalLight {
+        DirectionalLight {
             shadows_enabled: false,
             illuminance: 2000.,
             color: Color::Srgba(ORANGE_RED),
             ..default()
         },
-        transform: Transform {
-            translation: Vec3::new(5.0, 10.0, 2.0),
-            rotation: Quat::from_euler(EulerRot::ZYX, 0., PI * 4. / 5., -PI / 3.),
-            ..default()
-        },
-        ..default()
-    });
+    ));
 }
 
 fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -167,29 +160,23 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
     let generator = gen_builder.build().unwrap();
 
     // Load assets
-    let models_assets = load_assets::<Scene, CustomComponents>(
-        &asset_server,
-        assets_definitions,
-        ASSETS_PATH,
-        "glb#Scene0",
-    );
+    let models_assets =
+        load_assets::<Scene>(&asset_server, assets_definitions, ASSETS_PATH, "glb#Scene0");
 
     commands.spawn((
-        GeneratorBundle {
-            spatial: SpatialBundle::from_transform(Transform::from_translation(Vec3 {
-                x: -(grid.size_x() as f32) / 2.,
-                y: 0.,
-                z: -(grid.size_z() as f32) / 2.,
-            })),
-            grid,
-            generator,
-            asset_spawner: AssetSpawner::new(
-                models_assets,
-                NODE_SIZE,
-                // We spawn assets with a scale of 0 since we animate their scale in the examples
-                Vec3::ZERO,
-            ),
-        },
+        Transform::from_translation(Vec3 {
+            x: -(grid.size_x() as f32) / 2.,
+            y: 0.,
+            z: -(grid.size_z() as f32) / 2.,
+        }),
+        grid,
+        generator,
+        NodesSpawner::new(
+            models_assets,
+            NODE_SIZE,
+            // We spawn assets with a scale of 0 since we animate their scale in the examples
+            Vec3::ZERO,
+        ),
         observer,
         DebugGridView3dBundle {
             view: DebugGridView::new(false, true, Color::Srgba(GRAY), NODE_SIZE),
@@ -208,11 +195,11 @@ fn main() {
     app.insert_resource(DirectionalLightShadowMap { size: 4096 });
     app.add_plugins((
         DefaultPlugins.set(LogPlugin {
-            filter: "info,wgpu_core=warn,wgpu_hal=warn,ghx_proc_gen=debug".into(),
+            filter: "info,wgpu_core=error,wgpu_hal=error,ghx_proc_gen=debug".into(),
             level: bevy::log::Level::DEBUG,
             ..default()
         }),
-        ProcGenExamplesPlugin::<Cartesian3D, Handle<Scene>, CustomComponents>::new(
+        ProcGenExamplesPlugin::<Cartesian3D, Handle<Scene>>::new(
             GENERATION_VIEW_MODE,
             ASSETS_SCALE,
         ),
@@ -236,7 +223,7 @@ pub fn apply_wind(
     mut altered_transforms: Query<&mut Transform, With<WindRotation>>,
 ) {
     for mut transform in altered_transforms.iter_mut() {
-        transform.rotation = Quat::from_rotation_z(2. * time.elapsed_seconds_wrapped());
+        transform.rotation = Quat::from_rotation_z(2. * time.elapsed_secs_wrapped());
     }
 }
 

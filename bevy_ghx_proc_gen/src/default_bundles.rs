@@ -1,20 +1,22 @@
 use bevy::{
     asset::Handle,
     ecs::system::EntityCommands,
+    image::Image,
     math::{Quat, Vec3},
-    pbr::{Material, MaterialMeshBundle, PbrBundle, StandardMaterial},
-    render::{mesh::Mesh, texture::Image},
-    scene::{Scene, SceneBundle},
-    sprite::SpriteBundle,
+    pbr::{Material, MeshMaterial3d, StandardMaterial},
+    prelude::Mesh3d,
+    render::mesh::Mesh,
+    scene::{Scene, SceneRoot},
+    sprite::Sprite,
     transform::components::Transform,
     utils::default,
 };
 use ghx_proc_gen::generator::model::ModelRotation;
 
-use super::assets::AssetsBundleSpawner;
+use super::assets::BundleInserter;
 
 /// **WARNING**: Assumes a specific `Rotation Axis` for the `Models`: Z+
-impl AssetsBundleSpawner for Handle<Image> {
+impl BundleInserter for Handle<Image> {
     fn insert_bundle(
         &self,
         commands: &mut EntityCommands,
@@ -22,18 +24,20 @@ impl AssetsBundleSpawner for Handle<Image> {
         scale: Vec3,
         rotation: ModelRotation,
     ) {
-        commands.insert(SpriteBundle {
-            texture: self.clone(),
-            transform: Transform::from_translation(translation)
+        commands.insert((
+            Transform::from_translation(translation)
                 .with_scale(scale)
                 .with_rotation(Quat::from_rotation_z(rotation.rad())),
-            ..default()
-        });
+            Sprite {
+                image: self.clone(),
+                ..default()
+            },
+        ));
     }
 }
 
 /// **WARNING**: Assumes a specific `Rotation Axis` for the `Models`: Y+
-impl AssetsBundleSpawner for Handle<Scene> {
+impl BundleInserter for Handle<Scene> {
     fn insert_bundle(
         &self,
         commands: &mut EntityCommands,
@@ -41,18 +45,17 @@ impl AssetsBundleSpawner for Handle<Scene> {
         scale: Vec3,
         rotation: ModelRotation,
     ) {
-        commands.insert(SceneBundle {
-            scene: self.clone(),
-            transform: Transform::from_translation(translation)
+        commands.insert((
+            Transform::from_translation(translation)
                 .with_scale(scale)
                 .with_rotation(Quat::from_rotation_y(rotation.rad())),
-            ..default()
-        });
+            SceneRoot(self.clone()),
+        ));
     }
 }
 
 /// Custom type to store [`Handle`] to a [`Mesh`] asset and its [`Material`]
-#[derive(Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct MaterialMesh<M: Material> {
     /// Mesh handle
     pub mesh: Handle<Mesh>,
@@ -63,7 +66,7 @@ pub struct MaterialMesh<M: Material> {
 /// Custom type to store [`Handle`] to a [`Mesh`] asset and its [`StandardMaterial`]
 ///
 /// Specialization of [`MaterialMesh`] with [`StandardMaterial`]
-#[derive(Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct PbrMesh {
     /// Mesh handle
     pub mesh: Handle<Mesh>,
@@ -72,7 +75,7 @@ pub struct PbrMesh {
 }
 
 /// **WARNING**: Assumes a specific `Rotation Axis` for the `Models`: Y+
-impl<M: Material> AssetsBundleSpawner for MaterialMesh<M> {
+impl<M: Material + Default> BundleInserter for MaterialMesh<M> {
     fn insert_bundle(
         &self,
         commands: &mut EntityCommands,
@@ -80,19 +83,18 @@ impl<M: Material> AssetsBundleSpawner for MaterialMesh<M> {
         scale: Vec3,
         rotation: ModelRotation,
     ) {
-        commands.insert(MaterialMeshBundle {
-            mesh: self.mesh.clone(),
-            material: self.material.clone(),
-            transform: Transform::from_translation(translation)
+        commands.insert((
+            Transform::from_translation(translation)
                 .with_scale(scale)
                 .with_rotation(Quat::from_rotation_y(rotation.rad())),
-            ..default()
-        });
+            Mesh3d(self.mesh.clone()),
+            MeshMaterial3d(self.material.clone()),
+        ));
     }
 }
 
 /// **WARNING**: Assumes a specific `Rotation Axis` for the `Models`: Y+
-impl AssetsBundleSpawner for PbrMesh {
+impl BundleInserter for PbrMesh {
     fn insert_bundle(
         &self,
         commands: &mut EntityCommands,
@@ -100,13 +102,12 @@ impl AssetsBundleSpawner for PbrMesh {
         scale: Vec3,
         rotation: ModelRotation,
     ) {
-        commands.insert(PbrBundle {
-            mesh: self.mesh.clone(),
-            material: self.material.clone(),
-            transform: Transform::from_translation(translation)
+        commands.insert((
+            Transform::from_translation(translation)
                 .with_scale(scale)
                 .with_rotation(Quat::from_rotation_y(rotation.rad())),
-            ..default()
-        });
+            Mesh3d(self.mesh.clone()),
+            MeshMaterial3d(self.material.clone()),
+        ));
     }
 }

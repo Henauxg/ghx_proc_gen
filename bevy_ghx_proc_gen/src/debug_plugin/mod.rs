@@ -8,37 +8,34 @@ use bevy::{
     time::{Timer, TimerMode},
 };
 use bevy_ghx_grid::ghx_grid::coordinate_system::CoordinateSystem;
+use cursor::{update_cursors_info_on_generated_nodes, update_cursors_info_on_generation_reset};
+
 use ghx_proc_gen::ghx_grid::cartesian::coordinates::CartesianCoordinates;
+use picking::update_over_cursor_on_generation_reset;
+
+use crate::{add_named_observer, GenerationResetEvent, NodesGeneratedEvent};
 
 use self::{
     cursor::{
         deselect_from_keybinds, move_selection_from_keybinds, setup_cursor, setup_cursors_overlays,
         setup_cursors_panel, switch_generation_selection_from_keybinds,
-        update_cursors_info_from_generation_events, update_cursors_info_on_cursors_changes,
-        update_cursors_overlays, update_selection_cursor_panel_text, CursorKeyboardMovement,
-        CursorKeyboardMovementSettings, SelectCursor, SelectionCursorMarkerSettings,
+        update_cursors_info_on_cursors_changes, update_cursors_overlays,
+        update_selection_cursor_panel_text, CursorKeyboardMovement, CursorKeyboardMovementSettings,
+        SelectCursor, SelectionCursorMarkerSettings,
     },
     generation::{
-        generate_all, insert_error_markers_to_new_generations,
-        insert_void_nodes_to_new_generations, step_by_step_input_update, step_by_step_timed_update,
-        update_active_generation, update_generation_control, update_generation_view,
-        ActiveGeneration, GenerationEvent,
+        dequeue_generation_updates, generate_all, insert_error_markers_to_new_generations,
+        step_by_step_input_update, step_by_step_timed_update, update_active_generation,
+        update_generation_control, ActiveGeneration,
     },
 };
-use super::{
-    assets::NoComponents, insert_default_bundle_to_spawned_nodes, spawn_node, AssetSpawner,
-    AssetsBundleSpawner, ComponentSpawner,
-};
-
-#[cfg(feature = "picking")]
-use bevy_mod_picking::PickableBundle;
 
 #[cfg(feature = "picking")]
 use self::picking::{
-    insert_cursor_picking_handlers_to_grid_nodes, picking_remove_previous_over_cursor,
+    insert_cursor_picking_handlers_on_grid_nodes, picking_remove_previous_over_cursor,
     picking_update_cursors_position, setup_picking_assets, update_cursor_targets_nodes,
-    update_over_cursor_from_generation_events, update_over_cursor_panel_text, CursorTargetAssets,
-    NodeOutEvent, NodeOverEvent, NodeSelectedEvent, OverCursor, OverCursorMarkerSettings,
+    update_over_cursor_panel_text, CursorTargetAssets, NodeOutEvent, NodeOverEvent,
+    NodeSelectedEvent, OverCursor, OverCursorMarkerSettings,
 };
 
 /// Module with picking features, enabled with the `picking` feature
@@ -93,35 +90,23 @@ impl Default for GridCursorsUiSettings {
     }
 }
 
-/// A [`Plugin`] useful for debug/analysis/demo. It mainly run [`ghx_proc_gen::generator::Generator`] components and spawn the generated model's [`crate::gen::assets::ModelAsset`]
+/// A [`Plugin`] useful for debug/analysis/demo. It mainly run [`ghx_proc_gen::generator::Generator`] components
 ///
 /// It takes in a [`GenerationViewMode`] to control how the generators components will be run.
 ///
 /// It also uses the following `Resources`: [`ProcGenKeyBindings`] and [`GenerationControl`] (and will init them to their defaults if not inserted by the user).
-pub struct ProcGenDebugPlugin<
-    C: CoordinateSystem,
-    A: AssetsBundleSpawner,
-    T: ComponentSpawner = NoComponents,
-> {
-    generation_view_mode: GenerationViewMode,
-    cursor_ui_mode: CursorUiMode,
-    typestate: PhantomData<(C, A, T)>,
+#[derive(Default)]
+pub struct ProcGenDebugRunnerPlugin<C: CoordinateSystem> {
+    /// Controls how the generation occurs.
+    pub generation_view_mode: GenerationViewMode,
+    /// Used to configure how the cursors UI should be displayed
+    pub cursor_ui_mode: CursorUiMode,
+
+    #[doc(hidden)]
+    pub typestate: PhantomData<C>,
 }
 
-impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner> ProcGenDebugPlugin<C, A, T> {
-    /// Plugin constructor
-    pub fn new(generation_view_mode: GenerationViewMode, cursor_ui_mode: CursorUiMode) -> Self {
-        Self {
-            generation_view_mode,
-            cursor_ui_mode,
-            typestate: PhantomData,
-        }
-    }
-}
-
-impl<C: CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
-    for ProcGenDebugPlugin<C, A, T>
-{
+impl<C: CartesianCoordinates> Plugin for ProcGenDebugRunnerPlugin<C> {
     // TODO Clean: Split into multiple plugins
     fn build(&self, app: &mut App) {
         app.insert_resource(self.generation_view_mode);
@@ -140,7 +125,8 @@ impl<C: CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner> Plugi
             }
         }
 
-        app.add_event::<GenerationEvent>();
+        app.add_event::<GenerationResetEvent>()
+            .add_event::<NodesGeneratedEvent>();
 
         #[cfg(feature = "egui-edit")]
         app.init_resource::<EditorConfig>()
@@ -173,45 +159,40 @@ impl<C: CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner> Plugi
                     update_active_generation::<C>,
                     update_cursors_info_on_cursors_changes::<C>,
                 ),
-            )
-            .add_systems(PostUpdate, update_cursors_info_from_generation_events::<C>);
+            );
+        add_named_observer!(update_cursors_info_on_generation_reset::<C>, app);
+        add_named_observer!(update_cursors_info_on_generated_nodes::<C>, app);
 
         #[cfg(feature = "picking")]
-        app.add_systems(Startup, setup_picking_assets)
-            // PostStartup to wait for setup_cursors_overlays to be applied.
-            .add_systems(PostStartup, setup_cursor::<C, OverCursor>)
-            .add_systems(
-                Update,
-                (
-                    insert_default_bundle_to_spawned_nodes::<PickableBundle>,
+        {
+            app.add_systems(Startup, setup_picking_assets)
+                // PostStartup to wait for setup_cursors_overlays to be applied.
+                .add_systems(PostStartup, setup_cursor::<C, OverCursor>)
+                .add_systems(
+                    Update,
                     (
                         update_cursor_targets_nodes::<C>,
-                        insert_cursor_picking_handlers_to_grid_nodes::<C>,
-                    )
-                        .chain(),
-                    (
-                        picking_remove_previous_over_cursor::<C>,
-                        picking_update_cursors_position::<
-                            C,
-                            OverCursorMarkerSettings,
-                            OverCursor,
-                            NodeOverEvent,
-                        >,
-                        picking_update_cursors_position::<
-                            C,
-                            SelectionCursorMarkerSettings,
-                            SelectCursor,
-                            NodeSelectedEvent,
-                        >,
-                    )
-                        .chain(),
-                ),
-            )
-            .add_systems(
-                PostUpdate,
-                update_over_cursor_from_generation_events::<C>
-                    .before(update_cursors_info_from_generation_events::<C>),
-            );
+                        (
+                            picking_remove_previous_over_cursor::<C>,
+                            picking_update_cursors_position::<
+                                C,
+                                OverCursorMarkerSettings,
+                                OverCursor,
+                                NodeOverEvent,
+                            >,
+                            picking_update_cursors_position::<
+                                C,
+                                SelectionCursorMarkerSettings,
+                                SelectCursor,
+                                NodeSelectedEvent,
+                            >,
+                        )
+                            .chain(),
+                    ),
+                );
+            add_named_observer!(insert_cursor_picking_handlers_on_grid_nodes::<C>, app);
+            add_named_observer!(update_over_cursor_on_generation_reset::<C>, app);
+        }
 
         #[cfg(feature = "egui-edit")]
         app.add_systems(
@@ -248,12 +229,9 @@ impl<C: CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner> Plugi
                 app.add_systems(
                     Update,
                     (
-                        (
-                            insert_error_markers_to_new_generations::<C>,
-                            insert_void_nodes_to_new_generations::<C, A, T>,
-                        ),
+                        (insert_error_markers_to_new_generations::<C>,),
                         step_by_step_timed_update::<C>,
-                        update_generation_view::<C, A, T>,
+                        dequeue_generation_updates::<C>,
                     )
                         .chain(),
                 );
@@ -266,12 +244,9 @@ impl<C: CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner> Plugi
                 app.add_systems(
                     Update,
                     (
-                        (
-                            insert_error_markers_to_new_generations::<C>,
-                            insert_void_nodes_to_new_generations::<C, A, T>,
-                        ),
+                        (insert_error_markers_to_new_generations::<C>,),
                         step_by_step_input_update::<C>,
-                        update_generation_view::<C, A, T>,
+                        dequeue_generation_updates::<C>,
                     )
                         .chain(),
                 );
@@ -279,7 +254,7 @@ impl<C: CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner> Plugi
             GenerationViewMode::Final => {
                 app.add_systems(
                     Update,
-                    (generate_all::<C>, update_generation_view::<C, A, T>).chain(),
+                    (generate_all::<C>, dequeue_generation_updates::<C>).chain(),
                 );
             }
         }
@@ -304,7 +279,7 @@ pub enum GenerationViewMode {
 }
 
 /// Used to track the status of the generation control
-#[derive(Resource, Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug)]
 pub enum GenerationControlStatus {
     /// Generation control is paused, systems won't automatically step the generation
     Paused,
@@ -359,7 +334,7 @@ pub struct StepByStepTimed {
     pub timer: Timer,
 }
 
-/// Resource available to override the default keybindings used by the [`ProcGenDebugPlugin`], usign a QWERTY layout ()
+/// Resource available to override the default keybindings used by the [`ProcGenDebugRunnerPlugin`], usign a QWERTY layout ()
 #[derive(Resource)]
 pub struct ProcGenKeyBindings {
     /// Key to move the selection cursor to the previous node on the current axis

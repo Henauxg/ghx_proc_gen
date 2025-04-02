@@ -1,11 +1,9 @@
 use bevy::prelude::*;
 
 use bevy_ghx_proc_gen::{
-    gen::{
-        assets::{AssetSpawner, RulesModelsAssets},
-        default_bundles::PbrMesh,
-        simple_plugin::ProcGenSimplePlugin,
-    },
+    assets::ModelsAssets,
+    bevy_ghx_grid::ghx_grid::cartesian::coordinates::CartesianPosition,
+    default_bundles::PbrMesh,
     proc_gen::{
         generator::{
             builder::GeneratorBuilder,
@@ -15,7 +13,8 @@ use bevy_ghx_proc_gen::{
         },
         ghx_grid::cartesian::{coordinates::Cartesian2D, grid::CartesianGrid},
     },
-    GeneratorBundle,
+    simple_plugin::ProcGenSimpleRunnerPlugin,
+    spawner_plugin::{NodesSpawner, ProcGenSpawnerPlugin},
 };
 
 const CUBE_SIZE: f32 = 1.;
@@ -23,18 +22,14 @@ const NODE_SIZE: Vec3 = Vec3::splat(CUBE_SIZE);
 
 fn setup_scene(mut commands: Commands) {
     // Camera
-    commands.spawn((Camera3dBundle {
-        transform: Transform::from_translation(Vec3::new(0., -11., 6.))
-            .looking_at(Vec3::ZERO, Vec3::Y),
-        ..default()
-    },));
+    commands.spawn((
+        Transform::from_translation(Vec3::new(0., -11., 6.)).looking_at(Vec3::ZERO, Vec3::Y),
+        Camera3d { ..default() },
+    ));
 
     // Scene lights
-    commands.spawn(DirectionalLightBundle {
-        directional_light: DirectionalLight {
-            illuminance: 5500.,
-            ..default()
-        },
+    commands.spawn(DirectionalLight {
+        illuminance: 5500.,
         ..default()
     });
 }
@@ -55,7 +50,7 @@ fn setup_generator(
     let mut models = ModelCollection::<Cartesian2D>::new();
     // We define 2 very simple models, a white tile model with the `white` socket on each side and a black tile model with the `black` socket on each side
     models.create(SocketsCartesian2D::Mono(white));
-    // We keep the black model for later
+    // We keep track of the black model for later
     let black_model = models.create(SocketsCartesian2D::Mono(black)).clone();
 
     // We give the models and socket collection to a RulesBuilder and get our Rules
@@ -71,7 +66,7 @@ fn setup_generator(
         .with_rules(rules)
         .with_grid(grid.clone())
         // Let's ensure that we make a chessboard, with a black square bottom-left
-        .with_initial_nodes(vec![(0, black_model)])
+        .with_initial_nodes(vec![(CartesianPosition::new_xy(0, 0), black_model)])
         .unwrap()
         .build()
         .unwrap();
@@ -82,7 +77,8 @@ fn setup_generator(
     }));
     let white_mat = materials.add(Color::WHITE);
     let black_mat = materials.add(Color::BLACK);
-    let mut models_assets = RulesModelsAssets::<PbrMesh>::new();
+
+    let mut models_assets = ModelsAssets::<PbrMesh>::new();
     models_assets.add_asset(
         0,
         PbrMesh {
@@ -98,22 +94,21 @@ fn setup_generator(
         },
     );
 
-    // Add the GeneratorBundle, the plugin will generate and spawn the nodes
-    commands.spawn(GeneratorBundle {
-        spatial: SpatialBundle::from_transform(Transform::from_translation(Vec3::new(
-            -4., -4., 0.,
-        ))),
+    // Add the generator & grid components the plugin will generate and spawn the nodes
+    commands.spawn((
+        Transform::from_translation(Vec3::new(-4., -4., 0.)),
         grid,
         generator,
-        asset_spawner: AssetSpawner::new(models_assets, NODE_SIZE, Vec3::ONE),
-    });
+        NodesSpawner::new(models_assets, NODE_SIZE, Vec3::ONE),
+    ));
 }
 
 fn main() {
     let mut app = App::new();
     app.add_plugins((
         DefaultPlugins,
-        ProcGenSimplePlugin::<Cartesian2D, PbrMesh>::new(),
+        ProcGenSimpleRunnerPlugin::<Cartesian2D>::new(),
+        ProcGenSpawnerPlugin::<Cartesian2D, PbrMesh>::new(),
     ));
     app.add_systems(Startup, (setup_generator, setup_scene));
     app.run();

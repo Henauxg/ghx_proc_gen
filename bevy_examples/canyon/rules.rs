@@ -1,14 +1,11 @@
 use bevy::{ecs::component::Component, math::Vec3};
-use bevy_examples::utils::AssetDef;
-use bevy_ghx_proc_gen::{
-    gen::assets::ComponentSpawner,
-    proc_gen::{
-        generator::{
-            model::{ModelCollection, ModelInstance, ModelRotation},
-            socket::{Socket, SocketCollection, SocketsCartesian3D},
-        },
-        ghx_grid::cartesian::coordinates::{Cartesian3D, GridDelta},
+use bevy_examples::utils::ModelAssetDef;
+use bevy_ghx_proc_gen::proc_gen::{
+    generator::{
+        model::{ModelCollection, ModelInstance, ModelRotation},
+        socket::{Socket, SocketCollection, SocketsCartesian3D},
     },
+    ghx_grid::cartesian::coordinates::{Cartesian3D, GridDelta},
 };
 
 use crate::{BLOCK_SIZE, SEE_VOID_NODES};
@@ -18,7 +15,7 @@ pub(crate) fn rules_and_assets() -> (
     ModelInstance,
     ModelInstance,
     ModelInstance,
-    Vec<Vec<AssetDef<CustomComponents>>>,
+    Vec<Vec<ModelAssetDef>>,
     ModelCollection<Cartesian3D>,
     SocketCollection,
 ) {
@@ -50,7 +47,7 @@ pub(crate) fn rules_and_assets() -> (
     let mut assets = Vec::new();
 
     // Utility functions to declare assets & models
-    let asset = |str| -> Vec<AssetDef<CustomComponents>> { vec![AssetDef::new(str)] };
+    let asset = |str| -> Vec<ModelAssetDef> { vec![ModelAssetDef::new(str)] };
 
     let void_instance = models
         .create(SocketsCartesian3D::Simple {
@@ -209,16 +206,18 @@ pub(crate) fn rules_and_assets() -> (
     .with_weight(0.25);
 
     models.create(sand_prop.clone());
-    assets.push(vec![AssetDef::new("cactus")
+    assets.push(vec![ModelAssetDef::new("cactus")
         .with_grid_offset(GridDelta::new(0, -1, 0))
-        .with_component(CustomComponents::ScaleRdm(ScaleRandomizer))
-        .with_component(CustomComponents::RotRdm(RotationRandomizer))]);
+        .with_components(|cmds| {
+            cmds.insert((ScaleRandomizer, RotationRandomizer));
+        })]);
 
     models.create(sand_prop.clone().with_weight(0.4));
-    assets.push(vec![AssetDef::new("small_rock")
+    assets.push(vec![ModelAssetDef::new("small_rock")
         .with_grid_offset(GridDelta::new(0, -1, 0))
-        .with_component(CustomComponents::ScaleRdm(ScaleRandomizer))
-        .with_component(CustomComponents::RotRdm(RotationRandomizer))]);
+        .with_components(|cmds| {
+            cmds.insert((ScaleRandomizer, RotationRandomizer));
+        })]);
 
     const WINDMILLS_WEIGHT: f32 = 0.005;
     models
@@ -245,11 +244,13 @@ pub(crate) fn rules_and_assets() -> (
         })
         .with_weight(WINDMILLS_WEIGHT);
     assets.push(vec![
-        AssetDef::new("windmill_top"),
-        AssetDef::new("windmill_vane"),
-        AssetDef::new("windmill_blades")
+        ModelAssetDef::new("windmill_top"),
+        ModelAssetDef::new("windmill_vane"),
+        ModelAssetDef::new("windmill_blades")
             .with_offset(Vec3::new(0., 0.7 * BLOCK_SIZE, 0.))
-            .with_component(CustomComponents::Rot(WindRotation)),
+            .with_components(|cmds| {
+                cmds.insert(WindRotation);
+            }),
     ]);
 
     // For this generation, our rotation axis is Y+, so we define connection on the Y axis with `add_rotated_connection` for sockets that still need to be compatible when rotated.
@@ -313,7 +314,7 @@ pub(crate) fn rules_and_assets() -> (
         model.with_name(
             assets[model.index()]
                 .first()
-                .unwrap_or(&AssetDef::new("void"))
+                .unwrap_or(&ModelAssetDef::new("void"))
                 .path(),
         );
     }
@@ -338,19 +339,19 @@ pub struct ScaleRandomizer;
 #[derive(Component, Clone)]
 pub struct RotationRandomizer;
 
-#[derive(Clone)]
-pub enum CustomComponents {
-    Rot(WindRotation),
-    ScaleRdm(ScaleRandomizer),
-    RotRdm(RotationRandomizer),
-}
+// #[derive(Clone)]
+// pub enum CustomComponents {
+//     Rot(WindRotation),
+//     ScaleRdm(ScaleRandomizer),
+//     RotRdm(RotationRandomizer),
+// }
 
-impl ComponentSpawner for CustomComponents {
-    fn insert(&self, command: &mut bevy::ecs::system::EntityCommands) {
-        match self {
-            CustomComponents::Rot(rot) => command.insert(rot.clone()),
-            CustomComponents::ScaleRdm(sc) => command.insert(sc.clone()),
-            CustomComponents::RotRdm(rot) => command.insert(rot.clone()),
-        };
-    }
-}
+// impl ComponentSpawner for CustomComponents {
+//     fn insert(&self, command: &mut bevy::ecs::system::EntityCommands) {
+//         match self {
+//             CustomComponents::Rot(rot) => command.insert(rot.clone()),
+//             CustomComponents::ScaleRdm(sc) => command.insert(sc.clone()),
+//             CustomComponents::RotRdm(rot) => command.insert(rot.clone()),
+//         };
+//     }
+// }

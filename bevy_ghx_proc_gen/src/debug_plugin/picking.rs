@@ -5,21 +5,22 @@ use bevy::{
         component::Component,
         entity::Entity,
         event::{Event, EventReader, EventWriter},
-        query::{Added, Changed, With, Without},
+        query::{Changed, With, Without},
         system::{Commands, Local, Query, Res, ResMut, Resource},
     },
     hierarchy::{BuildChildren, DespawnRecursiveExt, Parent},
     input::{keyboard::KeyCode, ButtonInput},
     math::{primitives::Cuboid, Vec2, Vec3},
-    pbr::{NotShadowCaster, PbrBundle, StandardMaterial},
-    prelude::{AlphaMode, Deref, DerefMut},
+    pbr::{MeshMaterial3d, NotShadowCaster, StandardMaterial},
+    prelude::{
+        AlphaMode, Deref, DerefMut, Down, Mesh3d, OnAdd, Out, Over, PickingBehavior, Pointer,
+        PointerButton, TextUiWriter, Trigger,
+    },
     render::mesh::Mesh,
-    sprite::{Sprite, SpriteBundle},
-    text::Text,
+    sprite::Sprite,
     transform::components::Transform,
     utils::default,
 };
-
 use bevy_ghx_grid::{
     debug_plugin::{
         get_translation_from_grid_coords_3d,
@@ -28,25 +29,21 @@ use bevy_ghx_grid::{
     },
     ghx_grid::{coordinate_system::CoordinateSystem, direction::Direction},
 };
-use bevy_mod_picking::{
-    events::Out,
-    prelude::{Down, ListenerInput, On, Over, Pointer},
-    PickableBundle,
-};
 use ghx_proc_gen::{
     generator::Generator,
     ghx_grid::cartesian::{coordinates::CartesianCoordinates, grid::CartesianGrid},
     NodeIndex,
 };
+use std::fmt::Debug;
 
-use crate::gen::GridNode;
+use crate::{CursorTarget, GenerationResetEvent, GridNode};
 
 use super::{
     cursor::{
         cursor_info_to_string, Cursor, CursorBehavior, CursorInfo, CursorMarkerSettings,
         CursorsPanelText, SelectCursor, TargetedNode, OVER_CURSOR_SECTION_INDEX,
     },
-    generation::{ActiveGeneration, GenerationEvent},
+    generation::ActiveGeneration,
     ProcGenKeyBindings,
 };
 
@@ -77,58 +74,68 @@ impl CursorBehavior for OverCursor {
 }
 
 /// Event raised when a node starts being overed by a mouse pointer
-#[derive(Event, Deref, DerefMut)]
+#[derive(Event, Deref, DerefMut, Debug, Clone)]
 pub struct NodeOverEvent(pub Entity);
-impl From<ListenerInput<Pointer<Over>>> for NodeOverEvent {
-    fn from(event: ListenerInput<Pointer<Over>>) -> Self {
-        NodeOverEvent(event.listener())
+impl From<Entity> for NodeOverEvent {
+    fn from(target: Entity) -> Self {
+        NodeOverEvent(target)
     }
 }
 
 /// Event raised when a node stops being overed by a mouse pointer
 #[derive(Event, Deref, DerefMut)]
 pub struct NodeOutEvent(pub Entity);
-impl From<ListenerInput<Pointer<Out>>> for NodeOutEvent {
-    fn from(event: ListenerInput<Pointer<Out>>) -> Self {
-        NodeOutEvent(event.listener())
+impl From<Entity> for NodeOutEvent {
+    fn from(target: Entity) -> Self {
+        NodeOutEvent(target)
     }
 }
 
 /// Event raised when a node is selected by a mouse pointer
 #[derive(Event, Deref, DerefMut)]
 pub struct NodeSelectedEvent(pub Entity);
+impl From<Entity> for NodeSelectedEvent {
+    fn from(target: Entity) -> Self {
+        NodeSelectedEvent(target)
+    }
+}
 
 /// System that inserts picking event handlers to entites with an added [GridNode] component
-pub fn insert_cursor_picking_handlers_to_grid_nodes<C: CoordinateSystem>(
+pub fn insert_cursor_picking_handlers_on_grid_nodes<C: CoordinateSystem>(
+    trigger: Trigger<OnAdd, GridNode>,
     mut commands: Commands,
-    spawned_nodes: Query<Entity, Added<GridNode>>,
 ) {
-    use bevy_mod_picking::{pointer::PointerButton, prelude::ListenerMut};
+    commands
+        .entity(trigger.entity())
+        .insert(PickingBehavior::default())
+        .observe(retransmit_event::<Pointer<Over>, NodeOverEvent>)
+        .observe(retransmit_event::<Pointer<Out>, NodeOutEvent>)
+        .observe(
+            |trigger: Trigger<Pointer<Down>>,
+             mut selection_events: EventWriter<NodeSelectedEvent>| {
+                if trigger.button == PointerButton::Primary {
+                    selection_events.send(NodeSelectedEvent(trigger.entity()));
+                }
+            },
+        );
+}
 
-    for entity in spawned_nodes.iter() {
-        commands.entity(entity).try_insert((
-            On::<Pointer<Over>>::send_event::<NodeOverEvent>(),
-            On::<Pointer<Out>>::send_event::<NodeOutEvent>(),
-            On::<Pointer<Down>>::run(
-                move |event: ListenerMut<Pointer<Down>>,
-                      mut selection_events: EventWriter<NodeSelectedEvent>| {
-                    if event.button == PointerButton::Primary {
-                        selection_events.send(NodeSelectedEvent(event.listener()));
-                    }
-                },
-            ),
-        ));
-    }
+fn retransmit_event<PE: Event + Clone + Debug, NE: Event + From<Entity>>(
+    pointer_ev_trigger: Trigger<PE>,
+    mut events: EventWriter<NE>,
+) {
+    events.send(NE::from(pointer_ev_trigger.entity()));
 }
 
 /// System that update the over cursor UI panel
 pub fn update_over_cursor_panel_text(
-    mut cursors_panel_text: Query<&mut Text, With<CursorsPanelText>>,
+    mut writer: TextUiWriter,
+    mut cursors_panel_text: Query<Entity, With<CursorsPanelText>>,
     updated_cursors: Query<(&CursorInfo, &Cursor), (Changed<CursorInfo>, With<OverCursor>)>,
 ) {
     if let Ok((cursor_info, cursor)) = updated_cursors.get_single() {
-        for mut text in &mut cursors_panel_text {
-            let ui_text = &mut text.sections[OVER_CURSOR_SECTION_INDEX].value;
+        for panel_entity in &mut cursors_panel_text {
+            let mut ui_text = writer.text(panel_entity, OVER_CURSOR_SECTION_INDEX);
             match &cursor.0 {
                 Some(overed_node) => {
                     *ui_text = format!(
@@ -142,27 +149,21 @@ pub fn update_over_cursor_panel_text(
     }
 }
 
-/// System updating the Over [Cursor] by reading all the [GenerationEvent]
-///
-/// Should run after update_cursors_info_on_cursors_changes and before update_cursors_info_from_generation_events
-pub fn update_over_cursor_from_generation_events<C: CoordinateSystem>(
-    mut cursors_events: EventReader<GenerationEvent>,
+/// Observer updating the Over [Cursor] based on [GenerationResetEvent]
+pub fn update_over_cursor_on_generation_reset<C: CoordinateSystem>(
+    trigger: Trigger<GenerationResetEvent>,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
     mut over_cursor: Query<&mut Cursor, With<OverCursor>>,
 ) {
     let Ok(mut cursor) = over_cursor.get_single_mut() else {
         return;
     };
-    for event in cursors_events.read() {
-        match event {
-            GenerationEvent::Reinitialized(_grid_entity) => {
-                // If there is an Over cursor, force despawn it, since we will despawn the underlying node there won't be any NodeOutEvent.
-                if let Some(overed_node) = &cursor.0 {
-                    marker_events.send(MarkerDespawnEvent::Marker(overed_node.marker));
-                    cursor.0 = None;
-                }
-            }
-            GenerationEvent::Updated(_grid_entity, _node_index) => {}
+
+    // If there is an Over cursor, force despawn it, since we will despawn the underlying node there won't be any NodeOutEvent.
+    if let Some(overed_node) = &cursor.0 {
+        if overed_node.grid == trigger.entity() {
+            marker_events.send(MarkerDespawnEvent::Marker(overed_node.marker));
+            cursor.0 = None;
         }
     }
 }
@@ -194,9 +195,7 @@ pub fn picking_update_cursors_position<
         let picked_grid_entity = node_parent.get();
         let update_cursor = match &cursor.0 {
             Some(targeted_node) => {
-                if (targeted_node.grid != picked_grid_entity)
-                    || (targeted_node.node_index != node.0)
-                {
+                if (targeted_node.grid != picked_grid_entity) || (targeted_node.index != node.0) {
                     marker_events.send(MarkerDespawnEvent::Marker(targeted_node.marker));
                     true
                 } else {
@@ -221,7 +220,7 @@ pub fn picking_update_cursors_position<
             commands.entity(picked_grid_entity).add_child(marker);
             cursor.0 = Some(TargetedNode {
                 grid: picked_grid_entity,
-                node_index: node.0,
+                index: node.0,
                 position,
                 marker,
             });
@@ -244,7 +243,7 @@ pub fn picking_remove_previous_over_cursor<C: CoordinateSystem>(
             return;
         };
         if let Ok(node) = nodes.get_mut(**event) {
-            if overed_node.node_index == node.0 {
+            if overed_node.index == node.0 {
                 marker_events.send(MarkerDespawnEvent::Marker(overed_node.marker));
                 cursor.0 = None;
             }
@@ -280,10 +279,6 @@ pub fn setup_picking_assets(
     });
 }
 
-/// Main component marker for a cursor target
-#[derive(Component)]
-pub struct CursorTarget;
-
 /// Local system resource used to cache and track cursor targets current siutation
 #[derive(Default)]
 pub struct ActiveCursorTargets {
@@ -293,7 +288,7 @@ pub struct ActiveCursorTargets {
     pub from_node: NodeIndex,
 }
 
-/// System that spawn & depsanw the cursor targets
+/// System that spawn & despawn the cursor targets
 pub fn update_cursor_targets_nodes<C: CartesianCoordinates>(
     mut local_active_cursor_targets: Local<Option<ActiveCursorTargets>>,
     mut commands: Commands,
@@ -329,7 +324,7 @@ pub fn update_cursor_targets_nodes<C: CartesianCoordinates>(
 
     if let Some(axis) = axis_selection {
         if let Some(active_targets) = local_active_cursor_targets.as_mut() {
-            if selected_node.node_index != active_targets.from_node {
+            if selected_node.index != active_targets.from_node {
                 despawn_cursor_targets(
                     &mut commands,
                     &mut marker_events,
@@ -345,7 +340,7 @@ pub fn update_cursor_targets_nodes<C: CartesianCoordinates>(
                     &grids_with_cam2d,
                 );
 
-                active_targets.from_node = selected_node.node_index;
+                active_targets.from_node = selected_node.index;
                 active_targets.axis = axis;
             }
         } else {
@@ -360,7 +355,7 @@ pub fn update_cursor_targets_nodes<C: CartesianCoordinates>(
 
             *local_active_cursor_targets = Some(ActiveCursorTargets {
                 axis,
-                from_node: selected_node.node_index,
+                from_node: selected_node.index,
             });
         }
     } else if local_active_cursor_targets.is_some() {
@@ -442,12 +437,9 @@ pub fn spawn_cursor_targets_3d<C: CartesianCoordinates>(
                 GridNode(grid.index_from_coords(x, y, z)),
                 CursorTarget,
                 NotShadowCaster,
-                PbrBundle {
-                    transform: Transform::from_translation(translation).with_scale(*node_size),
-                    mesh: cursor_target_assets.target_mesh_3d.clone(),
-                    material: cursor_target_assets.target_mat_3d.clone(),
-                    ..default()
-                },
+                Transform::from_translation(translation).with_scale(*node_size),
+                Mesh3d(cursor_target_assets.target_mesh_3d.clone_weak()),
+                MeshMaterial3d(cursor_target_assets.target_mat_3d.clone_weak()),
             ))
             .id();
         commands
@@ -506,17 +498,14 @@ pub fn spawn_cursor_targets_2d<C: CartesianCoordinates>(
             .spawn((
                 GridNode(grid.index_from_coords(x, y, z)),
                 CursorTarget,
+                Transform::from_translation(translation).with_scale(*node_size),
                 // TODO: Here MaterialMesh2dBundle + PickableBundle::default() did not interact with picking. Not sure why yet. Using Sprite instead.
-                SpriteBundle {
-                    transform: Transform::from_translation(translation).with_scale(*node_size),
-                    sprite: Sprite {
-                        color: cursor_target_assets.color,
-                        custom_size: Some(Vec2::splat(cursor_target_assets.base_size)),
-                        ..default()
-                    },
+                Sprite {
+                    color: cursor_target_assets.color,
+                    custom_size: Some(Vec2::splat(cursor_target_assets.base_size)),
                     ..default()
                 },
-                PickableBundle::default(),
+                PickingBehavior::default(),
             ))
             .id();
         commands

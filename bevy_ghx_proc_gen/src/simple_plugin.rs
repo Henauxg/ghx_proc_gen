@@ -1,14 +1,15 @@
 use std::marker::PhantomData;
 
 use bevy::{
-    app::{App, Plugin, Update},
+    app::{App, Plugin, PluginGroup, PluginGroupBuilder, Update},
     ecs::{
         entity::Entity,
         query::Added,
         schedule::IntoSystemConfigs,
-        system::{Commands, Query, ResMut, Resource},
+        system::{Commands, Query, ResMut},
     },
     log::{info, warn},
+    prelude::Resource,
     utils::HashSet,
 };
 use ghx_proc_gen::{
@@ -17,36 +18,25 @@ use ghx_proc_gen::{
     GeneratorError,
 };
 
-use crate::gen::spawn_node;
-
-use super::{assets::NoComponents, AssetSpawner, AssetsBundleSpawner, ComponentSpawner};
+use crate::{spawner_plugin::ProcGenSpawnerPlugin, BundleInserter, GridGeneratedEvent};
 
 /// A simple [`Plugin`] that automatically detects any [`Entity`] with a [`Generator`] `Component` and tries to run the contained generator once per frame until it succeeds.
 ///
 /// Once the generation is successful, the plugin will spawn the generated nodes assets.
-pub struct ProcGenSimplePlugin<
-    C: CartesianCoordinates,
-    A: AssetsBundleSpawner,
-    T: ComponentSpawner = NoComponents,
-> {
-    typestate: PhantomData<(C, A, T)>,
+pub struct ProcGenSimpleRunnerPlugin<C: CartesianCoordinates> {
+    typestate: PhantomData<C>,
 }
-
-impl<C: CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
-    for ProcGenSimplePlugin<C, A, T>
-{
+impl<C: CartesianCoordinates> Plugin for ProcGenSimpleRunnerPlugin<C> {
     fn build(&self, app: &mut App) {
         app.insert_resource(PendingGenerations::default());
+
         app.add_systems(
             Update,
-            (register_new_generations::<C>, generate_and_spawn::<C, A, T>).chain(),
+            (register_new_generations::<C>, generate_and_spawn::<C>).chain(),
         );
     }
 }
-
-impl<C: CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner>
-    ProcGenSimplePlugin<C, A, T>
-{
+impl<C: CartesianCoordinates> ProcGenSimpleRunnerPlugin<C> {
     /// Constructor
     pub fn new() -> Self {
         Self {
@@ -55,7 +45,19 @@ impl<C: CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner>
     }
 }
 
-/// Resource used by [`ProcGenSimplePlugin`] to track generations that are yet to generate a result
+/// A group of plugins that combines simple generation and nodes spawning
+pub struct ProcGenSimplePlugins<C: CartesianCoordinates, A: BundleInserter> {
+    typestate: PhantomData<(C, A)>,
+}
+impl<C: CartesianCoordinates, A: BundleInserter> PluginGroup for ProcGenSimplePlugins<C, A> {
+    fn build(self) -> PluginGroupBuilder {
+        PluginGroupBuilder::start::<Self>()
+            .add(ProcGenSimpleRunnerPlugin::<C>::new())
+            .add(ProcGenSpawnerPlugin::<C, A>::new())
+    }
+}
+
+/// Resource used by [`ProcGenSimpleRunnerPlugin`] to track generations that are yet to generate a result
 #[derive(Resource)]
 pub struct PendingGenerations {
     pendings: HashSet<Entity>,
@@ -69,7 +71,7 @@ impl Default for PendingGenerations {
     }
 }
 
-/// System used by [`ProcGenSimplePlugin`] to track entities with newly added [`Generator`] components
+/// System used by [`ProcGenSimpleRunnerPlugin`] to track entities with newly added [`Generator`] components
 pub fn register_new_generations<C: CartesianCoordinates>(
     mut pending_generations: ResMut<PendingGenerations>,
     mut new_generations: Query<Entity, Added<Generator<C, CartesianGrid<C>>>>,
@@ -79,15 +81,15 @@ pub fn register_new_generations<C: CartesianCoordinates>(
     }
 }
 
-/// System used by [`ProcGenSimplePlugin`] to run generators and spawn their node's assets
-pub fn generate_and_spawn<C: CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner>(
+/// System used by [`ProcGenSimpleRunnerPlugin`] to run generators
+pub fn generate_and_spawn<C: CartesianCoordinates>(
     mut commands: Commands,
     mut pending_generations: ResMut<PendingGenerations>,
-    mut generations: Query<(&mut Generator<C, CartesianGrid<C>>, &AssetSpawner<A, T>)>,
+    mut generations: Query<&mut Generator<C, CartesianGrid<C>>>,
 ) {
     let mut generations_done = vec![];
     for &gen_entity in pending_generations.pendings.iter() {
-        if let Ok((mut generation, asset_spawner)) = generations.get_mut(gen_entity) {
+        if let Ok(mut generation) = generations.get_mut(gen_entity) {
             match generation.generate_grid() {
                 Ok((gen_info, grid_data)) => {
                     info!(
@@ -97,16 +99,7 @@ pub fn generate_and_spawn<C: CartesianCoordinates, A: AssetsBundleSpawner, T: Co
                         generation.seed(),
                         generation.grid()
                     );
-                    for (node_index, node) in grid_data.iter().enumerate() {
-                        spawn_node(
-                            &mut commands,
-                            gen_entity,
-                            &generation.grid(),
-                            asset_spawner,
-                            node,
-                            node_index,
-                        );
-                    }
+                    commands.trigger_targets(GridGeneratedEvent(grid_data), gen_entity);
                     generations_done.push(gen_entity);
                 }
                 Err(GeneratorError { node_index }) => {

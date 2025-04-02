@@ -20,12 +20,12 @@ use ghx_proc_gen::{
     ghx_grid::cartesian::{coordinates::CartesianCoordinates, grid::CartesianGrid},
 };
 
-use crate::gen::GridNode;
+use crate::{CursorTarget, GridNode};
 
 use super::{
     cursor::{Cursor, CursorInfo, SelectCursor},
     generation::ActiveGeneration,
-    picking::{CursorTarget, NodeOverEvent, NodeSelectedEvent},
+    picking::{NodeOverEvent, NodeSelectedEvent},
 };
 
 /// Resource sued to track the status of the edgui editor
@@ -252,7 +252,7 @@ pub fn update_painting_state(
     }
 }
 
-/// System issuing the generation requests to the geenrator based on the painting state
+/// System issuing the generation requests to the generator based on the painting state
 pub fn paint<C: CartesianCoordinates>(
     editor_context: ResMut<EditorContext>,
     active_generation: Res<ActiveGeneration>,

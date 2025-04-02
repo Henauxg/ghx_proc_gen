@@ -8,26 +8,29 @@ exclude = ["assets/"]
 [dependencies]
 # ----- Internal dependencies
 bevy_ghx_proc_gen = { path = "../bevy_ghx_proc_gen", default-features = true }
-bevy_ghx_utils = { version = "0.4.1", default-features = true }
+bevy_ghx_utils = { version = "0.5.0", default-features = true }
 
 # ----- External dependencies
 tracing-subscriber = "0.3.18"
 rand = "0.8.5"
-bevy = { version = "0.14.0", default-features = false, features = [
+bevy = { version = "0.15.0", default-features = false, features = [
 	# Default features:
 
-	"multi_threaded",     # Run with multithreading
-	"bevy_asset",         # Assets management
-	"bevy_scene",         # Scenes management
-	"bevy_render",        # Rendering framework core
-	"bevy_core_pipeline", # Common rendering abstractions
-	"bevy_sprite",        # 2D (sprites) rendering
-	"bevy_pbr",           # 3D (physically-based) rendering
-	"bevy_gltf",          # GLTF 3D assets format support
-	"bevy_text",          # Text/font rendering
-	"bevy_ui",            # UI toolkit
-	"tonemapping_luts",   # Support different camera Tonemapping modes (enables KTX2+zstd)
-	"default_font",       # Embed a minimal default font for text/UI
+	"multi_threaded",              # Run with multithreading
+	"bevy_asset",                  # Assets management
+	"bevy_scene",                  # Scenes management
+	"bevy_render",                 # Rendering framework core
+	"bevy_core_pipeline",          # Common rendering abstractions
+	"bevy_sprite",                 # 2D (sprites) rendering
+	"bevy_pbr",                    # 3D (physically-based) rendering
+	"bevy_gltf",                   # GLTF 3D assets format support
+	"bevy_mesh_picking_backend",   # Provides an implementation for picking meshes
+	"bevy_sprite_picking_backend", # Provides an implementation for picking sprites
+	"bevy_text",                   # Text/font rendering
+	"bevy_ui",                     # UI toolkit
+	"bevy_window",                 # Windowing layer
+	"tonemapping_luts",            # Support different camera Tonemapping modes (enables KTX2+zstd)
+	"default_font",                # Embed a minimal default font for text/UI
 
 	# File formats:
 	"png", # PNG image format for simple 2D images
@@ -43,13 +46,6 @@ bevy = { version = "0.14.0", default-features = false, features = [
 	# Development/Debug features:
 	"dynamic_linking", # Dynamic linking for faster compile-times
 ] }
-bevy_mod_picking = { version = "0.20.0", default-features = false, features = [
-	"backend_raycast",
-	"backend_bevy_ui",
-	"backend_sprite",
-	"backend_egui",
-] }
-
 
 [[example]]
 name = "bevy-chessboard"

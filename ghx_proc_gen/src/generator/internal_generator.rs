@@ -326,7 +326,6 @@ impl<C: CoordinateSystem, G: Grid<C>> InternalGenerator<C, G> {
 
     pub(crate) fn generate(
         &mut self,
-        collector: &mut Collector,
         retry_count: u32,
         initial_nodes: &Vec<(NodeIndex, ModelVariantIndex)>,
     ) -> Result<GenInfo, GeneratorError> {
@@ -335,13 +334,10 @@ impl<C: CoordinateSystem, G: Grid<C>> InternalGenerator<C, G> {
             #[cfg(feature = "debug-traces")]
             info!("Try n°{}", try_index + 1);
 
-            if let Some(collector) = collector {
-                collector.clear();
-            }
             match self.status {
                 InternalGeneratorStatus::Ongoing => (),
                 InternalGeneratorStatus::Done | InternalGeneratorStatus::Failed(_) => {
-                    match self.reinitialize(collector, initial_nodes) {
+                    match self.reinitialize(&mut None, initial_nodes) {
                         GenerationStatus::Ongoing => (),
                         GenerationStatus::Done => {
                             return Ok(GenInfo {
@@ -351,7 +347,7 @@ impl<C: CoordinateSystem, G: Grid<C>> InternalGenerator<C, G> {
                     }
                 }
             }
-            match self.generate_remaining_nodes(collector) {
+            match self.generate_remaining_nodes(&mut None) {
                 Ok(_) => {
                     return Ok(GenInfo {
                         try_count: try_index + 1,
