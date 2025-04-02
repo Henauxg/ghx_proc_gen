@@ -36,14 +36,14 @@ use ghx_proc_gen::{
 };
 use std::fmt::Debug;
 
-use crate::gen::GridNode;
+use crate::{CursorTarget, GenerationResetEvent, GridNode};
 
 use super::{
     cursor::{
         cursor_info_to_string, Cursor, CursorBehavior, CursorInfo, CursorMarkerSettings,
         CursorsPanelText, SelectCursor, TargetedNode, OVER_CURSOR_SECTION_INDEX,
     },
-    generation::{ActiveGeneration, GenerationEvent},
+    generation::ActiveGeneration,
     ProcGenKeyBindings,
 };
 
@@ -101,12 +101,13 @@ impl From<Entity> for NodeSelectedEvent {
 }
 
 /// System that inserts picking event handlers to entites with an added [GridNode] component
-pub fn insert_cursor_picking_handlers_to_grid_nodes<C: CoordinateSystem>(
+pub fn insert_cursor_picking_handlers_on_grid_nodes<C: CoordinateSystem>(
     trigger: Trigger<OnAdd, GridNode>,
     mut commands: Commands,
 ) {
     commands
         .entity(trigger.entity())
+        .insert(PickingBehavior::default())
         .observe(retransmit_event::<Pointer<Over>, NodeOverEvent>)
         .observe(retransmit_event::<Pointer<Out>, NodeOutEvent>)
         .observe(
@@ -119,7 +120,7 @@ pub fn insert_cursor_picking_handlers_to_grid_nodes<C: CoordinateSystem>(
         );
 }
 
-fn retransmit_event<PE: Event + Clone, NE: Event + From<Entity>>(
+fn retransmit_event<PE: Event + Clone + Debug, NE: Event + From<Entity>>(
     pointer_ev_trigger: Trigger<PE>,
     mut events: EventWriter<NE>,
 ) {
@@ -148,27 +149,21 @@ pub fn update_over_cursor_panel_text(
     }
 }
 
-/// System updating the Over [Cursor] by reading all the [GenerationEvent]
-///
-/// Should run after update_cursors_info_on_cursors_changes and before update_cursors_info_from_generation_events
-pub fn update_over_cursor_from_generation_events<C: CoordinateSystem>(
-    mut cursors_events: EventReader<GenerationEvent>,
+/// Observer updating the Over [Cursor] based on [GenerationResetEvent]
+pub fn update_over_cursor_on_generation_reset<C: CoordinateSystem>(
+    trigger: Trigger<GenerationResetEvent>,
     mut marker_events: EventWriter<MarkerDespawnEvent>,
     mut over_cursor: Query<&mut Cursor, With<OverCursor>>,
 ) {
     let Ok(mut cursor) = over_cursor.get_single_mut() else {
         return;
     };
-    for event in cursors_events.read() {
-        match event {
-            GenerationEvent::Reinitialized(_grid_entity) => {
-                // If there is an Over cursor, force despawn it, since we will despawn the underlying node there won't be any NodeOutEvent.
-                if let Some(overed_node) = &cursor.0 {
-                    marker_events.send(MarkerDespawnEvent::Marker(overed_node.marker));
-                    cursor.0 = None;
-                }
-            }
-            GenerationEvent::Updated(_grid_entity, _node_index) => {}
+
+    // If there is an Over cursor, force despawn it, since we will despawn the underlying node there won't be any NodeOutEvent.
+    if let Some(overed_node) = &cursor.0 {
+        if overed_node.grid == trigger.entity() {
+            marker_events.send(MarkerDespawnEvent::Marker(overed_node.marker));
+            cursor.0 = None;
         }
     }
 }
@@ -200,9 +195,7 @@ pub fn picking_update_cursors_position<
         let picked_grid_entity = node_parent.get();
         let update_cursor = match &cursor.0 {
             Some(targeted_node) => {
-                if (targeted_node.grid != picked_grid_entity)
-                    || (targeted_node.node_index != node.0)
-                {
+                if (targeted_node.grid != picked_grid_entity) || (targeted_node.index != node.0) {
                     marker_events.send(MarkerDespawnEvent::Marker(targeted_node.marker));
                     true
                 } else {
@@ -227,7 +220,7 @@ pub fn picking_update_cursors_position<
             commands.entity(picked_grid_entity).add_child(marker);
             cursor.0 = Some(TargetedNode {
                 grid: picked_grid_entity,
-                node_index: node.0,
+                index: node.0,
                 position,
                 marker,
             });
@@ -250,7 +243,7 @@ pub fn picking_remove_previous_over_cursor<C: CoordinateSystem>(
             return;
         };
         if let Ok(node) = nodes.get_mut(**event) {
-            if overed_node.node_index == node.0 {
+            if overed_node.index == node.0 {
                 marker_events.send(MarkerDespawnEvent::Marker(overed_node.marker));
                 cursor.0 = None;
             }
@@ -286,10 +279,6 @@ pub fn setup_picking_assets(
     });
 }
 
-/// Main component marker for a cursor target
-#[derive(Component)]
-pub struct CursorTarget;
-
 /// Local system resource used to cache and track cursor targets current siutation
 #[derive(Default)]
 pub struct ActiveCursorTargets {
@@ -299,7 +288,7 @@ pub struct ActiveCursorTargets {
     pub from_node: NodeIndex,
 }
 
-/// System that spawn & depsanw the cursor targets
+/// System that spawn & despawn the cursor targets
 pub fn update_cursor_targets_nodes<C: CartesianCoordinates>(
     mut local_active_cursor_targets: Local<Option<ActiveCursorTargets>>,
     mut commands: Commands,
@@ -335,7 +324,7 @@ pub fn update_cursor_targets_nodes<C: CartesianCoordinates>(
 
     if let Some(axis) = axis_selection {
         if let Some(active_targets) = local_active_cursor_targets.as_mut() {
-            if selected_node.node_index != active_targets.from_node {
+            if selected_node.index != active_targets.from_node {
                 despawn_cursor_targets(
                     &mut commands,
                     &mut marker_events,
@@ -351,7 +340,7 @@ pub fn update_cursor_targets_nodes<C: CartesianCoordinates>(
                     &grids_with_cam2d,
                 );
 
-                active_targets.from_node = selected_node.node_index;
+                active_targets.from_node = selected_node.index;
                 active_targets.axis = axis;
             }
         } else {
@@ -366,7 +355,7 @@ pub fn update_cursor_targets_nodes<C: CartesianCoordinates>(
 
             *local_active_cursor_targets = Some(ActiveCursorTargets {
                 axis,
-                from_node: selected_node.node_index,
+                from_node: selected_node.index,
             });
         }
     } else if local_active_cursor_targets.is_some() {

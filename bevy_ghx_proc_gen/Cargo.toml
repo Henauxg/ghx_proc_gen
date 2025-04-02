@@ -15,7 +15,7 @@ default = [
     "simple-plugin",
     "debug-plugin",
     "picking",
-    # "egui-edit",
+    "egui-edit",
     "default-assets-bundle-spawners",
 ]
 # Enables some reflect derives in ghx_proc_gen
@@ -34,7 +34,7 @@ picking = [
     "bevy/bevy_picking", # Provides picking functionality
 ]
 # Enables an egui editor panel to inspect nodes and paint models
-# egui-edit = ["dep:bevy_egui", "picking"]
+egui-edit = ["dep:bevy_egui", "picking"]
 # Adds some default assets bundle spawners for basic types: Handle<Image>, Handle<Scene>, MaterialMesh and PbrMesh
 default-assets-bundle-spawners = [
     "bevy/bevy_scene",  # Scenes management
@@ -50,16 +50,14 @@ ghx_proc_gen = { path = "../ghx_proc_gen", version = "0.5.0", features = [
 ] }
 
 # ----- External dependencies
-bevy = { version = "0.15.0-rc.3", default-features = false, features = [
+bevy = { version = "0.15.0", default-features = false, features = [
     "bevy_render", # Rendering framework core
 ] }
 
 # ----- Optional dependencies
-bevy_ghx_grid = { path = "../../bevy_ghx_grid", version = "0.5.0", optional = true, features = [
-] }
+bevy_ghx_grid = { version = "0.5.0", optional = true, features = [] }
 # Only enabled when the "picking" feature is enabled
-# bevy_mod_picking = { version = "0.20.0", optional = true, default-features = false }
-# Bevy_mod_picking depends on this version of bevy_egui
-# bevy_egui = { version = "0.28.0", optional = true, default-features = false, features = [
-#     "default_fonts",
-# ] }
+bevy_egui = { version = "0.33.0", optional = true, default-features = false, features = [
+    "default_fonts",
+    "render",
+] }

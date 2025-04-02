@@ -6,14 +6,14 @@ use bevy::{
     ecs::{
         component::Component,
         entity::Entity,
-        event::{EventReader, EventWriter},
+        event::EventWriter,
         query::{Changed, With, Without},
         system::{Commands, Local, Query, Res, ResMut, Resource},
     },
     hierarchy::BuildChildren,
     input::{keyboard::KeyCode, ButtonInput},
     log::warn,
-    prelude::{Text, TextUiWriter},
+    prelude::{Text, TextUiWriter, Trigger},
     render::camera::Camera,
     text::{LineBreak, TextColor, TextFont, TextLayout, TextSpan},
     time::{Time, Timer, TimerMode},
@@ -37,10 +37,9 @@ use ghx_proc_gen::{
 #[cfg(feature = "picking")]
 use bevy::prelude::PickingBehavior;
 
-use super::{
-    generation::{ActiveGeneration, GenerationEvent},
-    GridCursorsUiSettings, ProcGenKeyBindings,
-};
+use crate::{GenerationResetEvent, NodesGeneratedEvent};
+
+use super::{generation::ActiveGeneration, GridCursorsUiSettings, ProcGenKeyBindings};
 
 /// Marker component to be put on a [Camera] to signal that it should be used to display cursor overlays
 ///
@@ -64,10 +63,10 @@ pub struct CursorsPanelText;
 /// Represents a node in a grid and its [GridMarker]
 #[derive(Debug)]
 pub struct TargetedNode {
-    /// Grid entity the node bleongs to
+    /// Grid entity the node belongs to
     pub grid: Entity,
     /// Index of the node in its grid
-    pub node_index: NodeIndex,
+    pub index: NodeIndex,
     /// Position of the node in its grid
     pub position: CartesianPosition,
     /// Marker entity for this targeted node
@@ -75,7 +74,7 @@ pub struct TargetedNode {
 }
 impl fmt::Display for TargetedNode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}, index: {}", self.position, self.node_index)
+        write!(f, "{}, index: {}", self.position, self.index)
     }
 }
 
@@ -232,12 +231,12 @@ pub fn update_cursors_info_on_cursors_changes<C: CartesianCoordinates>(
 ) {
     for (mut cursor_info, cursor) in moved_cursors.iter_mut() {
         match &cursor.0 {
-            Some(grid_cursor) => {
-                if let Ok(generator) = generators.get(grid_cursor.grid) {
+            Some(targeted_node) => {
+                if let Ok(generator) = generators.get(targeted_node.grid) {
                     (
                         cursor_info.models_variations,
                         cursor_info.total_models_count,
-                    ) = generator.get_models_variations_on(grid_cursor.node_index);
+                    ) = generator.get_models_variations_on(targeted_node.index);
                 }
             }
             None => cursor_info.clear(),
@@ -245,39 +244,46 @@ pub fn update_cursors_info_on_cursors_changes<C: CartesianCoordinates>(
     }
 }
 
-/// System updating all the [CursorInfo] based on [GenerationEvent]
-pub fn update_cursors_info_from_generation_events<C: CartesianCoordinates>(
-    mut cursors_events: EventReader<GenerationEvent>,
+/// Observer updating all the [CursorInfo] based on [GenerationResetEvent]
+pub fn update_cursors_info_on_generation_reset<C: CartesianCoordinates>(
+    trigger: Trigger<GenerationResetEvent>,
     generators: Query<&Generator<C, CartesianGrid<C>>>,
     mut cursors: Query<(&Cursor, &mut CursorInfo)>,
 ) {
-    for event in cursors_events.read() {
-        for (cursor, mut cursor_info) in cursors.iter_mut() {
-            let Some(grid_cursor) = &cursor.0 else {
-                continue;
-            };
+    let Ok(generator) = generators.get(trigger.entity()) else {
+        return;
+    };
+    for (cursor, mut cursor_info) in cursors.iter_mut() {
+        let Some(targeted_node) = &cursor.0 else {
+            continue;
+        };
+        (
+            cursor_info.models_variations,
+            cursor_info.total_models_count,
+        ) = generator.get_models_variations_on(targeted_node.index);
+    }
+}
 
-            match event {
-                GenerationEvent::Reinitialized(grid_entity) => {
-                    let Ok(generator) = generators.get(*grid_entity) else {
-                        continue;
-                    };
-                    (
-                        cursor_info.models_variations,
-                        cursor_info.total_models_count,
-                    ) = generator.get_models_variations_on(grid_cursor.node_index);
-                }
-                GenerationEvent::Updated(grid_entity, node_index) => {
-                    let Ok(generator) = generators.get(*grid_entity) else {
-                        continue;
-                    };
-                    if grid_cursor.node_index == *node_index {
-                        (
-                            cursor_info.models_variations,
-                            cursor_info.total_models_count,
-                        ) = generator.get_models_variations_on(grid_cursor.node_index);
-                    }
-                }
+/// Observer updating all the [CursorInfo] based on [NodesGeneratedEvent]
+pub fn update_cursors_info_on_generated_nodes<C: CartesianCoordinates>(
+    trigger: Trigger<NodesGeneratedEvent>,
+    generators: Query<&Generator<C, CartesianGrid<C>>>,
+    mut cursors: Query<(&Cursor, &mut CursorInfo)>,
+) {
+    let Ok(generator) = generators.get(trigger.entity()) else {
+        return;
+    };
+    for (cursor, mut cursor_info) in cursors.iter_mut() {
+        let Some(targeted_node) = &cursor.0 else {
+            continue;
+        };
+
+        for gen_node in trigger.event().0.iter() {
+            if targeted_node.index == gen_node.node_index {
+                (
+                    cursor_info.models_variations,
+                    cursor_info.total_models_count,
+                ) = generator.get_models_variations_on(targeted_node.index);
             }
         }
     }
@@ -576,7 +582,7 @@ pub fn spawn_marker_and_create_cursor(
     let marker = spawn_marker(commands, grid_entity, color, position);
     TargetedNode {
         grid: grid_entity,
-        node_index,
+        index: node_index,
         position,
         marker,
     }
