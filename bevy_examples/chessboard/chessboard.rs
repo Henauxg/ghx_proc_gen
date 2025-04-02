@@ -13,8 +13,8 @@ use bevy_ghx_proc_gen::{
         },
         ghx_grid::cartesian::{coordinates::Cartesian2D, grid::CartesianGrid},
     },
-    simple_plugin::ProcGenSimpleRunnerPlugin,
-    spawner_plugin::{NodesSpawner, ProcGenSpawnerPlugin},
+    simple_plugin::ProcGenSimplePlugins,
+    spawner_plugin::NodesSpawner,
 };
 
 const CUBE_SIZE: f32 = 1.;
@@ -107,8 +107,7 @@ fn main() {
     let mut app = App::new();
     app.add_plugins((
         DefaultPlugins,
-        ProcGenSimpleRunnerPlugin::<Cartesian2D>::new(),
-        ProcGenSpawnerPlugin::<Cartesian2D, PbrMesh>::new(),
+        ProcGenSimplePlugins::<Cartesian2D, PbrMesh>::default(),
     ));
     app.add_systems(Startup, (setup_generator, setup_scene));
     app.run();

@@ -20,10 +20,7 @@ cargo add bevy_ghx_proc_gen
 Steps `1` to `3` are the same as in the `ghx_proc_gen`  [Quickstart](../README.md#quickstart).
 1) To automatically spawn our assets for us, we use the provided plugins
 ```rust
-    app.add_plugins((
-        ProcGenSimpleRunnerPlugin::<Cartesian2D>::new(),
-        ProcGenSpawnerPlugin::<Cartesian2D, PbrMesh>::new(),
-    ));
+    app.add_plugins(ProcGenSimplePlugins::<Cartesian2D, PbrMesh>::default());
 ```
 1) To see something in the Bevy viewport, we setup assets in a `ModelsAssets`:
 ```rust

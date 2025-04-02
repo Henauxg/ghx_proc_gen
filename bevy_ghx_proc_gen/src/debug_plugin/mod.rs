@@ -1,7 +1,10 @@
 use std::{marker::PhantomData, time::Duration};
 
 use bevy::{
-    app::{App, Plugin, PostStartup, PostUpdate, PreUpdate, Startup, Update},
+    app::{
+        App, Plugin, PluginGroup, PluginGroupBuilder, PostStartup, PostUpdate, PreUpdate, Startup,
+        Update,
+    },
     color::{Alpha, Color},
     ecs::{schedule::IntoSystemConfigs, system::Resource},
     input::keyboard::KeyCode,
@@ -13,7 +16,10 @@ use cursor::{update_cursors_info_on_generated_nodes, update_cursors_info_on_gene
 use ghx_proc_gen::ghx_grid::cartesian::coordinates::CartesianCoordinates;
 use picking::update_over_cursor_on_generation_reset;
 
-use crate::{add_named_observer, GenerationResetEvent, NodesGeneratedEvent};
+use crate::{
+    add_named_observer, assets::BundleInserter, spawner_plugin::ProcGenSpawnerPlugin,
+    GenerationResetEvent, NodesGeneratedEvent,
+};
 
 use self::{
     cursor::{
@@ -90,6 +96,15 @@ impl Default for GridCursorsUiSettings {
     }
 }
 
+/// Configuration for a [ProcGenDebugRunnerPlugin]
+#[derive(Default)]
+pub struct DebugPluginConfig {
+    /// Controls how the generation occurs.
+    pub generation_view_mode: GenerationViewMode,
+    /// Used to configure how the cursors UI should be displayed
+    pub cursor_ui_mode: CursorUiMode,
+}
+
 /// A [`Plugin`] useful for debug/analysis/demo. It mainly run [`ghx_proc_gen::generator::Generator`] components
 ///
 /// It takes in a [`GenerationViewMode`] to control how the generators components will be run.
@@ -97,19 +112,35 @@ impl Default for GridCursorsUiSettings {
 /// It also uses the following `Resources`: [`ProcGenKeyBindings`] and [`GenerationControl`] (and will init them to their defaults if not inserted by the user).
 #[derive(Default)]
 pub struct ProcGenDebugRunnerPlugin<C: CoordinateSystem> {
-    /// Controls how the generation occurs.
-    pub generation_view_mode: GenerationViewMode,
-    /// Used to configure how the cursors UI should be displayed
-    pub cursor_ui_mode: CursorUiMode,
-
+    /// Configuration of the debug plugin
+    pub config: DebugPluginConfig,
     #[doc(hidden)]
     pub typestate: PhantomData<C>,
+}
+
+/// A group of plugins that combines debug generation and nodes spawning
+#[derive(Default)]
+pub struct ProcGenDebugPlugins<C: CartesianCoordinates, A: BundleInserter> {
+    /// Configuration of the debug plugin
+    pub config: DebugPluginConfig,
+    #[doc(hidden)]
+    pub typestate: PhantomData<(C, A)>,
+}
+impl<C: CartesianCoordinates, A: BundleInserter> PluginGroup for ProcGenDebugPlugins<C, A> {
+    fn build(self) -> PluginGroupBuilder {
+        PluginGroupBuilder::start::<Self>()
+            .add(ProcGenDebugRunnerPlugin::<C> {
+                config: self.config,
+                typestate: PhantomData,
+            })
+            .add(ProcGenSpawnerPlugin::<C, A>::new())
+    }
 }
 
 impl<C: CartesianCoordinates> Plugin for ProcGenDebugRunnerPlugin<C> {
     // TODO Clean: Split into multiple plugins
     fn build(&self, app: &mut App) {
-        app.insert_resource(self.generation_view_mode);
+        app.insert_resource(self.config.generation_view_mode);
         app.insert_resource(ActiveGeneration::default());
 
         // If the resources already exists, nothing happens, else, add them with default values.
@@ -118,7 +149,7 @@ impl<C: CartesianCoordinates> Plugin for ProcGenDebugRunnerPlugin<C> {
             .init_resource::<SelectionCursorMarkerSettings>()
             .init_resource::<CursorKeyboardMovement>()
             .init_resource::<CursorKeyboardMovementSettings>();
-        match self.cursor_ui_mode {
+        match self.config.cursor_ui_mode {
             CursorUiMode::None => (),
             _ => {
                 app.init_resource::<GridCursorsUiSettings>();
@@ -207,7 +238,7 @@ impl<C: CartesianCoordinates> Plugin for ProcGenDebugRunnerPlugin<C> {
                 .run_if(editor_enabled),
         );
 
-        match self.cursor_ui_mode {
+        match self.config.cursor_ui_mode {
             CursorUiMode::None => (),
             CursorUiMode::Panel => {
                 app.add_systems(Startup, setup_cursors_panel);
@@ -221,7 +252,7 @@ impl<C: CartesianCoordinates> Plugin for ProcGenDebugRunnerPlugin<C> {
             }
         }
 
-        match self.generation_view_mode {
+        match self.config.generation_view_mode {
             GenerationViewMode::StepByStepTimed {
                 steps_count,
                 interval_ms,

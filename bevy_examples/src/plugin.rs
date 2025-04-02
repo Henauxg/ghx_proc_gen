@@ -39,11 +39,11 @@ use bevy_ghx_proc_gen::{
     debug_plugin::{
         cursor::{CursorsOverlaysRoot, CursorsPanelRoot},
         egui_editor::{paint, toggle_editor, update_painting_state, EditorContext},
-        GenerationControl, GenerationControlStatus, GenerationViewMode, ProcGenDebugRunnerPlugin,
+        DebugPluginConfig, GenerationControl, GenerationControlStatus, GenerationViewMode,
+        ProcGenDebugPlugins,
     },
     insert_bundle_from_resource_to_spawned_nodes,
     proc_gen::ghx_grid::cartesian::coordinates::CartesianCoordinates,
-    spawner_plugin::ProcGenSpawnerPlugin,
 };
 use bevy_ghx_utils::{camera::toggle_auto_orbit, systems::toggle_visibility};
 
@@ -74,11 +74,13 @@ impl<C: CartesianCoordinates, A: BundleInserter> Plugin for ProcGenExamplesPlugi
             MeshPickingPlugin,
             EguiPlugin,
             GridDebugPlugin::<C>::new(),
-            ProcGenDebugRunnerPlugin::<C> {
-                generation_view_mode: self.generation_view_mode,
-                ..Default::default()
+            ProcGenDebugPlugins::<C, A> {
+                config: DebugPluginConfig {
+                    generation_view_mode: self.generation_view_mode,
+                    ..default()
+                },
+                ..default()
             },
-            ProcGenSpawnerPlugin::<C, A>::default(),
         ));
         app.insert_resource(SpawningScaleAnimation::new(
             DEFAULT_SPAWN_ANIMATION_DURATION,

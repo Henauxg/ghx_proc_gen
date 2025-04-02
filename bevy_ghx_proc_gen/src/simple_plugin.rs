@@ -46,6 +46,7 @@ impl<C: CartesianCoordinates> ProcGenSimpleRunnerPlugin<C> {
 }
 
 /// A group of plugins that combines simple generation and nodes spawning
+#[derive(Default)]
 pub struct ProcGenSimplePlugins<C: CartesianCoordinates, A: BundleInserter> {
     typestate: PhantomData<(C, A)>,
 }
