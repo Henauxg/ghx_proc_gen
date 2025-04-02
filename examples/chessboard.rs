@@ -7,7 +7,10 @@ use ghx_proc_gen::{
         rules::RulesBuilder,
         socket::{SocketCollection, SocketsCartesian2D},
     },
-    ghx_grid::cartesian::{coordinates::Cartesian2D, grid::CartesianGrid},
+    ghx_grid::cartesian::{
+        coordinates::{Cartesian2D, CartesianPosition},
+        grid::CartesianGrid,
+    },
 };
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -33,14 +36,13 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Like a chess board, let's do an 8x8 2d grid
     let grid = CartesianGrid::new_cartesian_2d(8, 8, false, false);
-    // Let's ensure that we make a chessboard, with a black square bottom-left
-    let initial_nodes = vec![(grid.get_index_2d(0, 0), black_model)];
 
     // There many more parameters you can tweak on a Generator before building it, explore the API.
     let mut generator = GeneratorBuilder::new()
         .with_rules(rules)
         .with_grid(grid)
-        .with_initial_nodes(initial_nodes)?
+        // Let's ensure that we make a chessboard, with a black square bottom-left
+        .with_initial_nodes(vec![(CartesianPosition::new_xy(0, 0), black_model)])?
         .build()?;
 
     // Here we directly generate the whole grid, and ask for the result to be returned.
