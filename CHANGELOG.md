@@ -1,5 +1,36 @@
 # Changelog
 
+## Version 0.5.0 (2025-04-03)
+
+###  All crates
+
+- Updated ghx_grid to 0.5
+- Updated bevy to 0.15
+
+### `ghx_proc_gen` crate:
+
+- Changed: `Generator::set_and_propagate`, `Generator::set_and_propagate_collected` and `GeneratorBuilderwith_initial_nodes` now take in a new generic parameter
+
+### `bevy_ghx_proc_gen` crate:
+
+- Simple plugin:
+  - Renamed `ProcGenSimplePlugin` to `ProcGenSimpleRunnerPlugin`
+  - No longer spawns nodes entities
+- Debug plugin:
+  - Renamed `ProcGenDebugPlugin` to `ProcGenDebugRunnerPlugin`
+  - No longer spawns nodes entities
+  - `VoidNodes` component is now optional on generator entities
+- Removed: `AssetsBundleSpawner` and `ComponentSpawner` traits
+- Added `BundleInserter` trait
+- Changed: generation runner plugins( simple & debug) now emit bevy `Event` to signal generations and resets: `GridGeneratedEvent`, `GenerationResetEvent` and `NodesGeneratedEvent`
+- Added `ProcGenSpawnerPlugin` to spawn the node entities with observers
+- Changed: remove `bevy_mod_picking_dependency` and use bevy 0.15 internal picking features
+- Updated `bevy_egui` from 0.28.0 to 0.33.0
+
+#### bevy-examples
+
+- Removed the fps ui display
+
 ## Version 0.4.0 (2024-11-07)
 
 ###  All crates
