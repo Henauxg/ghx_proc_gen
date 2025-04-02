@@ -193,9 +193,9 @@ impl<C: CoordinateSystem, G: Grid<C>> Generator<C, G> {
     pub fn generate_grid(
         &mut self,
     ) -> Result<(GenInfo, GridData<C, ModelInstance, G>), GeneratorError> {
-        let gen_info =
-            self.internal
-                .generate(&mut None, self.max_retry_count, &self.initial_nodes)?;
+        let gen_info = self
+            .internal
+            .generate(self.max_retry_count, &self.initial_nodes)?;
         Ok((gen_info, self.internal.to_grid_data()))
     }
 
@@ -203,9 +203,9 @@ impl<C: CoordinateSystem, G: Grid<C>> Generator<C, G> {
     ///
     /// [`Generator::to_grid_data`] can still be called to retrieve a [`GridData`] afterwards.
     pub fn generate(&mut self) -> Result<GenInfo, GeneratorError> {
-        let gen_info =
-            self.internal
-                .generate(&mut None, self.max_retry_count, &self.initial_nodes)?;
+        let gen_info = self
+            .internal
+            .generate(self.max_retry_count, &self.initial_nodes)?;
         Ok(gen_info)
     }
 
