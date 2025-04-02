@@ -1,29 +1,34 @@
 use std::marker::PhantomData;
 
 use bevy::{
-    app::{App, Plugin, Startup, Update},
+    app::{App, Plugin, PreUpdate, Startup, Update},
     color::{
         palettes::css::{GREEN, YELLOW_GREEN},
         Alpha, Color,
     },
-    diagnostic::FrameTimeDiagnosticsPlugin,
     ecs::{
         component::Component,
+        event::Events,
         query::With,
         schedule::IntoSystemConfigs,
         system::{Commands, Query, Res, ResMut},
     },
     gizmos::config::GizmoConfigStore,
     hierarchy::BuildChildren,
-    input::{common_conditions::input_just_pressed, keyboard::KeyCode},
+    input::{
+        common_conditions::input_just_pressed,
+        keyboard::KeyCode,
+        mouse::{MouseButton, MouseWheel},
+        ButtonInput,
+    },
     math::Vec3,
-    prelude::{default, Entity, PickingBehavior, Text, TextUiWriter},
+    prelude::{default, Entity, MeshPickingPlugin, PickingBehavior, Text, TextUiWriter},
     text::{LineBreak, TextFont, TextLayout, TextSpan},
     ui::{BackgroundColor, Node, PositionType, UiRect, Val},
 };
 use bevy_ghx_proc_gen::{
-    // TODO Egui for bevy 0.15
-    // bevy_egui::{self, EguiPlugin},
+    assets::BundleInserter,
+    bevy_egui::{self, EguiPlugin},
     bevy_ghx_grid::{
         debug_plugin::{
             markers::MarkersGroup, toggle_debug_grids_visibilities,
@@ -31,39 +36,26 @@ use bevy_ghx_proc_gen::{
         },
         ghx_grid::coordinate_system::CoordinateSystem,
     },
-    gen::{
-        assets::{AssetsBundleSpawner, ComponentSpawner, NoComponents},
-        debug_plugin::{
-            cursor::{CursorsOverlaysRoot, CursorsPanelRoot},
-            // TODO Egui for bevy 0.15
-            // egui_editor::{paint, toggle_editor, update_painting_state, EditorContext},
-            CursorUiMode,
-            GenerationControl,
-            GenerationControlStatus,
-            GenerationViewMode,
-            ProcGenDebugPlugin,
-        },
-        insert_bundle_from_resource_to_spawned_nodes,
+    debug_plugin::{
+        cursor::{CursorsOverlaysRoot, CursorsPanelRoot},
+        egui_editor::{paint, toggle_editor, update_painting_state, EditorContext},
+        GenerationControl, GenerationControlStatus, GenerationViewMode, ProcGenDebugRunnerPlugin,
     },
+    insert_bundle_from_resource_to_spawned_nodes,
     proc_gen::ghx_grid::cartesian::coordinates::CartesianCoordinates,
+    spawner_plugin::ProcGenSpawnerPlugin,
 };
 use bevy_ghx_utils::{camera::toggle_auto_orbit, systems::toggle_visibility};
 
 use crate::anim::{animate_scale, ease_in_cubic, SpawningScaleAnimation};
 
-pub struct ProcGenExamplesPlugin<
-    C: CoordinateSystem,
-    A: AssetsBundleSpawner,
-    T: ComponentSpawner = NoComponents,
-> {
+pub struct ProcGenExamplesPlugin<C: CoordinateSystem, A: BundleInserter> {
     generation_view_mode: GenerationViewMode,
     assets_scale: Vec3,
-    typestate: PhantomData<(C, A, T)>,
+    typestate: PhantomData<(C, A)>,
 }
 
-impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner>
-    ProcGenExamplesPlugin<C, A, T>
-{
+impl<C: CoordinateSystem, A: BundleInserter> ProcGenExamplesPlugin<C, A> {
     pub fn new(generation_view_mode: GenerationViewMode, assets_scale: Vec3) -> Self {
         Self {
             generation_view_mode,
@@ -74,26 +66,29 @@ impl<C: CoordinateSystem, A: AssetsBundleSpawner, T: ComponentSpawner>
 }
 
 const DEFAULT_SPAWN_ANIMATION_DURATION: f32 = 0.6;
-// TODO Egui for bevy 0.15
-// const FAST_SPAWN_ANIMATION_DURATION: f32 = 0.1;
+const FAST_SPAWN_ANIMATION_DURATION: f32 = 0.1;
 
-impl<C: CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner> Plugin
-    for ProcGenExamplesPlugin<C, A, T>
-{
+impl<C: CartesianCoordinates, A: BundleInserter> Plugin for ProcGenExamplesPlugin<C, A> {
     fn build(&self, app: &mut App) {
         app.add_plugins((
-            FrameTimeDiagnosticsPlugin::default(),
+            MeshPickingPlugin,
+            EguiPlugin,
             GridDebugPlugin::<C>::new(),
-            // TODO Egui for bevy 0.15
-            // EguiPlugin,
-            ProcGenDebugPlugin::<C, A, T>::new(self.generation_view_mode, CursorUiMode::Overlay),
+            ProcGenDebugRunnerPlugin::<C> {
+                generation_view_mode: self.generation_view_mode,
+                ..Default::default()
+            },
+            ProcGenSpawnerPlugin::<C, A>::default(),
         ));
         app.insert_resource(SpawningScaleAnimation::new(
             DEFAULT_SPAWN_ANIMATION_DURATION,
             self.assets_scale,
             ease_in_cubic,
         ));
-        app.add_systems(Startup, (setup_ui, customize_markers_gizmos_config));
+        app.add_systems(
+            Startup,
+            (setup_examples_ui, customize_grid_markers_gizmos_config),
+        );
         app.add_systems(
             Update,
             (
@@ -103,49 +98,45 @@ impl<C: CartesianCoordinates, A: AssetsBundleSpawner, T: ComponentSpawner> Plugi
                     toggle_visibility::<ExamplesUiRoot>,
                     toggle_visibility::<CursorsPanelRoot>,
                     toggle_visibility::<CursorsOverlaysRoot>,
-                    // TODO Egui for bevy 0.15
-                    // toggle_editor,
+                    toggle_editor,
                 )
                     .run_if(input_just_pressed(KeyCode::F1)),
                 toggle_debug_grids_visibilities.run_if(input_just_pressed(KeyCode::F2)),
                 toggle_grid_markers_visibilities.run_if(input_just_pressed(KeyCode::F3)),
                 toggle_auto_orbit.run_if(input_just_pressed(KeyCode::F4)),
                 update_generation_control_ui,
-                // TODO Egui for bevy 0.15
                 // Quick adjust of the slowish spawn animation to be more snappy when painting
-                // adjust_spawn_animation_when_painting
-                //     .after(update_painting_state)
-                //     .before(paint::<C>),
+                adjust_spawn_animation_when_painting
+                    .after(update_painting_state)
+                    .before(paint::<C>),
             ),
         );
-        // TODO Egui for bevy 0.15
         // Quick & dirty: silence bevy events when using an egui window
-        // app.add_systems(
-        //     PreUpdate,
-        //     absorb_egui_inputs
-        //         .after(bevy_egui::systems::process_input_system)
-        //         .before(bevy_egui::EguiSet::BeginFrame),
-        // );
+        app.add_systems(
+            PreUpdate,
+            absorb_egui_inputs
+                .after(bevy_egui::input::write_egui_input_system)
+                .before(bevy_egui::begin_pass_system),
+        );
     }
 }
 
-pub fn customize_markers_gizmos_config(mut config_store: ResMut<GizmoConfigStore>) {
+pub fn customize_grid_markers_gizmos_config(mut config_store: ResMut<GizmoConfigStore>) {
     let markers_config = config_store.config_mut::<MarkersGroup>().0;
     // Make them appear on top of everything else
     markers_config.depth_bias = -1.0;
 }
 
-// TODO Egui for bevy 0.15
-// pub fn adjust_spawn_animation_when_painting(
-//     editor_contex: Res<EditorContext>,
-//     mut spawn_animation: ResMut<SpawningScaleAnimation>,
-// ) {
-//     if editor_contex.painting {
-//         spawn_animation.duration_sec = FAST_SPAWN_ANIMATION_DURATION;
-//     } else {
-//         spawn_animation.duration_sec = DEFAULT_SPAWN_ANIMATION_DURATION;
-//     }
-// }
+pub fn adjust_spawn_animation_when_painting(
+    editor_contex: Res<EditorContext>,
+    mut spawn_animation: ResMut<SpawningScaleAnimation>,
+) {
+    if editor_contex.painting {
+        spawn_animation.duration_sec = FAST_SPAWN_ANIMATION_DURATION;
+    } else {
+        spawn_animation.duration_sec = DEFAULT_SPAWN_ANIMATION_DURATION;
+    }
+}
 
 pub const DEFAULT_EXAMPLES_FONT_SIZE: f32 = 17.;
 
@@ -156,7 +147,7 @@ pub struct ExamplesUiRoot;
 #[derive(Component)]
 pub struct GenerationControlText;
 
-pub fn setup_ui(mut commands: Commands, view_mode: Res<GenerationViewMode>) {
+pub fn setup_examples_ui(mut commands: Commands, view_mode: Res<GenerationViewMode>) {
     let ui_root = commands
         .spawn((
             ExamplesUiRoot,
@@ -240,6 +231,7 @@ pub fn setup_ui(mut commands: Commands, view_mode: Res<GenerationViewMode>) {
                 ..default()
             },
             PickingBehavior::IGNORE,
+            Text("".into()),
         ))
         .with_child(TextSpan::new("\nGeneration control status: "))
         .with_child(TextSpan::new(""))
@@ -287,16 +279,15 @@ pub fn update_generation_control_ui(
     }
 }
 
-// TODO Egui for bevy 0.15
 // Quick & dirty: silence bevy events when using an egui window
-// fn absorb_egui_inputs(
-//     mut contexts: bevy_egui::EguiContexts,
-//     mut mouse: ResMut<ButtonInput<MouseButton>>,
-//     mut mouse_wheel: ResMut<Events<MouseWheel>>,
-// ) {
-//     let ctx = contexts.ctx_mut();
-//     if ctx.wants_pointer_input() || ctx.is_pointer_over_area() {
-//         mouse.reset_all();
-//         mouse_wheel.clear();
-//     }
-// }
+fn absorb_egui_inputs(
+    mut contexts: bevy_egui::EguiContexts,
+    mut mouse: ResMut<ButtonInput<MouseButton>>,
+    mut mouse_wheel: ResMut<Events<MouseWheel>>,
+) {
+    let ctx = contexts.ctx_mut();
+    if ctx.wants_pointer_input() || ctx.is_pointer_over_area() {
+        mouse.reset_all();
+        mouse_wheel.clear();
+    }
+}

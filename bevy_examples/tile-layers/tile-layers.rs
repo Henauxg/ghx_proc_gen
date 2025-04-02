@@ -2,12 +2,12 @@ use bevy::{
     app::{App, PluginGroup, Startup},
     asset::{AssetServer, Handle},
     color::Color,
-    core_pipeline::core_2d::Camera2dBundle,
     ecs::system::{Commands, Res},
+    image::Image,
     log::LogPlugin,
     math::Vec3,
-    prelude::SpatialBundle,
-    render::texture::{Image, ImagePlugin},
+    prelude::Camera2d,
+    render::texture::ImagePlugin,
     transform::components::Transform,
     utils::default,
     DefaultPlugins,
@@ -19,10 +19,7 @@ use bevy_ghx_proc_gen::{
         debug_plugin::{view::DebugGridView, DebugGridView2dBundle},
         ghx_grid::direction::Direction,
     },
-    gen::{
-        assets::{AssetSpawner, RulesModelsAssets},
-        debug_plugin::GenerationViewMode,
-    },
+    debug_plugin::GenerationViewMode,
     proc_gen::{
         generator::{
             builder::GeneratorBuilder, node_heuristic::NodeSelectionHeuristic, rules::RulesBuilder,
@@ -30,25 +27,24 @@ use bevy_ghx_proc_gen::{
         },
         ghx_grid::cartesian::{coordinates::Cartesian3D, grid::CartesianGrid},
     },
-    GeneratorBundle,
+    spawner_plugin::NodesSpawner,
 };
 
 use crate::rules::rules_and_assets;
 
 mod rules;
 
-// --------------------------------------------
-/// Change this to change the map size.
+// -----------------  Configurable values ---------------------------
+/// Modify these values to control the map size.
 const GRID_X: u32 = 25;
 const GRID_Y: u32 = 18;
 
-/// Change this value to change the way the generation is visualized
+/// Modify this value to control the way the generation is visualized
 const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::StepByStepTimed {
     steps_count: 2,
     interval_ms: 1,
 };
-
-// --------------------------------------------
+// ------------------------------------------------------------------
 
 const ASSETS_PATH: &str = "tile_layers";
 /// Size of a block in world units (in Bevy 2d, 1 pixel is 1 world unit)
@@ -63,7 +59,7 @@ const GRID_Z: u32 = 5;
 
 fn setup_scene(mut commands: Commands) {
     // Camera
-    commands.spawn(Camera2dBundle::default());
+    commands.spawn(Camera2d::default());
 }
 
 fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -82,25 +78,21 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         .with_rng(RngMode::RandomSeed)
         .with_node_heuristic(NodeSelectionHeuristic::MinimumRemainingValue)
         .with_model_heuristic(ModelSelectionHeuristic::WeightedProbability);
-    let observer = gen_builder.add_queued_observer();
+    let gen_observer = gen_builder.add_queued_observer();
     let generator = gen_builder.build().unwrap();
 
-    let models_assets: RulesModelsAssets<Handle<Image>> =
-        load_assets(&asset_server, assets_definitions, ASSETS_PATH, "png");
+    let models_assets = load_assets::<Image>(&asset_server, assets_definitions, ASSETS_PATH, "png");
 
     commands.spawn((
-        GeneratorBundle {
-            spatial: SpatialBundle::from_transform(Transform::from_translation(Vec3 {
-                x: -TILE_SIZE * grid.size_x() as f32 / 2.,
-                y: -TILE_SIZE * grid.size_y() as f32 / 2.,
-                z: 0.,
-            })),
-            grid,
-            generator,
-            asset_spawner: AssetSpawner::new(models_assets, NODE_SIZE, Vec3::ZERO)
-                .with_z_offset_from_y(true),
-        },
-        observer,
+        Transform::from_translation(Vec3 {
+            x: -TILE_SIZE * grid.size_x() as f32 / 2.,
+            y: -TILE_SIZE * grid.size_y() as f32 / 2.,
+            z: 0.,
+        }),
+        grid,
+        generator,
+        gen_observer,
+        NodesSpawner::new(models_assets, NODE_SIZE, Vec3::ZERO).with_z_offset_from_y(true),
         DebugGridView2dBundle {
             view: DebugGridView::new(false, true, Color::WHITE, NODE_SIZE),
             ..default()
@@ -113,7 +105,7 @@ fn main() {
     app.add_plugins((
         DefaultPlugins
             .set(LogPlugin {
-                filter: "info,wgpu_core=warn,wgpu_hal=warn,ghx_proc_gen=debug".into(),
+                filter: "info,wgpu_core=error,wgpu_hal=error,ghx_proc_gen=debug".into(),
                 level: bevy::log::Level::DEBUG,
                 ..default()
             })

@@ -1,4 +1,4 @@
-use bevy_examples::utils::AssetDef;
+use bevy_examples::utils::ModelAssetDef;
 
 use bevy_ghx_proc_gen::{
     bevy_ghx_grid::ghx_grid::direction::Direction,
@@ -14,7 +14,7 @@ use bevy_ghx_proc_gen::{
 const UP_AXIS: Direction = Direction::ZForward;
 
 pub(crate) fn rules_and_assets() -> (
-    Vec<Vec<AssetDef>>,
+    Vec<Vec<ModelAssetDef>>,
     ModelCollection<Cartesian3D>,
     SocketCollection,
 ) {
@@ -43,7 +43,7 @@ pub(crate) fn rules_and_assets() -> (
     let mut assets = Vec::new();
 
     // Utility functions to declare assets & models
-    let asset = |str| -> Vec<AssetDef> { vec![AssetDef::new(str)] };
+    let asset = |str| -> Vec<ModelAssetDef> { vec![ModelAssetDef::new(str)] };
 
     // ---------------------------- Layer 0 ----------------------------
 
@@ -362,8 +362,8 @@ pub(crate) fn rules_and_assets() -> (
     // (We could also just have 1 asset with a 32x64 size)
     models.create(plant_prop.clone());
     assets.push(vec![
-        AssetDef::new("small_tree_bottom"),
-        AssetDef::new("small_tree_top").with_grid_offset(GridDelta::new(0, 1, 0)),
+        ModelAssetDef::new("small_tree_bottom"),
+        ModelAssetDef::new("small_tree_top").with_grid_offset(GridDelta::new(0, 1, 0)),
     ]);
 
     models
@@ -377,8 +377,8 @@ pub(crate) fn rules_and_assets() -> (
         })
         .with_weight(PROPS_WEIGHT);
     assets.push(vec![
-        AssetDef::new("big_tree_1_bl"),
-        AssetDef::new("big_tree_1_tl").with_grid_offset(GridDelta::new(0, 1, 0)),
+        ModelAssetDef::new("big_tree_1_bl"),
+        ModelAssetDef::new("big_tree_1_tl").with_grid_offset(GridDelta::new(0, 1, 0)),
     ]);
 
     models
@@ -392,8 +392,8 @@ pub(crate) fn rules_and_assets() -> (
         })
         .with_weight(PROPS_WEIGHT);
     assets.push(vec![
-        AssetDef::new("big_tree_1_br"),
-        AssetDef::new("big_tree_1_tr").with_grid_offset(GridDelta::new(0, 1, 0)),
+        ModelAssetDef::new("big_tree_1_br"),
+        ModelAssetDef::new("big_tree_1_tr").with_grid_offset(GridDelta::new(0, 1, 0)),
     ]);
 
     models
@@ -407,8 +407,8 @@ pub(crate) fn rules_and_assets() -> (
         })
         .with_weight(PROPS_WEIGHT);
     assets.push(vec![
-        AssetDef::new("big_tree_2_bl"),
-        AssetDef::new("big_tree_2_tl").with_grid_offset(GridDelta::new(0, 1, 0)),
+        ModelAssetDef::new("big_tree_2_bl"),
+        ModelAssetDef::new("big_tree_2_tl").with_grid_offset(GridDelta::new(0, 1, 0)),
     ]);
 
     models
@@ -422,8 +422,8 @@ pub(crate) fn rules_and_assets() -> (
         })
         .with_weight(PROPS_WEIGHT);
     assets.push(vec![
-        AssetDef::new("big_tree_2_br"),
-        AssetDef::new("big_tree_2_tr").with_grid_offset(GridDelta::new(0, 1, 0)),
+        ModelAssetDef::new("big_tree_2_br"),
+        ModelAssetDef::new("big_tree_2_tr").with_grid_offset(GridDelta::new(0, 1, 0)),
     ]);
 
     // Here we reuse the same models to create variations. (We could also have 1 model, and multiple assets, with the spawner picking one of the assets at random)
@@ -488,7 +488,7 @@ pub(crate) fn rules_and_assets() -> (
         model.with_name(
             assets[model.index()]
                 .first()
-                .unwrap_or(&AssetDef::new("void"))
+                .unwrap_or(&ModelAssetDef::new("void"))
                 .path(),
         );
     }

@@ -1,4 +1,4 @@
-use bevy_examples::utils::AssetDef;
+use bevy_examples::utils::ModelAssetDef;
 use bevy_ghx_proc_gen::proc_gen::{
     generator::{
         model::ModelCollection,
@@ -8,7 +8,7 @@ use bevy_ghx_proc_gen::proc_gen::{
 };
 
 pub(crate) fn rules_and_assets() -> (
-    Vec<Vec<AssetDef>>,
+    Vec<Vec<ModelAssetDef>>,
     ModelCollection<Cartesian3D>,
     SocketCollection,
 ) {
@@ -27,7 +27,7 @@ pub(crate) fn rules_and_assets() -> (
     let pillar_cap_bottom = sockets.create();
     let pillar_cap_top = sockets.create();
 
-    let mut models_assets: Vec<Vec<AssetDef>> = Vec::new();
+    let mut models_assets: Vec<Vec<ModelAssetDef>> = Vec::new();
     let mut models = ModelCollection::new();
 
     models_assets.push(vec![]);
@@ -39,7 +39,7 @@ pub(crate) fn rules_and_assets() -> (
         )
         .with_name("void");
 
-    models_assets.push(vec![AssetDef::new("pillar_base")]);
+    models_assets.push(vec![ModelAssetDef::new("pillar_base")]);
     models
         .create(SocketsCartesian3D::Simple {
             x_pos: pillar_side,
@@ -51,7 +51,7 @@ pub(crate) fn rules_and_assets() -> (
         })
         .with_name("pillar_base");
 
-    models_assets.push(vec![AssetDef::new("pillar_core")]);
+    models_assets.push(vec![ModelAssetDef::new("pillar_core")]);
     models
         .create(SocketsCartesian3D::Simple {
             x_pos: pillar_side,
@@ -63,7 +63,7 @@ pub(crate) fn rules_and_assets() -> (
         })
         .with_name("pillar_core");
 
-    models_assets.push(vec![AssetDef::new("pillar_cap")]);
+    models_assets.push(vec![ModelAssetDef::new("pillar_cap")]);
     models
         .create(SocketsCartesian3D::Simple {
             x_pos: pillar_side,

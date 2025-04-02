@@ -2,31 +2,33 @@ use bevy::{
     asset::{Asset, AssetServer, Handle},
     ecs::system::Res,
     math::Vec3,
+    prelude::EntityCommands,
 };
 
 use bevy_ghx_proc_gen::{
-    gen::assets::{
-        AssetsBundleSpawner, ComponentSpawner, ModelAsset, NoComponents, RulesModelsAssets,
-    },
+    assets::{BundleInserter, ModelAsset, ModelsAssets},
     proc_gen::ghx_grid::cartesian::coordinates::GridDelta,
 };
 
 /// Used to define an asset (not yet loaded) for a model: via an asset path, and an optionnal grid offset when spawned in Bevy
 #[derive(Clone)]
-pub struct AssetDef<T = NoComponents> {
-    path: &'static str,
-    grid_offset: GridDelta,
-    offset: Vec3,
-    components: Vec<T>,
+pub struct ModelAssetDef {
+    /// Path of the asset
+    pub path: &'static str,
+    /// Offset in grid coordinates
+    pub grid_offset: GridDelta,
+    /// Offset in world coordinates
+    pub offset: Vec3,
+    pub components_spawner: fn(&mut EntityCommands),
 }
 
-impl<T> AssetDef<T> {
+impl ModelAssetDef {
     pub fn new(path: &'static str) -> Self {
         Self {
             path,
             grid_offset: GridDelta::new(0, 0, 0),
             offset: Vec3::ZERO,
-            components: Vec::new(),
+            components_spawner: |_| {},
         }
     }
 
@@ -40,8 +42,8 @@ impl<T> AssetDef<T> {
         self
     }
 
-    pub fn with_component(mut self, component: T) -> Self {
-        self.components.push(component);
+    pub fn with_components(mut self, spawn_cmds: fn(&mut EntityCommands)) -> Self {
+        self.components_spawner = spawn_cmds;
         self
     }
 
@@ -53,29 +55,28 @@ impl<T> AssetDef<T> {
     }
 }
 
-pub fn load_assets<A: Asset, T: ComponentSpawner>(
+pub fn load_assets<A: Asset>(
     asset_server: &Res<AssetServer>,
-    assets_definitions: Vec<Vec<AssetDef<T>>>,
+    assets_definitions: Vec<Vec<ModelAssetDef>>,
     assets_directory: &str,
     extension: &str,
-) -> RulesModelsAssets<Handle<A>, T>
+) -> ModelsAssets<Handle<A>>
 where
-    Handle<A>: AssetsBundleSpawner,
-    T: Clone,
+    Handle<A>: BundleInserter,
 {
-    let mut models_assets = RulesModelsAssets::new();
+    let mut models_assets = ModelsAssets::<Handle<A>>::new();
     for (model_index, assets) in assets_definitions.iter().enumerate() {
         for asset_def in assets {
             models_assets.add(
                 model_index,
                 ModelAsset {
-                    assets_bundle: asset_server.load(format!(
+                    assets_bundle: asset_server.load::<A>(format!(
                         "{assets_directory}/{}.{extension}",
                         asset_def.path()
                     )),
                     grid_offset: asset_def.grid_offset.clone(),
-                    offset: asset_def.offset,
-                    components: asset_def.components.clone(),
+                    world_offset: asset_def.offset,
+                    spawn_commands: asset_def.components_spawner.clone(),
                 },
             )
         }
