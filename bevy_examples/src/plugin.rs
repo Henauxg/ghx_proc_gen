@@ -140,7 +140,7 @@ pub fn adjust_spawn_animation_when_painting(
     }
 }
 
-pub const DEFAULT_EXAMPLES_FONT_SIZE: f32 = 17.;
+pub const DEFAULT_EXAMPLES_FONT_SIZE: f32 = 14.;
 
 /// Marker to find the container entity so we can show/hide the UI node
 #[derive(Component)]
@@ -235,13 +235,22 @@ pub fn setup_examples_ui(mut commands: Commands, view_mode: Res<GenerationViewMo
             PickingBehavior::IGNORE,
             Text("".into()),
         ))
-        .with_child(TextSpan::new("\nGeneration control status: "))
-        .with_child(TextSpan::new(""))
-        .with_child(TextSpan::new(""))
-        .with_child(TextSpan::new(format!(
-            "\nGenerationViewMode: {:?}",
-            *view_mode
-        )))
+        .with_child((
+            TextSpan::new("\nGeneration control status: "),
+            TextFont::from_font_size(DEFAULT_EXAMPLES_FONT_SIZE),
+        ))
+        .with_child((
+            TextSpan::new(""),
+            TextFont::from_font_size(DEFAULT_EXAMPLES_FONT_SIZE),
+        ))
+        .with_child((
+            TextSpan::new(""),
+            TextFont::from_font_size(DEFAULT_EXAMPLES_FONT_SIZE),
+        ))
+        .with_child((
+            TextSpan::new(format!("\nGenerationViewMode: {:?}", *view_mode)),
+            TextFont::from_font_size(DEFAULT_EXAMPLES_FONT_SIZE),
+        ))
         .id();
     commands
         .entity(ui_root)
