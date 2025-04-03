@@ -238,17 +238,22 @@ pub fn setup_cursors_panel(mut commands: Commands, ui_config: Res<GridCursorsUiS
         .spawn((
             CursorsPanelText,
             TextLayout::default(),
-            TextFont {
-                font_size: ui_config.font_size,
-                ..Default::default()
-            },
+            TextFont::from_font_size(ui_config.font_size),
+            TextColor(ui_config.text_color),
+            Text("".into()),
+        ))
+        // Over cursor
+        .with_child((
+            TextSpan::new(" N/A"),
+            TextFont::from_font_size(ui_config.font_size),
             TextColor(ui_config.text_color),
         ))
-        // TODO TextSpan Does TextSpan needs text font and color ?
-        // Over cursor
-        .with_child((TextSpan::new(" N/A"),))
         // Selection cursor
-        .with_child((TextSpan::new(" N/A"),))
+        .with_child((
+            TextSpan::new(" N/A"),
+            TextFont::from_font_size(ui_config.font_size),
+            TextColor(ui_config.text_color),
+        ))
         .id();
 
     commands.entity(root).add_child(text);
