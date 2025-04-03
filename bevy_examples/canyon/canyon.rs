@@ -1,4 +1,4 @@
-use std::f32::consts::{FRAC_PI_2, PI};
+use std::f32::consts::PI;
 
 use bevy::{
     color::palettes::css::{GRAY, ORANGE_RED},
@@ -7,6 +7,7 @@ use bevy::{
     prelude::*,
 };
 
+use bevy_editor_cam::{prelude::EditorCam, DefaultEditorCamPlugins};
 use bevy_examples::{
     anim::SpawningScaleAnimation, plugin::ProcGenExamplesPlugin, utils::load_assets,
 };
@@ -22,7 +23,6 @@ use bevy_ghx_proc_gen::{
     },
     spawner_plugin::NodesSpawner,
 };
-use bevy_ghx_utils::camera::{update_pan_orbit_camera, PanOrbitState};
 
 use rand::Rng;
 use rules::{RotationRandomizer, ScaleRandomizer, WindRotation};
@@ -55,17 +55,13 @@ const ASSETS_SCALE: Vec3 = Vec3::splat(ASSETS_SCALE_FACTOR);
 
 fn setup_scene(mut commands: Commands) {
     // Camera
-    let camera_position = Vec3::new(0., 1.5 * GRID_HEIGHT as f32, 1.5 * GRID_Z as f32 / 2.);
-    let look_target = Vec3::new(0., -10., 0.);
-    let radius = (look_target - camera_position).length();
+    let camera_position = Vec3::new(0., 2.5 * GRID_HEIGHT as f32, 1.8 * GRID_Z as f32 / 2.);
+    let look_target = Vec3::new(0., 0., 0.);
     commands.spawn((
         Name::new("Camera"),
         Transform::from_translation(camera_position).looking_at(look_target, Vec3::Y),
-        PanOrbitState {
-            radius,
-            pitch: -FRAC_PI_2 / 2.,
-            ..default()
-        },
+        Camera3d::default(),
+        EditorCam::default(),
     ));
 
     // Scene lights
@@ -199,6 +195,7 @@ fn main() {
             level: bevy::log::Level::DEBUG,
             ..default()
         }),
+        DefaultEditorCamPlugins,
         ProcGenExamplesPlugin::<Cartesian3D, Handle<Scene>>::new(
             GENERATION_VIEW_MODE,
             ASSETS_SCALE,
@@ -207,12 +204,7 @@ fn main() {
     app.add_systems(Startup, (setup_generator, setup_scene))
         .add_systems(
             Update,
-            (
-                update_pan_orbit_camera,
-                apply_wind,
-                randomize_spawn_scale,
-                randomize_spawn_rotation,
-            ),
+            (apply_wind, randomize_spawn_scale, randomize_spawn_rotation),
         );
 
     app.run();

@@ -45,7 +45,7 @@ use bevy_ghx_proc_gen::{
     insert_bundle_from_resource_to_spawned_nodes,
     proc_gen::ghx_grid::cartesian::coordinates::CartesianCoordinates,
 };
-use bevy_ghx_utils::{camera::toggle_auto_orbit, systems::toggle_visibility};
+use bevy_ghx_utils::systems::toggle_visibility;
 
 use crate::anim::{animate_scale, ease_in_cubic, SpawningScaleAnimation};
 
@@ -105,7 +105,7 @@ impl<C: CartesianCoordinates, A: BundleInserter> Plugin for ProcGenExamplesPlugi
                     .run_if(input_just_pressed(KeyCode::F1)),
                 toggle_debug_grids_visibilities.run_if(input_just_pressed(KeyCode::F2)),
                 toggle_grid_markers_visibilities.run_if(input_just_pressed(KeyCode::F3)),
-                toggle_auto_orbit.run_if(input_just_pressed(KeyCode::F4)),
+                // toggle_auto_orbit.run_if(input_just_pressed(KeyCode::F4)),
                 update_generation_control_ui,
                 // Quick adjust of the slowish spawn animation to be more snappy when painting
                 adjust_spawn_animation_when_painting

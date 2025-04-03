@@ -1,16 +1,14 @@
-use std::{
-    f32::consts::{FRAC_PI_2, PI},
-    sync::Arc,
-};
+use std::{f32::consts::PI, sync::Arc};
 
 use bevy::{
-    app::{App, Startup, Update},
+    app::{App, Startup},
     asset::{AssetServer, Assets, Handle},
     color::{
         palettes::css::{GRAY, ORANGE_RED},
         Color,
     },
     core::Name,
+    core_pipeline::core_3d::Camera3d,
     log::LogPlugin,
     math::{EulerRot, Quat, Vec3},
     pbr::{
@@ -23,6 +21,7 @@ use bevy::{
     DefaultPlugins,
 };
 
+use bevy_editor_cam::{prelude::EditorCam, DefaultEditorCamPlugins};
 use bevy_examples::{plugin::ProcGenExamplesPlugin, utils::load_assets};
 
 use bevy_ghx_proc_gen::{
@@ -35,7 +34,6 @@ use bevy_ghx_proc_gen::{
     },
     spawner_plugin::NodesSpawner,
 };
-use bevy_ghx_utils::camera::{update_pan_orbit_camera, PanOrbitState};
 
 use crate::rules::rules_and_assets;
 
@@ -64,15 +62,11 @@ fn setup_scene(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let camera_position = Vec3::new(0., 3. * GRID_HEIGHT as f32, 0.75 * GRID_Z as f32);
-    let radius = camera_position.length();
     commands.spawn((
         Name::new("Camera"),
         Transform::from_translation(camera_position).looking_at(Vec3::ZERO, Vec3::Y),
-        PanOrbitState {
-            radius,
-            pitch: -FRAC_PI_2 / 2.,
-            ..default()
-        },
+        Camera3d::default(),
+        EditorCam::default(),
         DistanceFog {
             color: Color::srgba(0.2, 0.15, 0.1, 1.0),
             falloff: FogFalloff::Linear {
@@ -189,13 +183,13 @@ fn main() {
             level: bevy::log::Level::DEBUG,
             ..default()
         }),
+        DefaultEditorCamPlugins,
         ProcGenExamplesPlugin::<Cartesian3D, Handle<Scene>>::new(
             GENERATION_VIEW_MODE,
             ASSETS_SCALE,
         ),
     ));
-    app.add_systems(Startup, (setup_generator, setup_scene))
-        .add_systems(Update, update_pan_orbit_camera);
+    app.add_systems(Startup, (setup_generator, setup_scene));
 
     app.run();
 }

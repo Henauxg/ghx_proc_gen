@@ -8,7 +8,8 @@ exclude = ["assets/"]
 [dependencies]
 # ----- Internal dependencies
 bevy_ghx_proc_gen = { path = "../bevy_ghx_proc_gen", default-features = true }
-bevy_ghx_utils = { version = "0.5.0", default-features = true }
+bevy_ghx_utils = { version = "0.5.0", default-features = false }
+bevy_editor_cam = { version = "0.5.0" }
 
 # ----- External dependencies
 tracing-subscriber = "0.3.18"

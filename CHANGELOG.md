@@ -23,7 +23,7 @@
   - Moved `GenerationViewMode`, `GenerationControlStatus`, `GenerationControl` and `StepByStepTimed` to the `generation` module
   - Internal refactor into multiple plugins (cursor, picking, generation, egui_editor)
 - Removed: `AssetsBundleSpawner` and `ComponentSpawner` traits
-- Added `BundleInserter` trait
+- Added a more versatile `BundleInserter` trait
 - Changed: generation runner plugins( simple & debug) now emit bevy `Event` to signal generations and resets: `GridGeneratedEvent`, `GenerationResetEvent` and `NodesGeneratedEvent`
 - Added `ProcGenSpawnerPlugin` to spawn the node entities with observers
 - Added `ProcGenSimplePlugins` and `ProcGenDebugPlugins` plugin groups (runner+spawner)
@@ -35,6 +35,8 @@
 #### bevy-examples
 
 - Removed the fps ui display
+- Decreased the default font size 
+- Changed from `bevy_ghx_utils` camera to `bevy_editor_cam` for `canyon` and `pillars`
 
 ## Version 0.4.0 (2024-11-07)
 
