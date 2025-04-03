@@ -74,7 +74,7 @@ pub struct DebugPluginConfig {
 ///
 /// It takes in a [`GenerationViewMode`] to control how the generators components will be run.
 ///
-/// It also uses the following `Resources`: [`ProcGenKeyBindings`] and [`GenerationControl`] (and will init them to their defaults if not inserted by the user).
+/// It also uses the following `Resources`: [`ProcGenKeyBindings`] and [`generation::GenerationControl`] (and will init them to their defaults if not inserted by the user).
 #[derive(Default)]
 pub struct ProcGenDebugRunnerPlugin<C: CoordinateSystem> {
     /// Configuration of the debug plugin
@@ -138,7 +138,7 @@ pub struct ProcGenKeyBindings {
     /// Key to move the selection cursor to another grid
     pub switch_grid: KeyCode,
 
-    /// Key to pause/unpause the current [`GenerationControlStatus`]
+    /// Key to pause/unpause the current [`generation::GenerationControlStatus`]
     pub pause_toggle: KeyCode,
     /// Key used only with [`GenerationViewMode::StepByStepManual`] to step once per press
     pub step: KeyCode,
