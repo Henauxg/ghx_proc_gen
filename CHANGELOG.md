@@ -20,6 +20,8 @@
   - Renamed `ProcGenDebugPlugin` to `ProcGenDebugRunnerPlugin`
   - No longer spawns nodes entities
   - `VoidNodes` component is now optional on generator entities
+  - Moved `GenerationViewMode`, `GenerationControlStatus`, `GenerationControl` and `StepByStepTimed` to the `generation` module
+  - Internal refactor into multiple plugins (cursor, picking, generation, egui_editor)
 - Removed: `AssetsBundleSpawner` and `ComponentSpawner` traits
 - Added `BundleInserter` trait
 - Changed: generation runner plugins( simple & debug) now emit bevy `Event` to signal generations and resets: `GridGeneratedEvent`, `GenerationResetEvent` and `NodesGeneratedEvent`

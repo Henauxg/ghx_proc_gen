@@ -1,4 +1,5 @@
 use bevy::{
+    app::{App, Plugin, PostUpdate, Startup, Update},
     asset::{Assets, Handle},
     color::{Alpha, Color},
     ecs::{
@@ -6,6 +7,7 @@ use bevy::{
         entity::Entity,
         event::{Event, EventReader, EventWriter},
         query::{Changed, With, Without},
+        schedule::IntoSystemConfigs,
         system::{Commands, Local, Query, Res, ResMut, Resource},
     },
     hierarchy::{BuildChildren, DespawnRecursiveExt, Parent},
@@ -34,9 +36,16 @@ use ghx_proc_gen::{
     ghx_grid::cartesian::{coordinates::CartesianCoordinates, grid::CartesianGrid},
     NodeIndex,
 };
-use std::fmt::Debug;
+use std::{fmt::Debug, marker::PhantomData};
 
-use crate::{CursorTarget, GenerationResetEvent, GridNode};
+use crate::{
+    add_named_observer,
+    debug_plugin::{
+        cursor::{setup_cursor, setup_cursors_overlays, SelectionCursorMarkerSettings},
+        CursorUiMode,
+    },
+    CursorTarget, GenerationResetEvent, GridNode,
+};
 
 use super::{
     cursor::{
@@ -44,8 +53,74 @@ use super::{
         CursorsPanelText, SelectCursor, TargetedNode, OVER_CURSOR_SECTION_INDEX,
     },
     generation::ActiveGeneration,
-    ProcGenKeyBindings,
+    DebugPluginConfig, ProcGenKeyBindings,
 };
+
+/// Picking plugin for the [super::ProcGenDebugRunnerPlugin]
+#[derive(Default)]
+pub(crate) struct ProcGenDebugPickingPlugin<C: CartesianCoordinates> {
+    /// Used to configure how the cursors UI should be displayed
+    pub cursor_ui_mode: CursorUiMode,
+    #[doc(hidden)]
+    pub typestate: PhantomData<C>,
+}
+
+impl<C: CartesianCoordinates> Plugin for ProcGenDebugPickingPlugin<C> {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<CursorTargetAssets>()
+            .init_resource::<OverCursorMarkerSettings>();
+
+        app.add_event::<NodeOverEvent>()
+            .add_event::<NodeOutEvent>()
+            .add_event::<NodeSelectedEvent>();
+
+        app.add_systems(
+            Startup,
+            (
+                setup_picking_assets,
+                setup_cursor::<C, OverCursor>.after(setup_cursors_overlays),
+            ),
+        )
+        .add_systems(
+            Update,
+            (
+                update_cursor_targets_nodes::<C>,
+                (
+                    picking_remove_previous_over_cursor::<C>,
+                    picking_update_cursors_position::<
+                        C,
+                        OverCursorMarkerSettings,
+                        OverCursor,
+                        NodeOverEvent,
+                    >,
+                    picking_update_cursors_position::<
+                        C,
+                        SelectionCursorMarkerSettings,
+                        SelectCursor,
+                        NodeSelectedEvent,
+                    >,
+                )
+                    .chain(),
+            ),
+        );
+        add_named_observer!(insert_cursor_picking_handlers_on_grid_nodes::<C>, app);
+        add_named_observer!(update_over_cursor_on_generation_reset::<C>, app);
+
+        if self.cursor_ui_mode == CursorUiMode::Panel {
+            app.add_systems(PostUpdate, update_over_cursor_panel_text);
+        }
+    }
+}
+
+impl<C: CartesianCoordinates> ProcGenDebugPickingPlugin<C> {
+    /// Constructor
+    pub fn new(config: &DebugPluginConfig) -> Self {
+        Self {
+            cursor_ui_mode: config.cursor_ui_mode,
+            ..Default::default()
+        }
+    }
+}
 
 /// Used to customize the color of the Over cursor [GridMarker]
 #[derive(Resource)]

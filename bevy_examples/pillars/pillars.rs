@@ -28,7 +28,7 @@ use bevy_examples::{plugin::ProcGenExamplesPlugin, utils::load_assets};
 use bevy_ghx_proc_gen::{
     assets::ModelsAssets,
     bevy_ghx_grid::debug_plugin::{view::DebugGridView, DebugGridView3dBundle},
-    debug_plugin::GenerationViewMode,
+    debug_plugin::generation::GenerationViewMode,
     proc_gen::{
         generator::{builder::GeneratorBuilder, rules::RulesBuilder},
         ghx_grid::cartesian::{coordinates::Cartesian3D, grid::CartesianGrid},

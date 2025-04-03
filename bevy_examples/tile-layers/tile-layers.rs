@@ -19,7 +19,7 @@ use bevy_ghx_proc_gen::{
         debug_plugin::{view::DebugGridView, DebugGridView2dBundle},
         ghx_grid::direction::Direction,
     },
-    debug_plugin::GenerationViewMode,
+    debug_plugin::generation::GenerationViewMode,
     proc_gen::{
         generator::{
             builder::GeneratorBuilder, node_heuristic::NodeSelectionHeuristic, rules::RulesBuilder,

@@ -1,7 +1,9 @@
 use bevy::{
+    app::{App, Update},
     ecs::{
         event::{Event, EventReader, EventWriter},
         query::With,
+        schedule::IntoSystemConfigs,
         system::{Query, Res, ResMut, Resource},
     },
     input::{mouse::MouseButton, ButtonInput},
@@ -27,6 +29,24 @@ use super::{
     generation::ActiveGeneration,
     picking::{NodeOverEvent, NodeSelectedEvent},
 };
+
+pub(crate) fn plugin<C: CartesianCoordinates>(app: &mut App) {
+    app.init_resource::<EditorConfig>()
+        .init_resource::<EditorContext>()
+        .add_event::<BrushEvent>();
+
+    app.add_systems(
+        Update,
+        (
+            draw_edition_panel::<C>,
+            update_brush,
+            update_painting_state,
+            paint::<C>,
+        )
+            .chain()
+            .run_if(editor_enabled),
+    );
+}
 
 /// Resource sued to track the status of the edgui editor
 #[derive(Resource)]

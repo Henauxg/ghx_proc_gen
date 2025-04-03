@@ -1,6 +1,7 @@
-use std::{fmt, time::Duration};
+use std::{fmt, marker::PhantomData, time::Duration};
 
 use bevy::{
+    app::{App, Plugin, PostUpdate, PreUpdate, Startup, Update},
     color::{palettes::css::GREEN, Color},
     core::Name,
     ecs::{
@@ -8,6 +9,7 @@ use bevy::{
         entity::Entity,
         event::EventWriter,
         query::{Changed, With, Without},
+        schedule::IntoSystemConfigs,
         system::{Commands, Local, Query, Res, ResMut, Resource},
     },
     hierarchy::BuildChildren,
@@ -37,9 +39,73 @@ use ghx_proc_gen::{
 #[cfg(feature = "picking")]
 use bevy::prelude::PickingBehavior;
 
-use crate::{GenerationResetEvent, NodesGeneratedEvent};
+use crate::{
+    add_named_observer, debug_plugin::CursorUiMode, GenerationResetEvent, NodesGeneratedEvent,
+};
 
-use super::{generation::ActiveGeneration, GridCursorsUiSettings, ProcGenKeyBindings};
+use super::{
+    generation::ActiveGeneration, DebugPluginConfig, GridCursorsUiSettings, ProcGenKeyBindings,
+};
+
+/// Picking plugin for the [super::ProcGenDebugRunnerPlugin]
+#[derive(Default)]
+pub(crate) struct ProcGenDebugCursorPlugin<C: CartesianCoordinates> {
+    /// Used to configure how the cursors UI should be displayed
+    pub config: DebugPluginConfig,
+    #[doc(hidden)]
+    pub typestate: PhantomData<C>,
+}
+
+impl<C: CartesianCoordinates> Plugin for ProcGenDebugCursorPlugin<C> {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<SelectionCursorMarkerSettings>()
+            .init_resource::<CursorKeyboardMovement>()
+            .init_resource::<CursorKeyboardMovementSettings>();
+        if self.config.cursor_ui_mode != CursorUiMode::None {
+            app.init_resource::<GridCursorsUiSettings>();
+        }
+
+        app.add_systems(
+            Startup,
+            setup_cursor::<C, SelectCursor>.after(setup_cursors_overlays),
+        )
+        // Keybinds and picking events handlers run in PreUpdate
+        .add_systems(
+            PreUpdate,
+            (
+                deselect_from_keybinds,
+                switch_generation_selection_from_keybinds::<C>,
+                move_selection_from_keybinds::<C>,
+            ),
+        )
+        .add_systems(Update, (update_cursors_info_on_cursors_changes::<C>,));
+
+        match self.config.cursor_ui_mode {
+            CursorUiMode::None => (),
+            CursorUiMode::Panel => {
+                app.add_systems(Startup, setup_cursors_panel)
+                    .add_systems(PostUpdate, update_selection_cursor_panel_text);
+            }
+            CursorUiMode::Overlay => {
+                app.add_systems(Startup, setup_cursors_overlays)
+                    .add_systems(Update, update_cursors_overlays);
+            }
+        }
+
+        add_named_observer!(update_cursors_info_on_generation_reset::<C>, app);
+        add_named_observer!(update_cursors_info_on_generated_nodes::<C>, app);
+    }
+}
+
+impl<C: CartesianCoordinates> ProcGenDebugCursorPlugin<C> {
+    /// Constructor
+    pub fn new(config: &DebugPluginConfig) -> Self {
+        Self {
+            config: config.clone(),
+            ..Default::default()
+        }
+    }
+}
 
 /// Marker component to be put on a [Camera] to signal that it should be used to display cursor overlays
 ///

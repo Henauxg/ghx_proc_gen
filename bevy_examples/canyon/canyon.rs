@@ -12,7 +12,7 @@ use bevy_examples::{
 };
 use bevy_ghx_proc_gen::{
     bevy_ghx_grid::debug_plugin::{view::DebugGridView, DebugGridView3dBundle},
-    debug_plugin::{GenerationControl, GenerationViewMode},
+    debug_plugin::generation::{GenerationControl, GenerationViewMode},
     proc_gen::{
         generator::{
             builder::GeneratorBuilder, node_heuristic::NodeSelectionHeuristic, rules::RulesBuilder,

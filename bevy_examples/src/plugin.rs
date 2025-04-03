@@ -39,8 +39,8 @@ use bevy_ghx_proc_gen::{
     debug_plugin::{
         cursor::{CursorsOverlaysRoot, CursorsPanelRoot},
         egui_editor::{paint, toggle_editor, update_painting_state, EditorContext},
-        DebugPluginConfig, GenerationControl, GenerationControlStatus, GenerationViewMode,
-        ProcGenDebugPlugins,
+        generation::{GenerationControl, GenerationControlStatus, GenerationViewMode},
+        DebugPluginConfig, ProcGenDebugPlugins,
     },
     insert_bundle_from_resource_to_spawned_nodes,
     proc_gen::ghx_grid::cartesian::coordinates::CartesianCoordinates,

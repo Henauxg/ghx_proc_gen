@@ -1,15 +1,19 @@
+use std::{marker::PhantomData, time::Duration};
+
 use bevy::{
+    app::{App, Plugin, Update},
     color::{palettes::css::RED, Color},
     ecs::{
         entity::Entity,
         event::EventWriter,
         query::{With, Without},
+        schedule::IntoSystemConfigs,
         system::{Commands, Query, Res, ResMut},
     },
     input::{keyboard::KeyCode, ButtonInput},
     log::{info, warn},
     prelude::{Component, Deref, DerefMut, Resource},
-    time::Time,
+    time::{Time, Timer, TimerMode},
 };
 use bevy_ghx_grid::debug_plugin::markers::{spawn_marker, MarkerDespawnEvent};
 use ghx_proc_gen::{
@@ -23,7 +27,150 @@ use ghx_proc_gen::{
 
 use crate::{GenerationResetEvent, NodesGeneratedEvent, VoidNodes};
 
-use super::{GenerationControl, GenerationControlStatus, ProcGenKeyBindings, StepByStepTimed};
+use super::{DebugPluginConfig, ProcGenKeyBindings};
+
+/// Picking plugin for the [super::ProcGenDebugRunnerPlugin]
+#[derive(Default)]
+pub(crate) struct ProcGenDebugGenerationPlugin<C: CartesianCoordinates> {
+    /// Used to configure how the cursors UI should be displayed
+    pub config: DebugPluginConfig,
+    #[doc(hidden)]
+    pub typestate: PhantomData<C>,
+}
+
+impl<C: CartesianCoordinates> Plugin for ProcGenDebugGenerationPlugin<C> {
+    fn build(&self, app: &mut App) {
+        app.insert_resource(self.config.generation_view_mode)
+            .insert_resource(ActiveGeneration::default())
+            .init_resource::<GenerationControl>();
+
+        app.add_systems(
+            Update,
+            (update_generation_control, update_active_generation::<C>),
+        );
+
+        match self.config.generation_view_mode {
+            GenerationViewMode::StepByStepTimed {
+                steps_count,
+                interval_ms,
+            } => {
+                app.add_systems(
+                    Update,
+                    (
+                        (insert_error_markers_to_new_generations::<C>,),
+                        step_by_step_timed_update::<C>,
+                        dequeue_generation_updates::<C>,
+                    )
+                        .chain(),
+                );
+                app.insert_resource(StepByStepTimed {
+                    steps_count,
+                    timer: Timer::new(Duration::from_millis(interval_ms), TimerMode::Repeating),
+                });
+            }
+            GenerationViewMode::StepByStepManual => {
+                app.add_systems(
+                    Update,
+                    (
+                        (insert_error_markers_to_new_generations::<C>,),
+                        step_by_step_input_update::<C>,
+                        dequeue_generation_updates::<C>,
+                    )
+                        .chain(),
+                );
+            }
+            GenerationViewMode::Final => {
+                app.add_systems(
+                    Update,
+                    (generate_all::<C>, dequeue_generation_updates::<C>).chain(),
+                );
+            }
+        }
+    }
+}
+
+impl<C: CartesianCoordinates> ProcGenDebugGenerationPlugin<C> {
+    /// Constructor
+    pub fn new(config: &DebugPluginConfig) -> Self {
+        Self {
+            config: config.clone(),
+            ..Default::default()
+        }
+    }
+}
+
+/// Controls how the generation occurs.
+#[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GenerationViewMode {
+    /// Generates steps by steps and waits at least the specified amount (in milliseconds) between each step.
+    StepByStepTimed {
+        /// How many steps to run once the timer has finished a cycle
+        steps_count: u32,
+        /// Time to wait in ms before the next steps
+        interval_ms: u64,
+    },
+    /// Generates step by step and waits for a user input between each step.
+    StepByStepManual,
+    /// Generates it all at once at the start
+    #[default]
+    Final,
+}
+
+/// Used to track the status of the generation control
+#[derive(Eq, PartialEq, Debug)]
+pub enum GenerationControlStatus {
+    /// Generation control is paused, systems won't automatically step the generation
+    Paused,
+    /// Generation control is "ongoing", systems can currently step a generator
+    Ongoing,
+}
+
+/// Read by the systems while generating
+#[derive(Resource)]
+pub struct GenerationControl {
+    /// Current status of the generation
+    pub status: GenerationControlStatus,
+    /// Indicates whether or not the generator needs to be reinitialized before calling generation operations.
+    ///
+    /// When using [`GenerationViewMode::Final`], this only controls the first reinitialization per try pool.
+    pub need_reinit: bool,
+    /// Whether or not the spawning systems do one more generation step when nodes without assets are generated.
+    ///
+    /// Not used when using [`GenerationViewMode::Final`].
+    pub skip_void_nodes: bool,
+    /// Whether or not the generation should pause when successful
+    pub pause_when_done: bool,
+    /// Whether or not the generation should pause when it fails.
+    ///
+    /// When using [`GenerationViewMode::Final`], this only pauses on the last error of a try pool.
+    pub pause_on_error: bool,
+    /// Whether or not the generation should pause when it reinitializes
+    ///
+    /// When using [`GenerationViewMode::Final`], this only pauses on the first reinitialization of a try pool.
+    pub pause_on_reinitialize: bool,
+}
+
+impl Default for GenerationControl {
+    fn default() -> Self {
+        Self {
+            status: GenerationControlStatus::Paused,
+            need_reinit: false,
+            skip_void_nodes: true,
+            pause_when_done: true,
+            pause_on_error: true,
+            pause_on_reinitialize: true,
+        }
+    }
+}
+
+/// Resource to track the generation steps when using [`GenerationViewMode::StepByStepTimed`]
+#[derive(Resource)]
+pub struct StepByStepTimed {
+    /// How many steps should be done once the timer has expired
+    pub steps_count: u32,
+    /// Timer, tracking the time between the steps
+    pub timer: Timer,
+}
 
 /// Component used to store a collection of [`bevy_ghx_grid::debug_plugin::markers::GridMarker`] entities
 #[derive(Component, Default, Deref, DerefMut)]
