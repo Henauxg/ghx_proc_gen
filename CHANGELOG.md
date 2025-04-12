@@ -1,5 +1,16 @@
 # Changelog
 
+## Version 0.6.0 (TBD)
+
+###  All crates
+
+- Updated ghx_grid to 0.6
+- Updated bevy to 0.16
+
+#### bevy-examples
+
+- Removed dependency to bevy_ghx_utils
+  
 ## Version 0.5.0 (2025-04-03)
 
 ###  All crates

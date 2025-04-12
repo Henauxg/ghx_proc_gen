@@ -114,6 +114,7 @@ Compatibility with Bevy versions:
 
 | ghx_proc_gen | bevy_ghx_proc_gen | bevy |
 | :----------- | :---------------- | :--- |
+| 0.6          | 0.6               | 0.16 |
 | 0.5          | 0.5               | 0.15 |
 | 0.4          | 0.4               | 0.14 |
 | 0.2-0.3      | 0.2-0.3           | 0.13 |
