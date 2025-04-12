@@ -7,8 +7,8 @@ use bevy::{
         palettes::css::{GRAY, ORANGE_RED},
         Color,
     },
-    core::Name,
     core_pipeline::core_3d::Camera3d,
+    ecs::name::Name,
     log::LogPlugin,
     math::{EulerRot, Quat, Vec3},
     pbr::{
@@ -94,6 +94,7 @@ fn setup_scene(
     commands.insert_resource(AmbientLight {
         color: Color::Srgba(ORANGE_RED),
         brightness: 0.05,
+        ..default()
     });
     commands.spawn((
         Name::new("Main light"),

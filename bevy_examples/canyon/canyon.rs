@@ -68,6 +68,7 @@ fn setup_scene(mut commands: Commands) {
     commands.insert_resource(AmbientLight {
         color: Color::Srgba(ORANGE_RED),
         brightness: 0.05,
+        ..default()
     });
     commands.spawn((
         Name::new("Main light"),

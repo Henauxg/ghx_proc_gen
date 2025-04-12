@@ -10,11 +10,10 @@ use bevy::{
         component::Component,
         event::Events,
         query::With,
-        schedule::IntoSystemConfigs,
+        schedule::IntoScheduleConfigs,
         system::{Commands, Query, Res, ResMut},
     },
     gizmos::config::GizmoConfigStore,
-    hierarchy::BuildChildren,
     input::{
         common_conditions::input_just_pressed,
         keyboard::KeyCode,
@@ -22,7 +21,8 @@ use bevy::{
         ButtonInput,
     },
     math::Vec3,
-    prelude::{default, Entity, MeshPickingPlugin, PickingBehavior, Text, TextUiWriter},
+    prelude::{default, Entity, MeshPickingPlugin, Pickable, Text, TextUiWriter},
+    render::view::Visibility,
     text::{LineBreak, TextFont, TextLayout, TextSpan},
     ui::{BackgroundColor, Node, PositionType, UiRect, Val},
 };
@@ -45,7 +45,6 @@ use bevy_ghx_proc_gen::{
     insert_bundle_from_resource_to_spawned_nodes,
     proc_gen::ghx_grid::cartesian::coordinates::CartesianCoordinates,
 };
-use bevy_ghx_utils::systems::toggle_visibility;
 
 use crate::anim::{animate_scale, ease_in_cubic, SpawningScaleAnimation};
 
@@ -72,7 +71,9 @@ impl<C: CartesianCoordinates, A: BundleInserter> Plugin for ProcGenExamplesPlugi
     fn build(&self, app: &mut App) {
         app.add_plugins((
             MeshPickingPlugin,
-            EguiPlugin,
+            EguiPlugin {
+                enable_multipass_for_primary_context: false,
+            },
             GridDebugPlugin::<C>::new(),
             ProcGenDebugPlugins::<C, A> {
                 config: DebugPluginConfig {
@@ -123,6 +124,15 @@ impl<C: CartesianCoordinates, A: BundleInserter> Plugin for ProcGenExamplesPlugi
     }
 }
 
+pub fn toggle_visibility<T: Component>(mut visibilities: Query<&mut Visibility, With<T>>) {
+    for mut vis in &mut visibilities {
+        *vis = match *vis {
+            Visibility::Hidden => Visibility::Visible,
+            _ => Visibility::Hidden,
+        };
+    }
+}
+
 pub fn customize_grid_markers_gizmos_config(mut config_store: ResMut<GizmoConfigStore>) {
     let markers_config = config_store.config_mut::<MarkersGroup>().0;
     // Make them appear on top of everything else
@@ -158,7 +168,7 @@ pub fn setup_examples_ui(mut commands: Commands, view_mode: Res<GenerationViewMo
                 height: Val::Vh(100.),
                 ..default()
             },
-            PickingBehavior::IGNORE,
+            Pickable::IGNORE,
         ))
         .id();
     let mut keybindings_text = "Toggles:\n\
@@ -195,7 +205,7 @@ pub fn setup_examples_ui(mut commands: Commands, view_mode: Res<GenerationViewMo
                 ..default()
             },
             BackgroundColor(Color::BLACK.with_alpha(0.6).into()),
-            PickingBehavior::IGNORE,
+            Pickable::IGNORE,
         ))
         .id();
     let keybindings_ui = commands
@@ -213,7 +223,7 @@ pub fn setup_examples_ui(mut commands: Commands, view_mode: Res<GenerationViewMo
                 ..default()
             },
             Text(keybindings_text),
-            PickingBehavior::IGNORE,
+            Pickable::IGNORE,
         ))
         .id();
     let status_ui = commands
@@ -232,7 +242,7 @@ pub fn setup_examples_ui(mut commands: Commands, view_mode: Res<GenerationViewMo
                 font_size: DEFAULT_EXAMPLES_FONT_SIZE,
                 ..default()
             },
-            PickingBehavior::IGNORE,
+            Pickable::IGNORE,
             Text("".into()),
         ))
         .with_child((

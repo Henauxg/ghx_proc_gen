@@ -2,7 +2,8 @@ use bevy::{
     ecs::{
         component::Component,
         entity::Entity,
-        system::{Commands, Query, Res, Resource},
+        resource::Resource,
+        system::{Commands, Query, Res},
     },
     math::Vec3,
     time::Time,
