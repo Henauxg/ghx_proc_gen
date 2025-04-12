@@ -3,16 +3,16 @@ use std::{fmt, marker::PhantomData, time::Duration};
 use bevy::{
     app::{App, Plugin, PostUpdate, PreUpdate, Startup, Update},
     color::{palettes::css::GREEN, Color},
-    core::Name,
     ecs::{
         component::Component,
         entity::Entity,
         event::EventWriter,
+        name::Name,
         query::{Changed, With, Without},
-        schedule::IntoSystemConfigs,
-        system::{Commands, Local, Query, Res, ResMut, Resource},
+        resource::Resource,
+        schedule::IntoScheduleConfigs,
+        system::{Commands, Local, Query, Res, ResMut},
     },
-    hierarchy::BuildChildren,
     input::{keyboard::KeyCode, ButtonInput},
     log::warn,
     prelude::{Text, TextUiWriter, Trigger},
@@ -37,7 +37,7 @@ use ghx_proc_gen::{
 };
 
 #[cfg(feature = "picking")]
-use bevy::prelude::PickingBehavior;
+use bevy::prelude::Pickable;
 
 use crate::{
     add_named_observer, debug_plugin::CursorUiMode, GenerationResetEvent, NodesGeneratedEvent,
@@ -269,7 +269,7 @@ pub fn setup_cursors_overlays(mut commands: Commands) {
         ))
         .id();
     #[cfg(feature = "picking")]
-    commands.entity(root).insert(PickingBehavior::IGNORE);
+    commands.entity(root).insert(Pickable::IGNORE);
 }
 
 /// Setup system to spawn a cursor and its overlay
@@ -281,7 +281,7 @@ pub fn setup_cursor<C: CoordinateSystem, CI: CursorBehavior>(
         .spawn((Cursor::default(), CursorInfo::default(), CI::new()))
         .id();
 
-    let Ok(root) = overlays_root.get_single() else {
+    let Ok(root) = overlays_root.single() else {
         // No overlays
         return;
     };
@@ -292,7 +292,7 @@ pub fn setup_cursor<C: CoordinateSystem, CI: CursorBehavior>(
     #[cfg(feature = "picking")]
     commands
         .entity(cursor_overlay_entity)
-        .insert(PickingBehavior::IGNORE);
+        .insert(Pickable::IGNORE);
 }
 
 /// System updating all the [CursorInfo] components when [Cursor] components are changed
@@ -321,7 +321,7 @@ pub fn update_cursors_info_on_generation_reset<C: CartesianCoordinates>(
     generators: Query<&Generator<C, CartesianGrid<C>>>,
     mut cursors: Query<(&Cursor, &mut CursorInfo)>,
 ) {
-    let Ok(generator) = generators.get(trigger.entity()) else {
+    let Ok(generator) = generators.get(trigger.target()) else {
         return;
     };
     for (cursor, mut cursor_info) in cursors.iter_mut() {
@@ -341,7 +341,7 @@ pub fn update_cursors_info_on_generated_nodes<C: CartesianCoordinates>(
     generators: Query<&Generator<C, CartesianGrid<C>>>,
     mut cursors: Query<(&Cursor, &mut CursorInfo)>,
 ) {
-    let Ok(generator) = generators.get(trigger.entity()) else {
+    let Ok(generator) = generators.get(trigger.target()) else {
         return;
     };
     for (cursor, mut cursor_info) in cursors.iter_mut() {
@@ -366,7 +366,7 @@ pub fn update_selection_cursor_panel_text(
     mut cursors_panel_text: Query<Entity, With<CursorsPanelText>>,
     updated_cursors: Query<(&CursorInfo, &Cursor), (Changed<CursorInfo>, With<SelectCursor>)>,
 ) {
-    if let Ok((cursor_info, cursor)) = updated_cursors.get_single() {
+    if let Ok((cursor_info, cursor)) = updated_cursors.single() {
         for panel_entity in &mut cursors_panel_text {
             let mut ui_text = writer.text(panel_entity, SELECTION_CURSOR_SECTION_INDEX);
             match &cursor.0 {
@@ -390,12 +390,12 @@ pub fn deselect_from_keybinds(
     mut selection_cursor: Query<&mut Cursor, With<SelectCursor>>,
 ) {
     if keys.just_pressed(proc_gen_key_bindings.deselect) {
-        let Ok(mut cursor) = selection_cursor.get_single_mut() else {
+        let Ok(mut cursor) = selection_cursor.single_mut() else {
             return;
         };
 
         if let Some(grid_cursor) = &cursor.0 {
-            marker_events.send(MarkerDespawnEvent::Marker(grid_cursor.marker));
+            marker_events.write(MarkerDespawnEvent::Marker(grid_cursor.marker));
             cursor.0 = None;
         }
     }
@@ -443,7 +443,7 @@ pub fn switch_generation_selection_from_keybinds<C: CartesianCoordinates>(
     generators: Query<Entity, (With<Generator<C, CartesianGrid<C>>>, With<CartesianGrid<C>>)>,
 ) {
     if keys.just_pressed(proc_gen_key_bindings.switch_grid) {
-        let Ok(mut cursor) = selection_cursor.get_single_mut() else {
+        let Ok(mut cursor) = selection_cursor.single_mut() else {
             return;
         };
 
@@ -452,7 +452,7 @@ pub fn switch_generation_selection_from_keybinds<C: CartesianCoordinates>(
         active_generation.0 = Some(grid_entity);
         // Despawn previous if any
         if let Some(grid_cursor) = &cursor.0 {
-            marker_events.send(MarkerDespawnEvent::Marker(grid_cursor.marker));
+            marker_events.write(MarkerDespawnEvent::Marker(grid_cursor.marker));
         }
         // Spawn on new selected grid
         cursor.0 = Some(spawn_marker_and_create_cursor(
@@ -530,7 +530,7 @@ pub fn move_selection_from_keybinds<C: CartesianCoordinates>(
     mut selection_cursor: Query<&mut Cursor, With<SelectCursor>>,
     grids: Query<(Entity, &CartesianGrid<C>)>,
 ) {
-    let Ok(mut cursor) = selection_cursor.get_single_mut() else {
+    let Ok(mut cursor) = selection_cursor.single_mut() else {
         return;
     };
 
@@ -607,7 +607,7 @@ pub fn move_selection_from_keybinds<C: CartesianCoordinates>(
                     };
                     match grid.get_index_in_direction(&grid_cursor.position, axis, movement) {
                         Some(node_index) => {
-                            marker_events.send(MarkerDespawnEvent::Marker(grid_cursor.marker));
+                            marker_events.write(MarkerDespawnEvent::Marker(grid_cursor.marker));
                             Some((
                                 grid_cursor.grid,
                                 node_index,
@@ -710,9 +710,9 @@ pub fn update_cursors_overlays(
     cursors: Query<(&CursorInfo, &Cursor)>,
     markers: Query<&GlobalTransform, With<GridMarker>>,
 ) {
-    let (camera, cam_gtransform) = match just_one_camera.get_single() {
+    let (camera, cam_gtransform) = match just_one_camera.single() {
         Ok(found) => found,
-        Err(_) => match overlay_camera.get_single() {
+        Err(_) => match overlay_camera.single() {
             Ok(found) => found,
             Err(_) => {
                 if !camera_warning_flag.0 {

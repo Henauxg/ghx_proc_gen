@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use bevy::{
     app::{App, Plugin, PluginGroup, PluginGroupBuilder},
     color::{Alpha, Color},
-    ecs::system::Resource,
+    ecs::resource::Resource,
     input::keyboard::KeyCode,
 };
 use bevy_ghx_grid::ghx_grid::coordinate_system::CoordinateSystem;

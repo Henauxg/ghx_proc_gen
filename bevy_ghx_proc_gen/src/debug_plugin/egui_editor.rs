@@ -3,8 +3,9 @@ use bevy::{
     ecs::{
         event::{Event, EventReader, EventWriter},
         query::With,
-        schedule::IntoSystemConfigs,
-        system::{Query, Res, ResMut, Resource},
+        resource::Resource,
+        schedule::IntoScheduleConfigs,
+        system::{Query, Res, ResMut},
     },
     input::{mouse::MouseButton, ButtonInput},
     log::warn,
@@ -115,7 +116,7 @@ pub fn draw_edition_panel<C: CartesianCoordinates>(
     let Ok(generator) = generations.get(active_generation) else {
         return;
     };
-    let Ok((cursor, cursor_info)) = selection_cursor.get_single() else {
+    let Ok((cursor, cursor_info)) = selection_cursor.single() else {
         return;
     };
 
@@ -168,7 +169,7 @@ pub fn draw_edition_panel<C: CartesianCoordinates>(
                             format!("{}, {}", model.info.name, model.instance),
                         );
                         if ui.button("Clear").clicked() {
-                            brush_events.send(BrushEvent::ClearBrush);
+                            brush_events.write(BrushEvent::ClearBrush);
                         }
                     });
                 }
@@ -203,7 +204,7 @@ pub fn draw_edition_panel<C: CartesianCoordinates>(
                             })
                             .clicked()
                         {
-                            brush_events.send(BrushEvent::UpdateBrush(ModelBrush {
+                            brush_events.write(BrushEvent::UpdateBrush(ModelBrush {
                                 info: model_group.info.clone(),
                                 instance: ModelInstance {
                                     model_index: model_group.index,
@@ -221,7 +222,7 @@ pub fn draw_edition_panel<C: CartesianCoordinates>(
                                     .selectable_label(is_selected, format!("{}°", rotation.value()))
                                     .clicked()
                                 {
-                                    brush_events.send(BrushEvent::UpdateRotation(*rotation));
+                                    brush_events.write(BrushEvent::UpdateRotation(*rotation));
                                 }
                             }
                         }

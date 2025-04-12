@@ -10,12 +10,12 @@ use bevy::{
         entity::Entity,
         event::Event,
         query::Added,
-        system::{Commands, Query, Res, Resource},
+        resource::Resource,
+        system::{Commands, Query, Res},
     },
-    hierarchy::BuildChildren,
     math::Vec3,
+    platform_support::collections::HashSet,
     prelude::{Deref, DerefMut, Without},
-    utils::HashSet,
 };
 use ghx_proc_gen::{
     generator::{
@@ -208,7 +208,7 @@ pub fn spawn_node<C: CartesianCoordinates, A: BundleInserter>(
 macro_rules! add_named_observer {
     ($system: expr, $app: expr) => {
         $app.world_mut().spawn((
-            bevy::core::Name::new(stringify!($system)),
+            bevy::prelude::Name::new(stringify!($system)),
             bevy::ecs::observer::Observer::new($system),
         ))
     };

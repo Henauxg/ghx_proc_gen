@@ -5,12 +5,12 @@ use bevy::{
     ecs::{
         entity::Entity,
         query::Added,
-        schedule::IntoSystemConfigs,
+        schedule::IntoScheduleConfigs,
         system::{Commands, Query, ResMut},
     },
     log::{info, warn},
+    platform_support::collections::HashSet,
     prelude::Resource,
-    utils::HashSet,
 };
 use ghx_proc_gen::{
     generator::Generator,

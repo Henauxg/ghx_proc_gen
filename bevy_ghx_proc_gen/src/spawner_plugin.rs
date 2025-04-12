@@ -9,9 +9,9 @@ use bevy::{
         world::OnAdd,
     },
     math::Vec3,
-    prelude::{Children, DespawnRecursiveExt, Entity, Trigger, With},
+    platform_support::collections::HashSet,
+    prelude::{Children, Entity, Trigger, With},
     render::view::Visibility,
-    utils::HashSet,
 };
 use ghx_proc_gen::{
     generator::Generator,
@@ -98,7 +98,7 @@ pub fn insert_void_nodes_to_new_generations<C: CartesianCoordinates, A: BundleIn
         Without<VoidNodes>,
     >,
 ) {
-    let Ok((gen_entity, generation, nodes_spawner)) = new_generations.get_mut(trigger.entity())
+    let Ok((gen_entity, generation, nodes_spawner)) = new_generations.get_mut(trigger.target())
     else {
         return;
     };
@@ -118,7 +118,7 @@ pub fn default_grid_spawner<C: CartesianCoordinates, A: BundleInserter>(
     mut commands: Commands,
     generators: Query<(&NodesSpawner<A>, &Generator<C, CartesianGrid<C>>)>,
 ) {
-    let gen_entity = trigger.entity();
+    let gen_entity = trigger.target();
     if let Ok((asset_spawner, generator)) = generators.get(gen_entity) {
         for (node_index, model_instance) in trigger.event().0.iter().enumerate() {
             spawn_node(
@@ -140,10 +140,10 @@ pub fn default_node_despawner<C: CartesianCoordinates>(
     generators: Query<&Children>,
     existing_nodes: Query<Entity, With<GridNode>>,
 ) {
-    if let Ok(children) = generators.get(trigger.entity()) {
+    if let Ok(children) = generators.get(trigger.target()) {
         for &child in children.iter() {
             if let Ok(node) = existing_nodes.get(child) {
-                commands.entity(node).despawn_recursive();
+                commands.entity(node).despawn();
             }
         }
     }
@@ -155,7 +155,7 @@ pub fn default_node_spawner<C: CartesianCoordinates, A: BundleInserter>(
     mut commands: Commands,
     generators: Query<(&NodesSpawner<A>, &Generator<C, CartesianGrid<C>>)>,
 ) {
-    let gen_entity = trigger.entity();
+    let gen_entity = trigger.target();
     if let Ok((node_spawner, generator)) = generators.get(gen_entity) {
         for node in trigger.event().0.iter() {
             spawn_node(

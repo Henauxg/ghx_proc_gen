@@ -7,7 +7,7 @@ use bevy::{
         entity::Entity,
         event::EventWriter,
         query::{With, Without},
-        schedule::IntoSystemConfigs,
+        schedule::IntoScheduleConfigs,
         system::{Commands, Query, Res, ResMut},
     },
     input::{keyboard::KeyCode, ButtonInput},
@@ -444,7 +444,7 @@ pub fn dequeue_generation_updates<C: CartesianCoordinates>(
             commands.trigger_targets(GenerationResetEvent, grid_entity);
             if let Some(error_markers) = error_markers.as_mut() {
                 for marker in error_markers.iter() {
-                    marker_events.send(MarkerDespawnEvent::Marker(*marker));
+                    marker_events.write(MarkerDespawnEvent::Marker(*marker));
                 }
                 error_markers.clear();
             }
