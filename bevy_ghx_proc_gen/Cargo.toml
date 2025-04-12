@@ -1,6 +1,6 @@
 [package]
 name = "bevy_ghx_proc_gen"
-version = "0.5.0"
+version = "0.6.0"
 description = "Bevy plugins for 2D & 3D procedural generation with WFC/Model synthesis"
 repository = "https://github.com/Henauxg/ghx_proc_gen"
 documentation = "https://docs.rs/bevy_ghx_proc_gen"
