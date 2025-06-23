@@ -8,10 +8,13 @@ use bevy::{
         schedule::IntoScheduleConfigs,
         system::{Commands, Query, ResMut},
     },
-    log::{info, warn},
     platform::collections::HashSet,
     prelude::Resource,
 };
+
+#[cfg(feature = "log")]
+use bevy::log::{info, warn};
+
 use ghx_proc_gen::{
     generator::Generator,
     ghx_grid::cartesian::{coordinates::CartesianCoordinates, grid::CartesianGrid},
@@ -93,6 +96,7 @@ pub fn generate_and_spawn<C: CartesianCoordinates>(
         if let Ok(mut generation) = generations.get_mut(gen_entity) {
             match generation.generate_grid() {
                 Ok((gen_info, grid_data)) => {
+                    #[cfg(feature = "log")]
                     info!(
                         "Generation {:?} done, try_count: {}, seed: {}; grid: {}",
                         gen_entity,
@@ -104,6 +108,7 @@ pub fn generate_and_spawn<C: CartesianCoordinates>(
                     generations_done.push(gen_entity);
                 }
                 Err(GeneratorError { node_index }) => {
+                    #[cfg(feature = "log")]
                     warn!(
                         "Generation {:?} failed at node {}, seed: {}; grid: {}",
                         gen_entity,

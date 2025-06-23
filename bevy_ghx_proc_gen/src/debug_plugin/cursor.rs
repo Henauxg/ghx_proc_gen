@@ -14,7 +14,6 @@ use bevy::{
         system::{Commands, Local, Query, Res, ResMut},
     },
     input::{keyboard::KeyCode, ButtonInput},
-    log::warn,
     prelude::{Text, TextUiWriter, Trigger},
     render::camera::Camera,
     text::{LineBreak, TextColor, TextFont, TextLayout, TextSpan},
@@ -23,6 +22,10 @@ use bevy::{
     ui::{BackgroundColor, Node, PositionType, UiRect, Val},
     utils::default,
 };
+
+#[cfg(feature = "log")]
+use bevy::log::warn;
+
 use bevy_ghx_grid::{
     debug_plugin::markers::{spawn_marker, GridMarker, MarkerDespawnEvent},
     ghx_grid::{coordinate_system::CoordinateSystem, direction::Direction},
@@ -716,6 +719,7 @@ pub fn update_cursors_overlays(
             Ok(found) => found,
             Err(_) => {
                 if !camera_warning_flag.0 {
+                    #[cfg(feature = "log")]
                     warn!("None (or too many) Camera(s) found with 'GridCursorsOverlayCamera' component to display cursors overlays. Add `GridCursorsOverlayCamera` component to a Camera or change the cursor UI mode.");
                     camera_warning_flag.0 = true;
                 }

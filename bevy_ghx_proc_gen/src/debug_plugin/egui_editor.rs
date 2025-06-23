@@ -8,8 +8,11 @@ use bevy::{
         system::{Query, Res, ResMut},
     },
     input::{mouse::MouseButton, ButtonInput},
-    log::warn,
 };
+
+#[cfg(feature = "log")]
+use bevy::log::warn;
+
 use bevy_egui::{
     egui::{self, Color32, Pos2},
     EguiContexts,
@@ -304,6 +307,7 @@ pub fn paint<C: CartesianCoordinates>(
         };
 
         if let Err(err) = generator.set_and_propagate(node.0, model_brush.instance, true) {
+            #[cfg(feature = "log")]
             warn!(
                 "Failed to generate model {} on node {}: {}",
                 model_brush.instance, node.0, err
