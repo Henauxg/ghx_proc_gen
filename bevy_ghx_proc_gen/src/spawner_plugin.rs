@@ -9,7 +9,7 @@ use bevy::{
         world::OnAdd,
     },
     math::Vec3,
-    platform_support::collections::HashSet,
+    platform::collections::HashSet,
     prelude::{Children, Entity, Trigger, With},
     render::view::Visibility,
 };

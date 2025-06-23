@@ -9,7 +9,7 @@ use bevy::{
         system::{Commands, Query, ResMut},
     },
     log::{info, warn},
-    platform_support::collections::HashSet,
+    platform::collections::HashSet,
     prelude::Resource,
 };
 use ghx_proc_gen::{
