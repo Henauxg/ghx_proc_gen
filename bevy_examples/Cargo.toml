@@ -13,7 +13,7 @@ bevy_editor_cam = { version = "0.6.0" }
 # ----- External dependencies
 tracing-subscriber = "0.3.18"
 rand = "0.8.5"
-bevy = { version = "0.16.0-rc.4", default-features = false, features = [
+bevy = { version = "0.16.1", default-features = false, features = [
 	# Default features:
 
 	"multi_threaded",              # Run with multithreading

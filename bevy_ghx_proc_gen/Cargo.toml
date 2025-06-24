@@ -45,7 +45,7 @@ default-bundle-inserters = [
 ]
 # Enables logging using bevy_log
 log = [
-    "bevy/bevy_log" # Logging
+    "bevy/bevy_log", # Logging
 ]
 
 [dependencies]
@@ -55,15 +55,14 @@ ghx_proc_gen = { path = "../ghx_proc_gen", version = "0.6.0", features = [
 ] }
 
 # ----- External dependencies
-bevy = { version = "0.16.0-rc.4", default-features = false, features = [
+bevy = { version = "0.16.1", default-features = false, features = [
     "bevy_render", # Rendering framework core
 ] }
 
 # ----- Optional dependencies
-bevy_ghx_grid = { git = "https://github.com/Henauxg/bevy_ghx_grid.git", version = "0.6.0", optional = true, features = [
-] }
+bevy_ghx_grid = { version = "0.6.0", optional = true, features = [] }
 # Only enabled when the "picking" feature is enabled
-bevy_egui = { version = "0.34.0-rc.2", optional = true, default-features = false, features = [
+bevy_egui = { version = "0.34.1", optional = true, default-features = false, features = [
     "default_fonts",
     "render",
 ] }
