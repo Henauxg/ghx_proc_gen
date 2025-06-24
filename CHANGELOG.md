@@ -1,22 +1,23 @@
 # Changelog
 
-## Version 0.6.0 (TBD)
+## Version 0.6.0 (2025-06-24)
 
 ###  All crates
 
-- Updated ghx_grid to 0.6
-- Updated bevy to 0.16
+- Updated `ghx_grid` to 0.6
+- Updated `bevy` to 0.16
 
 #### bevy-examples
 
-- Removed dependency to bevy_ghx_utils
+- Removed dependency to `bevy_ghx_utils`
+- Added dependency to `bevy_editor_cam`
   
 ## Version 0.5.0 (2025-04-03)
 
 ###  All crates
 
-- Updated ghx_grid to 0.5
-- Updated bevy to 0.15
+- Updated `ghx_grid` to 0.5
+- Updated `bevy` to 0.15
 
 ### `ghx_proc_gen` crate:
 
