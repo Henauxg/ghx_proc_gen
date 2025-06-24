@@ -7,6 +7,10 @@
 - Updated `ghx_grid` to 0.6
 - Updated `bevy` to 0.16
 
+#### bevy-ghx-proc-gen
+
+- Added a `log` feature enabling logs (PR #7 by @academician)
+
 #### bevy-examples
 
 - Removed dependency to `bevy_ghx_utils`
