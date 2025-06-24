@@ -11,10 +11,13 @@ use bevy::{
         system::{Commands, Query, Res, ResMut},
     },
     input::{keyboard::KeyCode, ButtonInput},
-    log::{info, warn},
     prelude::{Component, Deref, DerefMut, Resource},
     time::{Time, Timer, TimerMode},
 };
+
+#[cfg(feature = "log")]
+use bevy::log::{info, warn};
+
 use bevy_ghx_grid::debug_plugin::markers::{spawn_marker, MarkerDespawnEvent};
 use ghx_proc_gen::{
     generator::{
@@ -236,6 +239,7 @@ pub fn handle_reinitialization_and_continue<C: CartesianCoordinates>(
         match generator.reinitialize() {
             GenerationStatus::Ongoing => (),
             GenerationStatus::Done => {
+                #[cfg(feature = "log")]
                 info!(
                     "Generation done, seed: {}; grid: {}",
                     generator.seed(),
@@ -264,6 +268,7 @@ pub fn handle_generation_done<C: CartesianCoordinates>(
     gen_entity: Entity,
     try_count: u32,
 ) {
+    #[cfg(feature = "log")]
     info!(
         "Generation done {:?}, try_count: {}, seed: {}; grid: {}",
         gen_entity,
@@ -285,6 +290,7 @@ pub fn handle_generation_error<C: CartesianCoordinates>(
     gen_entity: Entity,
     node_index: NodeIndex,
 ) {
+    #[cfg(feature = "log")]
     warn!(
         "Generation Failed {:?} at node {}, seed: {}; grid: {}",
         gen_entity,

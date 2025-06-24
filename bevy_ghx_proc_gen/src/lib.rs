@@ -14,7 +14,7 @@ use bevy::{
         system::{Commands, Query, Res},
     },
     math::Vec3,
-    platform_support::collections::HashSet,
+    platform::collections::HashSet,
     prelude::{Deref, DerefMut, Without},
 };
 use ghx_proc_gen::{
