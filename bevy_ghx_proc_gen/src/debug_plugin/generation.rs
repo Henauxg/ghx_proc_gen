@@ -5,7 +5,7 @@ use bevy::{
     color::{palettes::css::RED, Color},
     ecs::{
         entity::Entity,
-        event::EventWriter,
+        message::MessageWriter,
         query::{With, Without},
         schedule::IntoScheduleConfigs,
         system::{Commands, Query, Res, ResMut},
@@ -391,7 +391,7 @@ pub fn step_by_step_timed_update<C: CartesianCoordinates>(
     };
 
     steps_and_timer.timer.tick(time.delta());
-    if steps_and_timer.timer.finished()
+    if steps_and_timer.timer.is_finished()
         && generation_control.status == GenerationControlStatus::Ongoing
     {
         if let Ok((mut generation, void_nodes)) = observed_generations.get_mut(active_generation) {
@@ -413,7 +413,7 @@ pub fn step_by_step_timed_update<C: CartesianCoordinates>(
 /// System used to spawn nodes, emit [GenerationResetEvent] & [NodesGeneratedEvent] and despawn markers, based on data read from a [QueuedObserver] on a generation entity
 pub fn dequeue_generation_updates<C: CartesianCoordinates>(
     mut commands: Commands,
-    mut marker_events: EventWriter<MarkerDespawnEvent>,
+    mut marker_events: MessageWriter<MarkerDespawnEvent>,
     mut generators: Query<(
         Entity,
         &CartesianGrid<C>,
@@ -447,7 +447,7 @@ pub fn dequeue_generation_updates<C: CartesianCoordinates>(
         }
 
         if reinitialized {
-            commands.trigger_targets(GenerationResetEvent, grid_entity);
+            commands.trigger(GenerationResetEvent(grid_entity));
             if let Some(error_markers) = error_markers.as_mut() {
                 for marker in error_markers.iter() {
                     marker_events.write(MarkerDespawnEvent::Marker(*marker));
@@ -457,7 +457,10 @@ pub fn dequeue_generation_updates<C: CartesianCoordinates>(
         }
 
         if !nodes_to_spawn.is_empty() {
-            commands.trigger_targets(NodesGeneratedEvent(nodes_to_spawn), grid_entity);
+            commands.trigger(NodesGeneratedEvent {
+                entity: grid_entity,
+                nodes: nodes_to_spawn,
+            });
         }
     }
 }

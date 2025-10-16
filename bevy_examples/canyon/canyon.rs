@@ -2,12 +2,12 @@ use std::f32::consts::PI;
 
 use bevy::{
     color::palettes::css::{GRAY, ORANGE_RED},
+    light::DirectionalLightShadowMap,
     log::LogPlugin,
-    pbr::DirectionalLightShadowMap,
     prelude::*,
 };
 
-use bevy_editor_cam::{prelude::EditorCam, DefaultEditorCamPlugins};
+// use bevy_editor_cam::{prelude::EditorCam, DefaultEditorCamPlugins};
 use bevy_examples::{
     anim::SpawningScaleAnimation, plugin::ProcGenExamplesPlugin, utils::load_assets,
 };
@@ -61,7 +61,7 @@ fn setup_scene(mut commands: Commands) {
         Name::new("Camera"),
         Transform::from_translation(camera_position).looking_at(look_target, Vec3::Y),
         Camera3d::default(),
-        EditorCam::default(),
+        // EditorCam::default(),
     ));
 
     // Scene lights
@@ -196,7 +196,7 @@ fn main() {
             level: bevy::log::Level::DEBUG,
             ..default()
         }),
-        DefaultEditorCamPlugins,
+        // DefaultEditorCamPlugins,
         ProcGenExamplesPlugin::<Cartesian3D, Handle<Scene>>::new(
             GENERATION_VIEW_MODE,
             ASSETS_SCALE,

@@ -8,7 +8,7 @@ use bevy::{
         bundle::Bundle,
         component::Component,
         entity::Entity,
-        event::Event,
+        event::EntityEvent,
         query::Added,
         resource::Resource,
         system::{Commands, Query, Res},
@@ -57,18 +57,26 @@ pub mod default_bundles;
 pub use bevy_egui;
 
 /// The generation with the specified entity was fully generated
-#[derive(Event, Clone)]
-pub struct GridGeneratedEvent<C: CartesianCoordinates>(
-    pub GridData<C, ModelInstance, CartesianGrid<C>>,
-);
+#[derive(EntityEvent, Clone)]
+pub struct GridGeneratedEvent<C: CartesianCoordinates> {
+    /// The entity of the generation
+    pub entity: Entity,
+    /// The grid data that was generated
+    pub grid_data: GridData<C, ModelInstance, CartesianGrid<C>>,
+}
 
 /// The generation with the specified entity was reinitialized
-#[derive(Event, Clone, Debug)]
-pub struct GenerationResetEvent;
+#[derive(EntityEvent, Clone, Debug)]
+pub struct GenerationResetEvent(pub Entity);
 
 /// The generation with the specified entity was updated on the specified node
-#[derive(Event, Clone, Debug)]
-pub struct NodesGeneratedEvent(pub Vec<GeneratedNode>);
+#[derive(EntityEvent, Clone, Debug)]
+pub struct NodesGeneratedEvent {
+    /// The entity of the generation
+    pub entity: Entity,
+    /// The nodes that were generated
+    pub nodes: Vec<GeneratedNode>,
+}
 
 /// Used to mark a node spawned by a [`ghx_proc_gen::generator::Generator`]. Stores the [NodeIndex] of this node
 #[derive(Component)]

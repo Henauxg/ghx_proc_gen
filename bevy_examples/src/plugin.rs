@@ -8,7 +8,7 @@ use bevy::{
     },
     ecs::{
         component::Component,
-        event::Events,
+        message::Messages,
         query::With,
         schedule::IntoScheduleConfigs,
         system::{Commands, Query, Res, ResMut},
@@ -21,8 +21,7 @@ use bevy::{
         ButtonInput,
     },
     math::Vec3,
-    prelude::{default, Entity, MeshPickingPlugin, Pickable, Text, TextUiWriter},
-    render::view::Visibility,
+    prelude::*,
     text::{LineBreak, TextFont, TextLayout, TextSpan},
     ui::{BackgroundColor, Node, PositionType, UiRect, Val},
 };
@@ -71,9 +70,7 @@ impl<C: CartesianCoordinates, A: BundleInserter> Plugin for ProcGenExamplesPlugi
     fn build(&self, app: &mut App) {
         app.add_plugins((
             MeshPickingPlugin,
-            EguiPlugin {
-                enable_multipass_for_primary_context: false,
-            },
+            EguiPlugin::default(),
             GridDebugPlugin::<C>::new(),
             ProcGenDebugPlugins::<C, A> {
                 config: DebugPluginConfig {
@@ -304,11 +301,12 @@ pub fn update_generation_control_ui(
 fn absorb_egui_inputs(
     mut contexts: bevy_egui::EguiContexts,
     mut mouse: ResMut<ButtonInput<MouseButton>>,
-    mut mouse_wheel: ResMut<Events<MouseWheel>>,
-) {
-    let ctx = contexts.ctx_mut();
+    mut mouse_wheel: ResMut<Messages<MouseWheel>>,
+) -> Result {
+    let ctx = contexts.ctx_mut()?;
     if ctx.wants_pointer_input() || ctx.is_pointer_over_area() {
         mouse.reset_all();
         mouse_wheel.clear();
     }
+    Ok(())
 }

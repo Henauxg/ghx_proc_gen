@@ -1,6 +1,6 @@
 [package]
 name = "bevy_ghx_proc_gen"
-version = "0.6.0"
+version = "0.7.0"
 description = "Bevy plugins for 2D & 3D procedural generation with WFC/Model synthesis"
 repository = "https://github.com/Henauxg/ghx_proc_gen"
 documentation = "https://docs.rs/bevy_ghx_proc_gen"
@@ -27,7 +27,7 @@ simple-plugin = []
 debug-plugin = [
     "ghx_proc_gen/models-names",
     "bevy_ghx_grid/debug-plugin",
-    "bevy/bevy_ui",               # A custom ECS-driven UI framework
+    "bevy/bevy_ui",
 
 ]
 # Enables picking. Used by the debug-plugin if enabled.
@@ -38,31 +38,30 @@ picking = [
 egui-edit = ["dep:bevy_egui", "picking"]
 # Adds some default assets bundle spawners for basic types: Handle<Image>, Handle<Scene>, MaterialMesh and PbrMesh
 default-bundle-inserters = [
-    "bevy/bevy_scene",  # Scenes management
-    "bevy/bevy_sprite", # 2D (sprites) rendering
-    "bevy/bevy_pbr",    # 3D (physically-based) rendering
-    "bevy/bevy_asset",  # Assets management
+    "bevy/bevy_scene",
+    "bevy/bevy_sprite",
+    "bevy/bevy_pbr",
+    "bevy/bevy_asset",
 ]
 # Enables logging using bevy_log
-log = [
-    "bevy/bevy_log", # Logging
-]
+log = ["bevy/bevy_log"]
 
 [dependencies]
-# ----- Internal dependencies
-ghx_proc_gen = { path = "../ghx_proc_gen", version = "0.6.0", features = [
+# Owned dependencies
+ghx_proc_gen = { path = "../ghx_proc_gen", version = "0.7.0", features = [
     "bevy",
 ] }
 
-# ----- External dependencies
-bevy = { version = "0.16.1", default-features = false, features = [
+# External dependencies
+bevy = { version = "0.17", default-features = false, features = [
     "bevy_render", # Rendering framework core
 ] }
 
-# ----- Optional dependencies
-bevy_ghx_grid = { version = "0.6.0", optional = true, features = [] }
+# Optional dependencies
+# Only enabled when the "debug-plugin" feature is enabled
+bevy_ghx_grid = { version = "0.7.0", optional = true, features = [] }
 # Only enabled when the "picking" feature is enabled
-bevy_egui = { version = "0.34.1", optional = true, default-features = false, features = [
+bevy_egui = { version = ">=0.37, <=0.38", optional = true, default-features = false, features = [
     "default_fonts",
     "render",
 ] }

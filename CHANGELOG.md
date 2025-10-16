@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 0.7.0 (TBD)
+
+- Updated `bevy` to 0.17
+
 ## Version 0.6.0 (2025-06-24)
 
 ###  All crates

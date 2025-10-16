@@ -2,16 +2,17 @@ use std::{marker::PhantomData, sync::Arc};
 
 use bevy::{
     app::{App, Plugin},
+    camera::visibility::Visibility,
     ecs::{
         component::Component,
+        lifecycle::Add,
+        observer::On,
         query::Without,
         system::{Commands, Query},
-        world::OnAdd,
     },
     math::Vec3,
     platform::collections::HashSet,
-    prelude::{Children, Entity, Trigger, With},
-    render::view::Visibility,
+    prelude::{Children, Entity, With},
 };
 use ghx_proc_gen::{
     generator::Generator,
@@ -87,7 +88,7 @@ impl<A: BundleInserter> NodesSpawner<A> {
 
 /// Simple observer system that calculates and add a [`VoidNodes`] component for generator entites which don't have one yet.
 pub fn insert_void_nodes_to_new_generations<C: CartesianCoordinates, A: BundleInserter>(
-    trigger: Trigger<OnAdd, Generator<C, CartesianGrid<C>>>,
+    new_generator: On<Add, Generator<C, CartesianGrid<C>>>,
     mut commands: Commands,
     mut new_generations: Query<
         (
@@ -98,7 +99,8 @@ pub fn insert_void_nodes_to_new_generations<C: CartesianCoordinates, A: BundleIn
         Without<VoidNodes>,
     >,
 ) {
-    let Ok((gen_entity, generation, nodes_spawner)) = new_generations.get_mut(trigger.target())
+    let Ok((gen_entity, generation, nodes_spawner)) =
+        new_generations.get_mut(new_generator.event().entity)
     else {
         return;
     };
@@ -114,13 +116,13 @@ pub fn insert_void_nodes_to_new_generations<C: CartesianCoordinates, A: BundleIn
 
 /// Spawns every nodes of a fully generated generator entity as children
 pub fn default_grid_spawner<C: CartesianCoordinates, A: BundleInserter>(
-    trigger: Trigger<GridGeneratedEvent<C>>,
+    grid_generated: On<GridGeneratedEvent<C>>,
     mut commands: Commands,
     generators: Query<(&NodesSpawner<A>, &Generator<C, CartesianGrid<C>>)>,
 ) {
-    let gen_entity = trigger.target();
+    let gen_entity = grid_generated.event().entity;
     if let Ok((asset_spawner, generator)) = generators.get(gen_entity) {
-        for (node_index, model_instance) in trigger.event().0.iter().enumerate() {
+        for (node_index, model_instance) in grid_generated.event().grid_data.iter().enumerate() {
             spawn_node(
                 &mut commands,
                 gen_entity,
@@ -135,12 +137,12 @@ pub fn default_grid_spawner<C: CartesianCoordinates, A: BundleInserter>(
 
 /// Despawns every children nodes of a generator entity
 pub fn default_node_despawner<C: CartesianCoordinates>(
-    trigger: Trigger<GenerationResetEvent>,
+    gen_reset: On<GenerationResetEvent>,
     mut commands: Commands,
     generators: Query<&Children>,
     existing_nodes: Query<Entity, With<GridNode>>,
 ) {
-    if let Ok(children) = generators.get(trigger.target()) {
+    if let Ok(children) = generators.get(gen_reset.event().0) {
         for &child in children.iter() {
             if let Ok(node) = existing_nodes.get(child) {
                 commands.entity(node).despawn();
@@ -151,13 +153,13 @@ pub fn default_node_despawner<C: CartesianCoordinates>(
 
 /// Spawns a collection of nodes of a generator entity as children
 pub fn default_node_spawner<C: CartesianCoordinates, A: BundleInserter>(
-    trigger: Trigger<NodesGeneratedEvent>,
+    node_generated: On<NodesGeneratedEvent>,
     mut commands: Commands,
     generators: Query<(&NodesSpawner<A>, &Generator<C, CartesianGrid<C>>)>,
 ) {
-    let gen_entity = trigger.target();
+    let gen_entity = node_generated.event().entity;
     if let Ok((node_spawner, generator)) = generators.get(gen_entity) {
-        for node in trigger.event().0.iter() {
+        for node in node_generated.event().nodes.iter() {
             spawn_node(
                 &mut commands,
                 gen_entity,
