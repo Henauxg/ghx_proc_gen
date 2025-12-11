@@ -8,7 +8,7 @@ exclude = ["assets/"]
 [dependencies]
 # ----- Internal dependencies
 bevy_ghx_proc_gen = { path = "../bevy_ghx_proc_gen", default-features = true }
-bevy_editor_cam = { version = "0.6.0" }
+bevy_editor_cam = { version = "0.7.0" }
 
 # ----- External dependencies
 tracing-subscriber = "0.3.18"
@@ -33,6 +33,7 @@ bevy = { version = "0.17", default-features = false, features = [
 	"bevy_window",                 # Windowing layer
 	"tonemapping_luts",            # Support different camera Tonemapping modes (enables KTX2+zstd)
 	"default_font",                # Embed a minimal default font for text/UI
+	"reflect_auto_register",
 
 	# File formats:
 	"png", # PNG image format for simple 2D images

@@ -19,7 +19,7 @@ use bevy::{
     DefaultPlugins,
 };
 
-// use bevy_editor_cam::{prelude::EditorCam, DefaultEditorCamPlugins};
+use bevy_editor_cam::{prelude::EditorCam, DefaultEditorCamPlugins};
 use bevy_examples::{plugin::ProcGenExamplesPlugin, utils::load_assets};
 
 use bevy_ghx_proc_gen::{
@@ -64,7 +64,7 @@ fn setup_scene(
         Name::new("Camera"),
         Transform::from_translation(camera_position).looking_at(Vec3::ZERO, Vec3::Y),
         Camera3d::default(),
-        // EditorCam::default(),
+        EditorCam::default(),
         DistanceFog {
             color: Color::srgba(0.2, 0.15, 0.1, 1.0),
             falloff: FogFalloff::Linear {
@@ -182,7 +182,7 @@ fn main() {
             level: bevy::log::Level::DEBUG,
             ..default()
         }),
-        // DefaultEditorCamPlugins,
+        DefaultEditorCamPlugins,
         ProcGenExamplesPlugin::<Cartesian3D, Handle<Scene>>::new(
             GENERATION_VIEW_MODE,
             ASSETS_SCALE,
