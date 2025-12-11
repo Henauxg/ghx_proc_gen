@@ -37,7 +37,7 @@ use bevy_ghx_proc_gen::{
     },
     debug_plugin::{
         cursor::{CursorsOverlaysRoot, CursorsPanelRoot},
-        egui_editor::{paint, toggle_editor, update_painting_state, EditorContext},
+        egui_editor::{paint, toggle_editor_draw, update_painting_state, EditorContext},
         generation::{GenerationControl, GenerationControlStatus, GenerationViewMode},
         DebugPluginConfig, ProcGenDebugPlugins,
     },
@@ -98,7 +98,7 @@ impl<C: CartesianCoordinates, A: BundleInserter> Plugin for ProcGenExamplesPlugi
                     toggle_visibility::<ExamplesUiRoot>,
                     toggle_visibility::<CursorsPanelRoot>,
                     toggle_visibility::<CursorsOverlaysRoot>,
-                    toggle_editor,
+                    toggle_editor_draw,
                 )
                     .run_if(input_just_pressed(KeyCode::F1)),
                 toggle_debug_grids_visibilities.run_if(input_just_pressed(KeyCode::F2)),
@@ -172,7 +172,6 @@ pub fn setup_examples_ui(mut commands: Commands, view_mode: Res<GenerationViewMo
         'F1' Show/hide UI\n\
         'F2' Show/hide grid\n\
         'F3' Show/hide markers\n\
-        'F4' Enable/disable camera rotation\n\
         \n\
         Selection:\n\
        'Click' Select\n\

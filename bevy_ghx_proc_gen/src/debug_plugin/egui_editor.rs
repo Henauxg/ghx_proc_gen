@@ -43,7 +43,7 @@ pub(crate) fn plugin<C: CartesianCoordinates>(app: &mut App) {
     app.add_systems(
         EguiPrimaryContextPass,
         (
-            draw_edition_panel::<C>,
+            draw_edition_panel::<C>.run_if(editor_draw),
             update_brush,
             update_painting_state,
             paint::<C>,
@@ -58,11 +58,17 @@ pub(crate) fn plugin<C: CartesianCoordinates>(app: &mut App) {
 pub struct EditorConfig {
     /// Whether or not the editor is currently enabled
     pub enabled: bool,
+
+    /// Whether or not the editor is currently enabled
+    pub draw: bool,
 }
 
 impl Default for EditorConfig {
     fn default() -> Self {
-        Self { enabled: true }
+        Self {
+            enabled: true,
+            draw: true,
+        }
     }
 }
 
@@ -100,9 +106,19 @@ pub fn editor_enabled(editor_config: Res<EditorConfig>) -> bool {
     editor_config.enabled
 }
 
+/// System condition to check if the egui editor is enabled
+pub fn editor_draw(editor_config: Res<EditorConfig>) -> bool {
+    editor_config.draw
+}
+
 /// System that can be used to toggle on/off the egui editor
 pub fn toggle_editor(mut editor_config: ResMut<EditorConfig>) {
     editor_config.enabled = !editor_config.enabled;
+}
+
+/// Demo
+pub fn toggle_editor_draw(mut editor_config: ResMut<EditorConfig>) {
+    editor_config.draw = !editor_config.draw;
 }
 
 /// System used to draw the editor egui window

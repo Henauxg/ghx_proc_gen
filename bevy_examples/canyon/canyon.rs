@@ -7,7 +7,10 @@ use bevy::{
     prelude::*,
 };
 
-use bevy_editor_cam::{prelude::EditorCam, DefaultEditorCamPlugins};
+use bevy_editor_cam::{
+    prelude::{EditorCam, EnabledMotion},
+    DefaultEditorCamPlugins,
+};
 use bevy_examples::{
     anim::SpawningScaleAnimation, plugin::ProcGenExamplesPlugin, utils::load_assets,
 };
@@ -57,11 +60,22 @@ fn setup_scene(mut commands: Commands) {
     // Camera
     let camera_position = Vec3::new(0., 2.5 * GRID_HEIGHT as f32, 1.8 * GRID_Z as f32 / 2.);
     let look_target = Vec3::new(0., 0., 0.);
+
+    let cam = EditorCam {
+        enabled_motion: EnabledMotion {
+            pan: true,
+            orbit: true,
+            zoom: true,
+        },
+        last_anchor_depth: -10.,
+        ..default()
+    };
+    // cam.start_orbit(Some(DVec3::new(0., 0., 0.)));
     commands.spawn((
         Name::new("Camera"),
         Transform::from_translation(camera_position).looking_at(look_target, Vec3::Y),
         Camera3d::default(),
-        EditorCam::default(),
+        cam,
     ));
 
     // Scene lights
@@ -208,6 +222,15 @@ fn main() {
             (apply_wind, randomize_spawn_scale, randomize_spawn_rotation),
         );
 
+    // app.add_systems(
+    //     Update,
+    //     (
+    //         demo_force_brush_windmill.run_if(input_just_pressed(KeyCode::KeyG)),
+    //         demo_force_brush_water.run_if(input_just_pressed(KeyCode::KeyH)),
+    //         demo_force_brush_sand.run_if(input_just_pressed(KeyCode::KeyJ)),
+    //     ),
+    // );
+
     app.run();
 }
 
@@ -242,3 +265,45 @@ pub fn randomize_spawn_rotation(
         commands.entity(entity).remove::<RotationRandomizer>();
     }
 }
+
+// pub fn demo_force_brush_windmill(mut brush_events: MessageWriter<BrushEvent>) {
+//     brush_events.write(BrushEvent::UpdateBrush(ModelBrush {
+//         info: ModelInfo {
+//             weight: 0.5,
+//             name: "Windmill".into(),
+//         },
+//         instance: ModelInstance {
+//             model_index: 13,
+//             rotation: ModelRotation::Rot0,
+//         },
+//     }));
+// }
+// pub fn demo_force_brush_water(mut brush_events: MessageWriter<BrushEvent>) {
+//     brush_events.write(BrushEvent::UpdateBrush(ModelBrush {
+//         info: ModelInfo {
+//             weight: 0.5,
+//             name: "Water".into(),
+//         },
+//         instance: ModelInstance {
+//             model_index: 2,
+//             rotation: ModelRotation::Rot0,
+//         },
+//     }));
+// }
+// pub fn demo_force_brush_sand(mut brush_events: MessageWriter<BrushEvent>) {
+//     brush_events.write(BrushEvent::UpdateBrush(ModelBrush {
+//         info: ModelInfo {
+//             weight: 0.5,
+//             name: "Sand".into(),
+//         },
+//         instance: ModelInstance {
+//             model_index: 1,
+//             rotation: ModelRotation::Rot0,
+//         },
+//     }));
+// }
+
+// TODO W Water
+// TODO M Windmill
+// TODO S Sand
+// TODO Reset button

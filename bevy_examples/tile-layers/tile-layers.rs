@@ -1,9 +1,16 @@
 use bevy::{
-    app::{App, PluginGroup, Startup},
+    app::{App, PluginGroup, Startup, Update},
     asset::{AssetServer, Handle},
     color::Color,
-    ecs::system::{Commands, Res},
+    ecs::{
+        entity::Entity,
+        message::MessageWriter,
+        query::With,
+        schedule::IntoScheduleConfigs,
+        system::{Commands, Query, Res},
+    },
     image::{Image, ImagePlugin},
+    input::{common_conditions::input_just_pressed, keyboard::KeyCode},
     log::LogPlugin,
     math::Vec3,
     prelude::Camera2d,
@@ -15,16 +22,29 @@ use bevy::{
 use bevy_examples::{plugin::ProcGenExamplesPlugin, utils::load_assets};
 use bevy_ghx_proc_gen::{
     bevy_ghx_grid::{
-        debug_plugin::{view::DebugGridView, DebugGridView2dBundle},
+        debug_plugin::{markers::MarkerDespawnEvent, view::DebugGridView, DebugGridView2dBundle},
         ghx_grid::direction::Direction,
     },
-    debug_plugin::generation::GenerationViewMode,
+    debug_plugin::{
+        cursor::{
+            spawn_marker_and_create_cursor, Cursor, CursorMarkerSettings, SelectCursor,
+            SelectionCursorMarkerSettings,
+        },
+        egui_editor::{BrushEvent, ModelBrush},
+        generation::GenerationViewMode,
+    },
     proc_gen::{
         generator::{
-            builder::GeneratorBuilder, node_heuristic::NodeSelectionHeuristic, rules::RulesBuilder,
+            builder::GeneratorBuilder,
+            model::{ModelInstance, ModelRotation},
+            node_heuristic::NodeSelectionHeuristic,
+            rules::{ModelInfo, RulesBuilder},
             ModelSelectionHeuristic, RngMode,
         },
-        ghx_grid::cartesian::{coordinates::Cartesian3D, grid::CartesianGrid},
+        ghx_grid::cartesian::{
+            coordinates::{Cartesian3D, CartesianPosition},
+            grid::CartesianGrid,
+        },
     },
     spawner_plugin::NodesSpawner,
 };
@@ -35,12 +55,12 @@ mod rules;
 
 // -----------------  Configurable values ---------------------------
 /// Modify these values to control the map size.
-const GRID_X: u32 = 25;
-const GRID_Y: u32 = 18;
+const GRID_X: u32 = 30;
+const GRID_Y: u32 = 25;
 
 /// Modify this value to control the way the generation is visualized
 const GENERATION_VIEW_MODE: GenerationViewMode = GenerationViewMode::StepByStepTimed {
-    steps_count: 2,
+    steps_count: 4,
     interval_ms: 1,
 };
 // ------------------------------------------------------------------
@@ -115,5 +135,129 @@ fn main() {
         ),
     ));
     app.add_systems(Startup, (setup_generator, setup_scene));
+
+    app.add_systems(
+        Update,
+        (
+            demo_force_brush_water.run_if(input_just_pressed(KeyCode::KeyG)),
+            demo_force_brush_tree.run_if(input_just_pressed(KeyCode::KeyH)),
+        ),
+    );
+
     app.run();
+}
+
+pub fn demo_force_brush_windmill(mut brush_events: MessageWriter<BrushEvent>) {
+    brush_events.write(BrushEvent::UpdateBrush(ModelBrush {
+        info: ModelInfo {
+            weight: 0.5,
+            name: "Windmill".into(),
+        },
+        instance: ModelInstance {
+            model_index: 13,
+            rotation: ModelRotation::Rot0,
+        },
+    }));
+}
+
+const WATER_LAYER_Z: u32 = 3;
+pub fn demo_force_brush_water(
+    mut commands: Commands,
+    mut brush_events: MessageWriter<BrushEvent>,
+    mut selection_cursor: Query<&mut Cursor, With<SelectCursor>>,
+    grids: Query<(Entity, &CartesianGrid<Cartesian3D>)>,
+    mut marker_events: MessageWriter<MarkerDespawnEvent>,
+    selection_marker_settings: Res<SelectionCursorMarkerSettings>,
+) {
+    let Ok(mut cursor) = selection_cursor.single_mut() else {
+        return;
+    };
+
+    match cursor.0.as_mut() {
+        Some(grid_cursor) => {
+            let Ok((_grid_entity, grid)) = grids.get(grid_cursor.grid) else {
+                return;
+            };
+            marker_events.write(MarkerDespawnEvent::Marker(grid_cursor.marker));
+            grid_cursor.position.z = WATER_LAYER_Z;
+            grid_cursor.index = grid.index_from_pos(&grid_cursor.position);
+        }
+        None => {
+            // Currently no selection cursor, spawn it on the last Grid
+            let Some((grid_entity, grid)) = grids.iter().last() else {
+                return;
+            };
+
+            let pos = CartesianPosition::new(0, 0, WATER_LAYER_Z);
+            cursor.0 = Some(spawn_marker_and_create_cursor(
+                &mut commands,
+                grid_entity,
+                pos,
+                grid.index_from_pos(&pos),
+                selection_marker_settings.color(),
+            ));
+        }
+    };
+
+    brush_events.write(BrushEvent::UpdateBrush(ModelBrush {
+        info: ModelInfo {
+            weight: 0.5,
+            name: "Water".into(),
+        },
+        instance: ModelInstance {
+            model_index: 30,
+            rotation: ModelRotation::Rot0,
+        },
+    }));
+}
+
+const TREE_LAYER_Z: u32 = 4;
+pub fn demo_force_brush_tree(
+    mut commands: Commands,
+    mut brush_events: MessageWriter<BrushEvent>,
+    mut selection_cursor: Query<&mut Cursor, With<SelectCursor>>,
+    grids: Query<(Entity, &CartesianGrid<Cartesian3D>)>,
+    mut marker_events: MessageWriter<MarkerDespawnEvent>,
+    selection_marker_settings: Res<SelectionCursorMarkerSettings>,
+) {
+    let Ok(mut cursor) = selection_cursor.single_mut() else {
+        return;
+    };
+
+    match cursor.0.as_mut() {
+        Some(grid_cursor) => {
+            let Ok((_grid_entity, grid)) = grids.get(grid_cursor.grid) else {
+                return;
+            };
+            marker_events.write(MarkerDespawnEvent::Marker(grid_cursor.marker));
+            grid_cursor.position.z = TREE_LAYER_Z;
+            grid_cursor.index = grid.index_from_pos(&grid_cursor.position);
+        }
+        None => {
+            // Currently no selection cursor, spawn it on the last Grid
+            let Some((grid_entity, grid)) = grids.iter().last() else {
+                return;
+            };
+
+            let pos = CartesianPosition::new(0, 0, TREE_LAYER_Z);
+            cursor.0 = Some(spawn_marker_and_create_cursor(
+                &mut commands,
+                grid_entity,
+                pos,
+                grid.index_from_pos(&pos),
+                selection_marker_settings.color(),
+            ));
+        }
+    };
+
+    brush_events.write(BrushEvent::UpdateBrush(ModelBrush {
+        info: ModelInfo {
+            weight: 0.5,
+            name: "Tree".into(),
+        },
+        instance: ModelInstance {
+            model_index: 45,
+            rotation: ModelRotation::Rot0,
+        },
+    }));
 }
