@@ -1,6 +1,6 @@
 [package]
 name = "bevy_ghx_proc_gen"
-version = "0.7.0"
+version = "0.8.0"
 description = "Bevy plugins for 2D & 3D procedural generation with WFC/Model synthesis"
 repository = "https://github.com/Henauxg/ghx_proc_gen"
 documentation = "https://docs.rs/bevy_ghx_proc_gen"
@@ -48,20 +48,20 @@ log = ["bevy/bevy_log"]
 
 [dependencies]
 # Owned dependencies
-ghx_proc_gen = { path = "../ghx_proc_gen", version = "0.7.0", features = [
+ghx_proc_gen = { path = "../ghx_proc_gen", version = "0.8.0", features = [
     "bevy",
 ] }
 
 # External dependencies
-bevy = { version = "0.17", default-features = false, features = [
+bevy = { version = "0.18", default-features = false, features = [
     "bevy_render", # Rendering framework core
 ] }
 
 # Optional dependencies
 # Only enabled when the "debug-plugin" feature is enabled
-bevy_ghx_grid = { version = "0.7.0", optional = true, features = [] }
+bevy_ghx_grid = { version = "0.8.0", optional = true, features = [] }
 # Only enabled when the "picking" feature is enabled
-bevy_egui = { version = ">=0.37, <=0.38", optional = true, default-features = false, features = [
+bevy_egui = { version = "0.39", optional = true, default-features = false, features = [
     "default_fonts",
     "render",
 ] }
