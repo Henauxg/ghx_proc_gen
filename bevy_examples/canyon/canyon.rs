@@ -1,13 +1,13 @@
 use std::f32::consts::PI;
 
 use bevy::{
+    camera_controller::free_camera::{FreeCamera, FreeCameraPlugin},
     color::palettes::css::{GRAY, ORANGE_RED},
     light::DirectionalLightShadowMap,
     log::LogPlugin,
     prelude::*,
 };
 
-use bevy_editor_cam::{prelude::EditorCam, DefaultEditorCamPlugins};
 use bevy_examples::{
     anim::SpawningScaleAnimation, plugin::ProcGenExamplesPlugin, utils::load_assets,
 };
@@ -61,11 +61,16 @@ fn setup_scene(mut commands: Commands) {
         Name::new("Camera"),
         Transform::from_translation(camera_position).looking_at(look_target, Vec3::Y),
         Camera3d::default(),
-        EditorCam::default(),
+        FreeCamera {
+            walk_speed: 30.0,
+            run_speed: 50.0,
+            scroll_factor: 0.0,
+            ..default()
+        },
     ));
 
     // Scene lights
-    commands.insert_resource(AmbientLight {
+    commands.insert_resource(GlobalAmbientLight {
         color: Color::Srgba(ORANGE_RED),
         brightness: 0.05,
         ..default()
@@ -196,7 +201,7 @@ fn main() {
             level: bevy::log::Level::DEBUG,
             ..default()
         }),
-        DefaultEditorCamPlugins,
+        FreeCameraPlugin,
         ProcGenExamplesPlugin::<Cartesian3D, Handle<Scene>>::new(
             GENERATION_VIEW_MODE,
             ASSETS_SCALE,

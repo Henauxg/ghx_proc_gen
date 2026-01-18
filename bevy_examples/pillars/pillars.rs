@@ -4,12 +4,13 @@ use bevy::{
     app::{App, Startup},
     asset::{AssetServer, Assets, Handle},
     camera::Camera3d,
+    camera_controller::free_camera::{FreeCamera, FreeCameraPlugin},
     color::{
         palettes::css::{GRAY, ORANGE_RED},
         Color,
     },
     ecs::name::Name,
-    light::{AmbientLight, DirectionalLight, DirectionalLightShadowMap},
+    light::{DirectionalLight, DirectionalLightShadowMap, GlobalAmbientLight},
     log::LogPlugin,
     math::{EulerRot, Quat, Vec3},
     pbr::{DistanceFog, FogFalloff, MeshMaterial3d, StandardMaterial},
@@ -19,7 +20,6 @@ use bevy::{
     DefaultPlugins,
 };
 
-use bevy_editor_cam::{prelude::EditorCam, DefaultEditorCamPlugins};
 use bevy_examples::{plugin::ProcGenExamplesPlugin, utils::load_assets};
 
 use bevy_ghx_proc_gen::{
@@ -64,7 +64,12 @@ fn setup_scene(
         Name::new("Camera"),
         Transform::from_translation(camera_position).looking_at(Vec3::ZERO, Vec3::Y),
         Camera3d::default(),
-        EditorCam::default(),
+        FreeCamera {
+            walk_speed: 40.0,
+            run_speed: 60.0,
+            scroll_factor: 0.0,
+            ..default()
+        },
         DistanceFog {
             color: Color::srgba(0.2, 0.15, 0.1, 1.0),
             falloff: FogFalloff::Linear {
@@ -89,7 +94,7 @@ fn setup_scene(
     ));
 
     // Scene lights
-    commands.insert_resource(AmbientLight {
+    commands.insert_resource(GlobalAmbientLight {
         color: Color::Srgba(ORANGE_RED),
         brightness: 0.05,
         ..default()
@@ -182,7 +187,7 @@ fn main() {
             level: bevy::log::Level::DEBUG,
             ..default()
         }),
-        DefaultEditorCamPlugins,
+        FreeCameraPlugin,
         ProcGenExamplesPlugin::<Cartesian3D, Handle<Scene>>::new(
             GENERATION_VIEW_MODE,
             ASSETS_SCALE,
