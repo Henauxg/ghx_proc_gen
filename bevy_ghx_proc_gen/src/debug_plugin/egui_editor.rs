@@ -1,13 +1,14 @@
 use bevy::{
-    app::{App, Update},
+    app::App,
     ecs::{
-        event::{Event, EventReader, EventWriter},
+        message::{Message, MessageReader, MessageWriter},
         query::With,
         resource::Resource,
         schedule::IntoScheduleConfigs,
         system::{Query, Res, ResMut},
     },
     input::{mouse::MouseButton, ButtonInput},
+    prelude::*,
 };
 
 #[cfg(feature = "log")]
@@ -15,7 +16,7 @@ use bevy::log::warn;
 
 use bevy_egui::{
     egui::{self, Color32, Pos2},
-    EguiContexts,
+    EguiContexts, EguiPrimaryContextPass,
 };
 use ghx_proc_gen::{
     generator::{
@@ -31,16 +32,16 @@ use crate::{CursorTarget, GridNode};
 use super::{
     cursor::{Cursor, CursorInfo, SelectCursor},
     generation::ActiveGeneration,
-    picking::{NodeOverEvent, NodeSelectedEvent},
+    picking::{NodeOverMessage, NodeSelectedMessage},
 };
 
 pub(crate) fn plugin<C: CartesianCoordinates>(app: &mut App) {
     app.init_resource::<EditorConfig>()
         .init_resource::<EditorContext>()
-        .add_event::<BrushEvent>();
+        .add_message::<BrushEvent>();
 
     app.add_systems(
-        Update,
+        EguiPrimaryContextPass,
         (
             draw_edition_panel::<C>,
             update_brush,
@@ -84,7 +85,7 @@ pub struct ModelBrush {
 }
 
 /// Event types for model brushes
-#[derive(Event)]
+#[derive(Message)]
 pub enum BrushEvent {
     /// Clear the current brush
     ClearBrush,
@@ -109,18 +110,18 @@ pub fn draw_edition_panel<C: CartesianCoordinates>(
     editor_context: ResMut<EditorContext>,
     mut contexts: EguiContexts,
     active_generation: Res<ActiveGeneration>,
-    mut brush_events: EventWriter<BrushEvent>,
+    mut brush_events: MessageWriter<BrushEvent>,
     generations: Query<&mut Generator<C, CartesianGrid<C>>>,
     selection_cursor: Query<(&Cursor, &CursorInfo), With<SelectCursor>>,
-) {
+) -> Result {
     let Some(active_generation) = active_generation.0 else {
-        return;
+        return Ok(());
     };
     let Ok(generator) = generations.get(active_generation) else {
-        return;
+        return Ok(());
     };
     let Ok((cursor, cursor_info)) = selection_cursor.single() else {
-        return;
+        return Ok(());
     };
 
     // TODO Cache ? rules models groups
@@ -128,7 +129,7 @@ pub fn draw_edition_panel<C: CartesianCoordinates>(
         .title_bar(true)
         // TODO Init all those values with viewport size
         .default_pos(Pos2::new(10., 300.))
-        .show(contexts.ctx_mut(), |ui| {
+        .show(contexts.ctx_mut()?, |ui| {
             ui.horizontal_wrapped(|ui| {
                 // TODO A rules models display
                 ui.label(format!("📖 Rules:",));
@@ -233,12 +234,13 @@ pub fn draw_edition_panel<C: CartesianCoordinates>(
                 }
             });
         });
+    Ok(())
 }
 
 /// System reading [BrushEvent] to update the current model brush in the [EditorContext]
 pub fn update_brush(
     mut editor_context: ResMut<EditorContext>,
-    mut brush_events: EventReader<BrushEvent>,
+    mut brush_events: MessageReader<BrushEvent>,
 ) {
     for event in brush_events.read() {
         match event {
@@ -259,7 +261,7 @@ pub fn update_brush(
 pub fn update_painting_state(
     mut editor_context: ResMut<EditorContext>,
     buttons: Res<ButtonInput<MouseButton>>,
-    mut node_select_events: EventReader<NodeSelectedEvent>,
+    mut node_select_events: MessageReader<NodeSelectedMessage>,
     cursor_targets: Query<(), With<CursorTarget>>,
 ) {
     if editor_context.model_brush.is_none() {
@@ -280,7 +282,7 @@ pub fn update_painting_state(
 pub fn paint<C: CartesianCoordinates>(
     editor_context: ResMut<EditorContext>,
     active_generation: Res<ActiveGeneration>,
-    mut node_over_events: EventReader<NodeOverEvent>,
+    mut node_over_events: MessageReader<NodeOverMessage>,
     mut generations: Query<&mut Generator<C, CartesianGrid<C>>>,
     cursor_targets: Query<&GridNode, With<CursorTarget>>,
 ) {

@@ -2,8 +2,8 @@ use std::f32::consts::PI;
 
 use bevy::{
     color::palettes::css::{GRAY, ORANGE_RED},
+    light::DirectionalLightShadowMap,
     log::LogPlugin,
-    pbr::DirectionalLightShadowMap,
     prelude::*,
 };
 

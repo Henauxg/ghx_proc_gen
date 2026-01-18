@@ -3,18 +3,16 @@ use std::{f32::consts::PI, sync::Arc};
 use bevy::{
     app::{App, Startup},
     asset::{AssetServer, Assets, Handle},
+    camera::Camera3d,
     color::{
         palettes::css::{GRAY, ORANGE_RED},
         Color,
     },
-    core_pipeline::core_3d::Camera3d,
     ecs::name::Name,
+    light::{AmbientLight, DirectionalLight, DirectionalLightShadowMap},
     log::LogPlugin,
     math::{EulerRot, Quat, Vec3},
-    pbr::{
-        AmbientLight, DirectionalLight, DirectionalLightShadowMap, DistanceFog, FogFalloff,
-        MeshMaterial3d, StandardMaterial,
-    },
+    pbr::{DistanceFog, FogFalloff, MeshMaterial3d, StandardMaterial},
     prelude::{Commands, Mesh, Mesh3d, Plane3d, PluginGroup, Res, ResMut, Transform},
     scene::Scene,
     utils::default,

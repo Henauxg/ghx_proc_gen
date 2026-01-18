@@ -2,20 +2,21 @@ use std::{fmt, marker::PhantomData, time::Duration};
 
 use bevy::{
     app::{App, Plugin, PostUpdate, PreUpdate, Startup, Update},
+    camera::Camera,
     color::{palettes::css::GREEN, Color},
     ecs::{
         component::Component,
         entity::Entity,
-        event::EventWriter,
+        message::MessageWriter,
         name::Name,
+        observer::On,
         query::{Changed, With, Without},
         resource::Resource,
         schedule::IntoScheduleConfigs,
         system::{Commands, Local, Query, Res, ResMut},
     },
     input::{keyboard::KeyCode, ButtonInput},
-    prelude::{Text, TextUiWriter, Trigger},
-    render::camera::Camera,
+    prelude::{Text, TextUiWriter},
     text::{LineBreak, TextColor, TextFont, TextLayout, TextSpan},
     time::{Time, Timer, TimerMode},
     transform::components::GlobalTransform,
@@ -320,11 +321,11 @@ pub fn update_cursors_info_on_cursors_changes<C: CartesianCoordinates>(
 
 /// Observer updating all the [CursorInfo] based on [GenerationResetEvent]
 pub fn update_cursors_info_on_generation_reset<C: CartesianCoordinates>(
-    trigger: Trigger<GenerationResetEvent>,
+    gen_reset: On<GenerationResetEvent>,
     generators: Query<&Generator<C, CartesianGrid<C>>>,
     mut cursors: Query<(&Cursor, &mut CursorInfo)>,
 ) {
-    let Ok(generator) = generators.get(trigger.target()) else {
+    let Ok(generator) = generators.get(gen_reset.event().0) else {
         return;
     };
     for (cursor, mut cursor_info) in cursors.iter_mut() {
@@ -340,11 +341,11 @@ pub fn update_cursors_info_on_generation_reset<C: CartesianCoordinates>(
 
 /// Observer updating all the [CursorInfo] based on [NodesGeneratedEvent]
 pub fn update_cursors_info_on_generated_nodes<C: CartesianCoordinates>(
-    trigger: Trigger<NodesGeneratedEvent>,
+    trigger: On<NodesGeneratedEvent>,
     generators: Query<&Generator<C, CartesianGrid<C>>>,
     mut cursors: Query<(&Cursor, &mut CursorInfo)>,
 ) {
-    let Ok(generator) = generators.get(trigger.target()) else {
+    let Ok(generator) = generators.get(trigger.event().entity) else {
         return;
     };
     for (cursor, mut cursor_info) in cursors.iter_mut() {
@@ -352,7 +353,7 @@ pub fn update_cursors_info_on_generated_nodes<C: CartesianCoordinates>(
             continue;
         };
 
-        for gen_node in trigger.event().0.iter() {
+        for gen_node in trigger.event().nodes.iter() {
             if targeted_node.index == gen_node.node_index {
                 (
                     cursor_info.models_variations,
@@ -389,7 +390,7 @@ pub fn update_selection_cursor_panel_text(
 pub fn deselect_from_keybinds(
     keys: Res<ButtonInput<KeyCode>>,
     proc_gen_key_bindings: Res<ProcGenKeyBindings>,
-    mut marker_events: EventWriter<MarkerDespawnEvent>,
+    mut marker_events: MessageWriter<MarkerDespawnEvent>,
     mut selection_cursor: Query<&mut Cursor, With<SelectCursor>>,
 ) {
     if keys.just_pressed(proc_gen_key_bindings.deselect) {
@@ -441,7 +442,7 @@ pub fn switch_generation_selection_from_keybinds<C: CartesianCoordinates>(
     keys: Res<ButtonInput<KeyCode>>,
     selection_marker_settings: Res<SelectionCursorMarkerSettings>,
     proc_gen_key_bindings: Res<ProcGenKeyBindings>,
-    mut marker_events: EventWriter<MarkerDespawnEvent>,
+    mut marker_events: MessageWriter<MarkerDespawnEvent>,
     mut selection_cursor: Query<&mut Cursor, With<SelectCursor>>,
     generators: Query<Entity, (With<Generator<C, CartesianGrid<C>>>, With<CartesianGrid<C>>)>,
 ) {
@@ -527,7 +528,7 @@ pub fn move_selection_from_keybinds<C: CartesianCoordinates>(
     time: Res<Time>,
     selection_marker_settings: Res<SelectionCursorMarkerSettings>,
     proc_gen_key_bindings: Res<ProcGenKeyBindings>,
-    mut marker_events: EventWriter<MarkerDespawnEvent>,
+    mut marker_events: MessageWriter<MarkerDespawnEvent>,
     key_mvmt_values: Res<CursorKeyboardMovementSettings>,
     mut key_mvmt: ResMut<CursorKeyboardMovement>,
     mut selection_cursor: Query<&mut Cursor, With<SelectCursor>>,
@@ -557,7 +558,7 @@ pub fn move_selection_from_keybinds<C: CartesianCoordinates>(
         } else if keys.just_pressed(proc_gen_key_bindings.next_node) {
             Some(1)
         } else {
-            let (movement, pressed) = match key_mvmt.cooldown.finished() {
+            let (movement, pressed) = match key_mvmt.cooldown.is_finished() {
                 true => {
                     if keys.pressed(proc_gen_key_bindings.prev_node) {
                         (Some(-1), true)
@@ -579,7 +580,7 @@ pub fn move_selection_from_keybinds<C: CartesianCoordinates>(
             };
             if pressed {
                 key_mvmt.cooldown.tick(time.delta());
-                if !key_mvmt.speed_up_timer.finished() {
+                if !key_mvmt.speed_up_timer.is_finished() {
                     key_mvmt.speed_up_timer.tick(time.delta());
                 } else if key_mvmt.speed_up_timer.just_finished() {
                     key_mvmt
@@ -587,7 +588,7 @@ pub fn move_selection_from_keybinds<C: CartesianCoordinates>(
                         .set_duration(Duration::from_millis(key_mvmt_values.short_cooldown_ms));
                 }
             } else {
-                if key_mvmt.speed_up_timer.finished() {
+                if key_mvmt.speed_up_timer.is_finished() {
                     key_mvmt
                         .cooldown
                         .set_duration(Duration::from_millis(key_mvmt_values.default_cooldown_ms));

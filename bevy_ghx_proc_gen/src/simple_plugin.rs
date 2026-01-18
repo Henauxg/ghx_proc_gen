@@ -104,7 +104,10 @@ pub fn generate_and_spawn<C: CartesianCoordinates>(
                         generation.seed(),
                         generation.grid()
                     );
-                    commands.trigger_targets(GridGeneratedEvent(grid_data), gen_entity);
+                    commands.trigger(GridGeneratedEvent {
+                        entity: gen_entity,
+                        grid_data,
+                    });
                     generations_done.push(gen_entity);
                 }
                 Err(GeneratorError { node_index }) => {

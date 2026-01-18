@@ -5,22 +5,24 @@ use bevy::{
     ecs::{
         component::Component,
         entity::Entity,
-        event::{Event, EventReader, EventWriter},
+        event::EntityEvent,
         hierarchy::ChildOf,
+        message::{Message, MessageReader, MessageWriter},
+        observer::On,
         query::{Changed, With, Without},
         resource::Resource,
         schedule::IntoScheduleConfigs,
         system::{Commands, Local, Query, Res, ResMut},
     },
     input::{keyboard::KeyCode, ButtonInput},
+    light::NotShadowCaster,
     math::{primitives::Cuboid, Vec2, Vec3},
-    pbr::{MeshMaterial3d, NotShadowCaster, StandardMaterial},
-    picking::{events::Pressed, Pickable},
+    mesh::Mesh,
+    pbr::{MeshMaterial3d, StandardMaterial},
+    picking::{events::Press, Pickable},
     prelude::{
-        AlphaMode, Deref, DerefMut, Mesh3d, OnAdd, Out, Over, Pointer, PointerButton, TextUiWriter,
-        Trigger,
+        Add, AlphaMode, Deref, DerefMut, Mesh3d, Out, Over, Pointer, PointerButton, TextUiWriter,
     },
-    render::mesh::Mesh,
     sprite::Sprite,
     transform::components::Transform,
     utils::default,
@@ -72,9 +74,9 @@ impl<C: CartesianCoordinates> Plugin for ProcGenDebugPickingPlugin<C> {
         app.init_resource::<CursorTargetAssets>()
             .init_resource::<OverCursorMarkerSettings>();
 
-        app.add_event::<NodeOverEvent>()
-            .add_event::<NodeOutEvent>()
-            .add_event::<NodeSelectedEvent>();
+        app.add_message::<NodeOverMessage>()
+            .add_message::<NodeOutMessage>()
+            .add_message::<NodeSelectedMessage>();
 
         app.add_systems(
             Startup,
@@ -93,13 +95,13 @@ impl<C: CartesianCoordinates> Plugin for ProcGenDebugPickingPlugin<C> {
                         C,
                         OverCursorMarkerSettings,
                         OverCursor,
-                        NodeOverEvent,
+                        NodeOverMessage,
                     >,
                     picking_update_cursors_position::<
                         C,
                         SelectionCursorMarkerSettings,
                         SelectCursor,
-                        NodeSelectedEvent,
+                        NodeSelectedMessage,
                     >,
                 )
                     .chain(),
@@ -151,57 +153,57 @@ impl CursorBehavior for OverCursor {
 }
 
 /// Event raised when a node starts being overed by a mouse pointer
-#[derive(Event, Deref, DerefMut, Debug, Clone)]
-pub struct NodeOverEvent(pub Entity);
-impl From<Entity> for NodeOverEvent {
+#[derive(Message, Deref, DerefMut, Debug, Clone)]
+pub struct NodeOverMessage(pub Entity);
+impl From<Entity> for NodeOverMessage {
     fn from(target: Entity) -> Self {
-        NodeOverEvent(target)
+        NodeOverMessage(target)
     }
 }
 
 /// Event raised when a node stops being overed by a mouse pointer
-#[derive(Event, Deref, DerefMut)]
-pub struct NodeOutEvent(pub Entity);
-impl From<Entity> for NodeOutEvent {
+#[derive(Message, Deref, DerefMut)]
+pub struct NodeOutMessage(pub Entity);
+impl From<Entity> for NodeOutMessage {
     fn from(target: Entity) -> Self {
-        NodeOutEvent(target)
+        NodeOutMessage(target)
     }
 }
 
 /// Event raised when a node is selected by a mouse pointer
-#[derive(Event, Deref, DerefMut)]
-pub struct NodeSelectedEvent(pub Entity);
-impl From<Entity> for NodeSelectedEvent {
+#[derive(Message, Deref, DerefMut)]
+pub struct NodeSelectedMessage(pub Entity);
+impl From<Entity> for NodeSelectedMessage {
     fn from(target: Entity) -> Self {
-        NodeSelectedEvent(target)
+        NodeSelectedMessage(target)
     }
 }
 
 /// System that inserts picking event handlers to entites with an added [GridNode] component
 pub fn insert_cursor_picking_handlers_on_grid_nodes<C: CoordinateSystem>(
-    trigger: Trigger<OnAdd, GridNode>,
+    trigger: On<Add, GridNode>,
     mut commands: Commands,
 ) {
     commands
-        .entity(trigger.target())
+        .entity(trigger.event().entity)
         .insert(Pickable::default())
-        .observe(retransmit_event::<Pointer<Over>, NodeOverEvent>)
-        .observe(retransmit_event::<Pointer<Out>, NodeOutEvent>)
+        .observe(retransmit_event::<Pointer<Over>, NodeOverMessage>)
+        .observe(retransmit_event::<Pointer<Out>, NodeOutMessage>)
         .observe(
-            |trigger: Trigger<Pointer<Pressed>>,
-             mut selection_events: EventWriter<NodeSelectedEvent>| {
-                if trigger.button == PointerButton::Primary {
-                    selection_events.write(NodeSelectedEvent(trigger.target()));
+            |pressed: On<Pointer<Press>>,
+             mut selection_events: MessageWriter<NodeSelectedMessage>| {
+                if pressed.event().button == PointerButton::Primary {
+                    selection_events.write(NodeSelectedMessage(pressed.event().entity));
                 }
             },
         );
 }
 
-fn retransmit_event<PE: Event + Clone + Debug, NE: Event + From<Entity>>(
-    pointer_ev_trigger: Trigger<PE>,
-    mut events: EventWriter<NE>,
+fn retransmit_event<PE: EntityEvent + Clone + Debug, NE: Message + From<Entity>>(
+    pointer_ev_trigger: On<PE>,
+    mut events: MessageWriter<NE>,
 ) {
-    events.write(NE::from(pointer_ev_trigger.target()));
+    events.write(NE::from(pointer_ev_trigger.event().event_target()));
 }
 
 /// System that update the over cursor UI panel
@@ -228,8 +230,8 @@ pub fn update_over_cursor_panel_text(
 
 /// Observer updating the Over [Cursor] based on [GenerationResetEvent]
 pub fn update_over_cursor_on_generation_reset<C: CoordinateSystem>(
-    trigger: Trigger<GenerationResetEvent>,
-    mut marker_events: EventWriter<MarkerDespawnEvent>,
+    trigger: On<GenerationResetEvent>,
+    mut marker_events: MessageWriter<MarkerDespawnEvent>,
     mut over_cursor: Query<&mut Cursor, With<OverCursor>>,
 ) {
     let Ok(mut cursor) = over_cursor.single_mut() else {
@@ -238,7 +240,7 @@ pub fn update_over_cursor_on_generation_reset<C: CoordinateSystem>(
 
     // If there is an Over cursor, force despawn it, since we will despawn the underlying node there won't be any NodeOutEvent.
     if let Some(overed_node) = &cursor.0 {
-        if overed_node.grid == trigger.target() {
+        if overed_node.grid == trigger.event().0 {
             marker_events.write(MarkerDespawnEvent::Marker(overed_node.marker));
             cursor.0 = None;
         }
@@ -250,13 +252,13 @@ pub fn picking_update_cursors_position<
     C: CartesianCoordinates,
     CS: CursorMarkerSettings,
     CB: CursorBehavior,
-    PE: Event + std::ops::DerefMut<Target = Entity>,
+    PE: Message + std::ops::DerefMut<Target = Entity>,
 >(
     mut commands: Commands,
     cursor_marker_settings: Res<CS>,
     mut active_generation: ResMut<ActiveGeneration>,
-    mut events: EventReader<PE>,
-    mut marker_events: EventWriter<MarkerDespawnEvent>,
+    mut events: MessageReader<PE>,
+    mut marker_events: MessageWriter<MarkerDespawnEvent>,
     grid_nodes: Query<(&GridNode, &ChildOf)>,
     mut cursor: Query<&mut Cursor, With<CB>>,
     generations: Query<(Entity, &CartesianGrid<C>), With<Generator<C, CartesianGrid<C>>>>,
@@ -307,8 +309,8 @@ pub fn picking_update_cursors_position<
 
 /// System used to remove an Over cursor on a [NodeOutEvent]
 pub fn picking_remove_previous_over_cursor<C: CoordinateSystem>(
-    mut out_events: EventReader<NodeOutEvent>,
-    mut marker_events: EventWriter<MarkerDespawnEvent>,
+    mut out_events: MessageReader<NodeOutMessage>,
+    mut marker_events: MessageWriter<MarkerDespawnEvent>,
     mut nodes: Query<&GridNode>,
     mut over_cursor: Query<&mut Cursor, With<OverCursor>>,
 ) {
@@ -372,7 +374,7 @@ pub fn update_cursor_targets_nodes<C: CartesianCoordinates>(
     keys: Res<ButtonInput<KeyCode>>,
     cursor_target_assets: Res<CursorTargetAssets>,
     proc_gen_key_bindings: Res<ProcGenKeyBindings>,
-    mut marker_events: EventWriter<MarkerDespawnEvent>,
+    mut marker_events: MessageWriter<MarkerDespawnEvent>,
     selection_cursor: Query<&Cursor, With<SelectCursor>>,
     mut over_cursor: Query<&mut Cursor, (With<OverCursor>, Without<SelectCursor>)>,
     grids_with_cam3d: Query<(&CartesianGrid<C>, &DebugGridView), With<DebugGridView3d>>,
@@ -449,7 +451,7 @@ pub fn update_cursor_targets_nodes<C: CartesianCoordinates>(
 /// Function used to despawn all cursor targets and eventually the attached over cursor
 pub fn despawn_cursor_targets(
     commands: &mut Commands,
-    marker_events: &mut EventWriter<MarkerDespawnEvent>,
+    marker_events: &mut MessageWriter<MarkerDespawnEvent>,
     cursor_targets: &Query<Entity, With<CursorTarget>>,
     over_cursor: &mut Query<&mut Cursor, (With<OverCursor>, Without<SelectCursor>)>,
 ) {
@@ -515,8 +517,8 @@ pub fn spawn_cursor_targets_3d<C: CartesianCoordinates>(
                 CursorTarget,
                 NotShadowCaster,
                 Transform::from_translation(translation).with_scale(*node_size),
-                Mesh3d(cursor_target_assets.target_mesh_3d.clone_weak()),
-                MeshMaterial3d(cursor_target_assets.target_mat_3d.clone_weak()),
+                Mesh3d(cursor_target_assets.target_mesh_3d.clone()),
+                MeshMaterial3d(cursor_target_assets.target_mat_3d.clone()),
             ))
             .id();
         commands

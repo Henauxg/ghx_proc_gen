@@ -8,7 +8,7 @@ use bevy::{
     },
     ecs::{
         component::Component,
-        event::Events,
+        message::Messages,
         query::With,
         schedule::IntoScheduleConfigs,
         system::{Commands, Query, Res, ResMut},
@@ -21,8 +21,7 @@ use bevy::{
         ButtonInput,
     },
     math::Vec3,
-    prelude::{default, Entity, MeshPickingPlugin, Pickable, Text, TextUiWriter},
-    render::view::Visibility,
+    prelude::*,
     text::{LineBreak, TextFont, TextLayout, TextSpan},
     ui::{BackgroundColor, Node, PositionType, UiRect, Val},
 };
@@ -71,9 +70,7 @@ impl<C: CartesianCoordinates, A: BundleInserter> Plugin for ProcGenExamplesPlugi
     fn build(&self, app: &mut App) {
         app.add_plugins((
             MeshPickingPlugin,
-            EguiPlugin {
-                enable_multipass_for_primary_context: false,
-            },
+            EguiPlugin::default(),
             GridDebugPlugin::<C>::new(),
             ProcGenDebugPlugins::<C, A> {
                 config: DebugPluginConfig {
@@ -106,7 +103,6 @@ impl<C: CartesianCoordinates, A: BundleInserter> Plugin for ProcGenExamplesPlugi
                     .run_if(input_just_pressed(KeyCode::F1)),
                 toggle_debug_grids_visibilities.run_if(input_just_pressed(KeyCode::F2)),
                 toggle_grid_markers_visibilities.run_if(input_just_pressed(KeyCode::F3)),
-                // toggle_auto_orbit.run_if(input_just_pressed(KeyCode::F4)),
                 update_generation_control_ui,
                 // Quick adjust of the slowish spawn animation to be more snappy when painting
                 adjust_spawn_animation_when_painting
@@ -175,7 +171,6 @@ pub fn setup_examples_ui(mut commands: Commands, view_mode: Res<GenerationViewMo
         'F1' Show/hide UI\n\
         'F2' Show/hide grid\n\
         'F3' Show/hide markers\n\
-        'F4' Enable/disable camera rotation\n\
         \n\
         Selection:\n\
        'Click' Select\n\
@@ -304,11 +299,12 @@ pub fn update_generation_control_ui(
 fn absorb_egui_inputs(
     mut contexts: bevy_egui::EguiContexts,
     mut mouse: ResMut<ButtonInput<MouseButton>>,
-    mut mouse_wheel: ResMut<Events<MouseWheel>>,
-) {
-    let ctx = contexts.ctx_mut();
+    mut mouse_wheel: ResMut<Messages<MouseWheel>>,
+) -> Result {
+    let ctx = contexts.ctx_mut()?;
     if ctx.wants_pointer_input() || ctx.is_pointer_over_area() {
         mouse.reset_all();
         mouse_wheel.clear();
     }
+    Ok(())
 }
