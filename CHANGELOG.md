@@ -1,6 +1,6 @@
 # Changelog
 
-## Version 0.7.0 (TBD)
+## Version 0.7.0 (2026-01-18)
 
 - Updated `bevy` to 0.17
 
