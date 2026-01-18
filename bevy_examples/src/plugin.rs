@@ -103,7 +103,6 @@ impl<C: CartesianCoordinates, A: BundleInserter> Plugin for ProcGenExamplesPlugi
                     .run_if(input_just_pressed(KeyCode::F1)),
                 toggle_debug_grids_visibilities.run_if(input_just_pressed(KeyCode::F2)),
                 toggle_grid_markers_visibilities.run_if(input_just_pressed(KeyCode::F3)),
-                // toggle_auto_orbit.run_if(input_just_pressed(KeyCode::F4)),
                 update_generation_control_ui,
                 // Quick adjust of the slowish spawn animation to be more snappy when painting
                 adjust_spawn_animation_when_painting
@@ -172,7 +171,6 @@ pub fn setup_examples_ui(mut commands: Commands, view_mode: Res<GenerationViewMo
         'F1' Show/hide UI\n\
         'F2' Show/hide grid\n\
         'F3' Show/hide markers\n\
-        'F4' Enable/disable camera rotation\n\
         \n\
         Selection:\n\
        'Click' Select\n\
