@@ -1,5 +1,10 @@
 # Changelog
 
+## Version 0.8.0 (2026-01-18)
+
+- Updated `bevy` to 0.18
+- bevy-examples: use bevy bundled `free_camera` instead of external `bevy_editor_cam`
+  
 ## Version 0.7.0 (2026-01-18)
 
 - Updated `bevy` to 0.17
