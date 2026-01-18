@@ -307,7 +307,7 @@ pub fn picking_update_cursors_position<
     }
 }
 
-/// System used to remove an Over cursor on a [NodeOutEvent]
+/// System used to remove an Over cursor on a [NodeOutMessage]
 pub fn picking_remove_previous_over_cursor<C: CoordinateSystem>(
     mut out_events: MessageReader<NodeOutMessage>,
     mut marker_events: MessageWriter<MarkerDespawnEvent>,

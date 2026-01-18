@@ -257,7 +257,7 @@ pub fn update_brush(
     }
 }
 
-/// System updating the painting state in the [EditorContext] based on mouse inputs and [NodeSelectedEvent]
+/// System updating the painting state in the [EditorContext] based on mouse inputs and [NodeSelectedMessage]
 pub fn update_painting_state(
     mut editor_context: ResMut<EditorContext>,
     buttons: Res<ButtonInput<MouseButton>>,
