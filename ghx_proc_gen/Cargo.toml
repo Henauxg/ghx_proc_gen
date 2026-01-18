@@ -1,6 +1,6 @@
 [package]
 name = "ghx_proc_gen"
-version = "0.7.0"
+version = "0.8.0"
 description = "2D & 3D procedural generation with WFC/Model synthesis"
 repository = "https://github.com/Henauxg/ghx_proc_gen"
 documentation = "https://docs.rs/ghx_proc_gen"
@@ -25,7 +25,7 @@ reflect = ["bevy", "ghx_grid/reflect"]
 
 [dependencies]
 # Owned dependencies
-ghx_grid = { version = "0.7.0", features = [] }
+ghx_grid = { version = "0.8.0", features = [] }
 
 # External dependencies
 bitvec = "1.0.1"
@@ -37,4 +37,4 @@ tracing = "0.1.40"
 
 # Optional dependencies
 # Only enabled when the "bevy" feature is enabled
-bevy = { version = ">=0.16,<=0.17", optional = true, default-features = false }
+bevy = { version = "0.18", optional = true, default-features = false }
