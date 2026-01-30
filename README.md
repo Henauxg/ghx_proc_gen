@@ -69,7 +69,7 @@ Let's build a chessboard pattern:
       .with_rules(rules)
       .with_grid(grid)
       // Let's ensure that we make a chessboard, with a black square bottom-left
-      .with_initial_nodes(vec![(0, black_model)]).unwrap()
+     .with_initial_nodes(vec![(CartesianPosition::new_xy(0, 0), black_model)])unwrap()
       .build()
       .unwrap();
 ```

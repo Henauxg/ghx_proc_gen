@@ -17,12 +17,12 @@
 cargo add bevy_ghx_proc_gen
 ```
 
-Steps `1` to `3` are the same as in the `ghx_proc_gen`  [Quickstart](../README.md#quickstart).
-1) To automatically spawn our assets for us, we use the provided plugins
+1) Add the `Rules`, `GridDefinition` and `Generator` just as steps `1`, `2` and `3` of the `ghx_proc_gen`  [Quickstart](../README.md#quickstart).
+2) To automatically spawn our assets for us, we use the provided plugins
 ```rust
     app.add_plugins(ProcGenSimplePlugins::<Cartesian2D, PbrMesh>::default());
 ```
-1) To see something in the Bevy viewport, we setup assets in a `ModelsAssets`:
+3) To see something in the Bevy viewport, we setup assets in a `ModelsAssets`:
 ```rust
 fn setup_generator(
     mut commands: Commands,
@@ -54,21 +54,22 @@ fn setup_generator(
   // ...
 }
 ```
-3) Spawn an `Entity` with a `GeneratorBundle`:
+4) Spawn an `Entity` with a `GeneratorBundle`:
 ```rust
-  // The plugins will detect this, run the generator and spawn the nodes. 
-  commands.spawn(GeneratorBundle {
+  // Add the generator & grid components the plugin will generate and spawn the nodes
+  commands.spawn((
       Transform::from_translation(Vec3::new(-4., -4., 0.)),
       grid,
       generator,
       NodesSpawner::new(models_assets, NODE_SIZE, Vec3::ONE),
-  });
+  ));
 ```
 <p align="center">
   <img alt="bevy_chess_board_pattern" src="../docs/assets/bevy_chess_board_pattern.png">
 </p>
 
-- For more information, check out the `bevy_ghx_proc_gen` [crate documentation](https://docs.rs/bevy_ghx_proc_gen/latest/bevy_ghx_proc_gen) or the [Examples](../README.md#examples).
+- See the full source code of this example [here](../bevy_examples/chessboard/chessboard.rs)
+- For more information, check out the `bevy_ghx_proc_gen` [crate documentation](https://docs.rs/bevy_ghx_proc_gen/latest/bevy_ghx_proc_gen) or the other examples.
 - Almost all systems, structs components, resources, ... have a `pub` visibility, so you can use or override them in custom plugins
 
 # Bevy plugins
