@@ -2,7 +2,6 @@ use bevy::{
     ecs::{
         component::Component,
         entity::Entity,
-        resource::Resource,
         system::{Commands, Query, Res},
     },
     math::Vec3,
@@ -11,7 +10,7 @@ use bevy::{
 };
 
 /// Used for the examples
-#[derive(Component, Clone, Resource)]
+#[derive(Component, Clone)]
 pub struct SpawningScaleAnimation {
     pub duration_sec: f32,
     pub progress: f32,

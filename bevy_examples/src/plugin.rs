@@ -43,6 +43,7 @@ use bevy_ghx_proc_gen::{
     },
     insert_bundle_from_resource_to_spawned_nodes,
     proc_gen::ghx_grid::cartesian::coordinates::CartesianCoordinates,
+    NodeBundleToClone,
 };
 
 use crate::anim::{animate_scale, ease_in_cubic, SpawningScaleAnimation};
@@ -80,11 +81,11 @@ impl<C: CartesianCoordinates, A: BundleInserter> Plugin for ProcGenExamplesPlugi
                 ..default()
             },
         ));
-        app.insert_resource(SpawningScaleAnimation::new(
+        app.insert_resource(NodeBundleToClone(SpawningScaleAnimation::new(
             DEFAULT_SPAWN_ANIMATION_DURATION,
             self.assets_scale,
             ease_in_cubic,
-        ));
+        )));
         app.add_systems(
             Startup,
             (setup_examples_ui, customize_grid_markers_gizmos_config),
@@ -137,12 +138,12 @@ pub fn customize_grid_markers_gizmos_config(mut config_store: ResMut<GizmoConfig
 
 pub fn adjust_spawn_animation_when_painting(
     editor_contex: Res<EditorContext>,
-    mut spawn_animation: ResMut<SpawningScaleAnimation>,
+    mut spawn_animation: ResMut<NodeBundleToClone<SpawningScaleAnimation>>,
 ) {
     if editor_contex.painting {
-        spawn_animation.duration_sec = FAST_SPAWN_ANIMATION_DURATION;
+        spawn_animation.0.duration_sec = FAST_SPAWN_ANIMATION_DURATION;
     } else {
-        spawn_animation.duration_sec = DEFAULT_SPAWN_ANIMATION_DURATION;
+        spawn_animation.0.duration_sec = DEFAULT_SPAWN_ANIMATION_DURATION;
     }
 }
 
@@ -213,10 +214,7 @@ pub fn setup_examples_ui(mut commands: Commands, view_mode: Res<GenerationViewMo
                 linebreak: LineBreak::NoWrap,
                 ..default()
             },
-            TextFont {
-                font_size: DEFAULT_EXAMPLES_FONT_SIZE,
-                ..default()
-            },
+            TextFont::from_font_size(DEFAULT_EXAMPLES_FONT_SIZE),
             Text(keybindings_text),
             Pickable::IGNORE,
         ))
@@ -233,10 +231,7 @@ pub fn setup_examples_ui(mut commands: Commands, view_mode: Res<GenerationViewMo
                 linebreak: LineBreak::NoWrap,
                 ..default()
             },
-            TextFont {
-                font_size: DEFAULT_EXAMPLES_FONT_SIZE,
-                ..default()
-            },
+            TextFont::from_font_size(DEFAULT_EXAMPLES_FONT_SIZE),
             Pickable::IGNORE,
             Text("".into()),
         ))
@@ -302,7 +297,7 @@ fn absorb_egui_inputs(
     mut mouse_wheel: ResMut<Messages<MouseWheel>>,
 ) -> Result {
     let ctx = contexts.ctx_mut()?;
-    if ctx.wants_pointer_input() || ctx.is_pointer_over_area() {
+    if ctx.egui_wants_pointer_input() || ctx.is_pointer_over_egui() {
         mouse.reset_all();
         mouse_wheel.clear();
     }

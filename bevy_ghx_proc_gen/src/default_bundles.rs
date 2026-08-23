@@ -6,10 +6,10 @@ use bevy::{
     mesh::Mesh,
     pbr::{Material, MeshMaterial3d, StandardMaterial},
     prelude::Mesh3d,
-    scene::{Scene, SceneRoot},
     sprite::Sprite,
     transform::components::Transform,
     utils::default,
+    world_serialization::{WorldAsset, WorldAssetRoot},
 };
 use ghx_proc_gen::generator::model::ModelRotation;
 
@@ -37,7 +37,7 @@ impl BundleInserter for Handle<Image> {
 }
 
 /// **WARNING**: Assumes a specific `Rotation Axis` for the `Models`: Y+
-impl BundleInserter for Handle<Scene> {
+impl BundleInserter for Handle<WorldAsset> {
     fn insert_bundle(
         &self,
         commands: &mut EntityCommands,
@@ -49,7 +49,7 @@ impl BundleInserter for Handle<Scene> {
             Transform::from_translation(translation)
                 .with_scale(scale)
                 .with_rotation(Quat::from_rotation_y(rotation.rad())),
-            SceneRoot(self.clone()),
+            WorldAssetRoot(self.clone()),
         ));
     }
 }

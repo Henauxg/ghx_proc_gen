@@ -759,10 +759,7 @@ pub fn update_cursors_overlays(
                 ..default()
             },
             TextColor(ui_config.text_color),
-            TextFont {
-                font_size: ui_config.font_size,
-                ..default()
-            },
+            TextFont::from_font_size(ui_config.font_size),
             Text(text),
             Node {
                 position_type: PositionType::Absolute,

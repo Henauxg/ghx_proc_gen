@@ -1,5 +1,24 @@
 # Changelog
 
+## Version 0.9.0 (2026-08-23)
+
+###  All crates
+
+- Updated `bevy` to 0.19
+- Updated `ghx_grid` to 0.9
+
+#### bevy-ghx-proc-gen
+
+- Updated `bevy_ghx_grid` to 0.9 and `bevy_egui` to 0.42
+- `BundleInserter` is now implemented for `Handle<WorldAsset>` instead of `Handle<Scene>`, following the rename of `bevy_scene` to `bevy_world_serialization` in `bevy` 0.19
+- The `default-bundle-inserters` feature now enables `bevy/bevy_world_serialization` instead of `bevy/bevy_scene`
+- Added `NodeBundleToClone`, a `Resource` wrapping the `Bundle` cloned onto spawned nodes
+- `insert_bundle_from_resource_to_spawned_nodes` now reads its `Bundle` from a `NodeBundleToClone` resource: its type parameter is `B: Bundle + Clone` instead of `B: Bundle + Resource + Clone`. Since `bevy` 0.19, a `Resource` is a unique `Component`, so a single type can no longer be used as both
+
+#### bevy-examples
+
+- `SpawningScaleAnimation` is now only a `Component`, and is inserted as a `NodeBundleToClone` resource
+
 ## Version 0.8.0 (2026-01-18)
 
 - Updated `bevy` to 0.18

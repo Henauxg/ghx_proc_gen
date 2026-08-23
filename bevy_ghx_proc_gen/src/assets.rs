@@ -9,7 +9,7 @@ use ghx_proc_gen::{
     ghx_grid::cartesian::coordinates::GridDelta,
 };
 
-/// Defines a struct which can spawn components on an Entity (for example, a [`bevy::sprite::Sprite`], a [`bevy::scene::SceneRoot`], ...).
+/// Defines a struct which can spawn components on an Entity (for example, a [`bevy::sprite::Sprite`], a [`bevy::world_serialization::WorldAssetRoot`], ...).
 pub trait BundleInserter: Sync + Send + Default + 'static {
     /// From the `BundleSpawner` own's struct data and a position, scale and rotation, can modify the spawned node `Entity`
     fn insert_bundle(

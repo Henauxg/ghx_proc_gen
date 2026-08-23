@@ -12,7 +12,7 @@ bevy_ghx_proc_gen = { path = "../bevy_ghx_proc_gen", default-features = true }
 # ----- External dependencies
 tracing-subscriber = "0.3.18"
 rand = "0.8.5"
-bevy = { version = "0.18", default-features = false, features = [
+bevy = { version = "0.19", default-features = false, features = [
 	# Default features:
 
 	"multi_threaded",         # Run with multithreading

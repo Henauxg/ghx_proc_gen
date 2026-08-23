@@ -126,33 +126,42 @@ pub fn insert_default_bundle_to_spawned_nodes<B: Bundle + Default>(
     }
 }
 
+/// [`Resource`] holding a [`Bundle`] to be cloned onto spawned nodes by
+/// [`insert_bundle_from_resource_to_spawned_nodes`].
+///
+/// A type cannot be both a `Resource` and a `Component`: a `Resource` is unique, and inserting one
+/// as a component on a second entity removes it. The bundle is therefore wrapped in this resource
+/// rather than being a resource itself.
+#[derive(Resource, Clone, Debug, Default)]
+pub struct NodeBundleToClone<B: Bundle + Clone>(pub B);
+
 /// Utility system. Adds a [`Bundle`] (or a [`Component`]) to every [`Entity`] that has [`GridNode`] Component (this is the case of nodes spawned by the `spawn_node` system). The `Bundle` will be cloned from a `Resource`
 ///
 /// ### Example
 ///
 /// Add a `MyAnimation` Component cloned from a `Resource` to every newly spawned node Entity
 /// ```ignore
-/// #[derive(Component, Resource)]
+/// #[derive(Component, Clone)]
 /// pub struct MyAnimation {
 ///     duration_sec: f32,
 ///     final_scale: Vec3,
 /// }
-/// app.insert_resource(MyAnimation {
+/// app.insert_resource(NodeBundleToClone(MyAnimation {
 ///     duration_sec: 0.8,
 ///     final_scale: Vec3::ONE,
-/// });
+/// }));
 /// app.add_systems(
 ///     Update,
 ///     insert_bundle_from_resource_to_spawned_nodes::<MyAnimation>
 /// );
 /// ```
-pub fn insert_bundle_from_resource_to_spawned_nodes<B: Bundle + Resource + Clone>(
+pub fn insert_bundle_from_resource_to_spawned_nodes<B: Bundle + Clone>(
     mut commands: Commands,
-    bundle_to_clone: Res<B>,
+    bundle_to_clone: Res<NodeBundleToClone<B>>,
     spawned_nodes: Query<Entity, (Added<GridNode>, Without<CursorTarget>)>,
 ) {
     for node in spawned_nodes.iter() {
-        commands.entity(node).try_insert(bundle_to_clone.clone());
+        commands.entity(node).try_insert(bundle_to_clone.0.clone());
     }
 }
 
@@ -164,7 +173,7 @@ pub fn insert_bundle_from_resource_to_spawned_nodes<B: Bundle + Resource + Clone
 ///
 /// Spawn 3d models (gltf) assets with a `Cartesian3D` grid
 /// ```ignore
-/// spawn_node::<Cartesian3D, Handle<Scene>>(...);
+/// spawn_node::<Cartesian3D, Handle<WorldAsset>>(...);
 /// ```
 /// Spawn 2d sprites (png, ...) assets with a `Cartesian3D` grid
 /// ```ignore

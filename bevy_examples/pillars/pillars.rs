@@ -15,8 +15,8 @@ use bevy::{
     math::{EulerRot, Quat, Vec3},
     pbr::{DistanceFog, FogFalloff, MeshMaterial3d, StandardMaterial},
     prelude::{Commands, Mesh, Mesh3d, Plane3d, PluginGroup, Res, ResMut, Transform},
-    scene::Scene,
     utils::default,
+    world_serialization::WorldAsset,
     DefaultPlugins,
 };
 
@@ -107,7 +107,7 @@ fn setup_scene(
             ..default()
         },
         DirectionalLight {
-            shadows_enabled: true,
+            shadow_maps_enabled: true,
             illuminance: 3000.,
             color: Color::srgb(1.0, 0.85, 0.65),
             ..default()
@@ -121,7 +121,7 @@ fn setup_scene(
             ..default()
         },
         DirectionalLight {
-            shadows_enabled: false,
+            shadow_maps_enabled: false,
             illuminance: 1250.,
             color: Color::srgb(1.0, 0.85, 0.65),
             ..default()
@@ -144,7 +144,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
         .with_shared_rules(rules.clone())
         .with_grid(grid.clone());
 
-    let models_assets: ModelsAssets<Handle<Scene>> =
+    let models_assets: ModelsAssets<Handle<WorldAsset>> =
         load_assets(&asset_server, models_asset_paths, "pillars", "glb#Scene0");
     let node_spawner = NodesSpawner::new(
         models_assets,
@@ -188,7 +188,7 @@ fn main() {
             ..default()
         }),
         FreeCameraPlugin,
-        ProcGenExamplesPlugin::<Cartesian3D, Handle<Scene>>::new(
+        ProcGenExamplesPlugin::<Cartesian3D, Handle<WorldAsset>>::new(
             GENERATION_VIEW_MODE,
             ASSETS_SCALE,
         ),

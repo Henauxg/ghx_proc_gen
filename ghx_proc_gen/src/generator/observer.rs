@@ -64,7 +64,7 @@ impl<T: CoordinateSystem, G: Grid<T>> QueuedStatefulObserver<T, G> {
 
     /// Updates the internal state of the observer by dequeuing 1 queued update.
     ///
-    /// Returns [`Some(GenerationUpdate)`] if there was an update to process, else returns `None`.
+    /// Returns `Some(`[`GenerationUpdate`]`)` if there was an update to process, else returns `None`.
     pub fn dequeue_one(&mut self) -> Option<GenerationUpdate> {
         match self.receiver.try_recv() {
             Ok(update) => {
@@ -115,7 +115,7 @@ impl QueuedObserver {
 
     /// Dequeues 1 queued update.
     ///
-    /// Returns [`Some(GenerationUpdate)`] if there was an update to process, else returns `None`.
+    /// Returns `Some(`[`GenerationUpdate`]`)` if there was an update to process, else returns `None`.
     pub fn dequeue_one(&mut self) -> Option<GenerationUpdate> {
         match self.receiver.try_recv() {
             Ok(update) => Some(update),

@@ -83,7 +83,7 @@ fn setup_scene(mut commands: Commands) {
             ..default()
         },
         DirectionalLight {
-            shadows_enabled: true,
+            shadow_maps_enabled: true,
             illuminance: 4000.,
             color: Color::srgb(1.0, 0.85, 0.65),
             ..default()
@@ -97,7 +97,7 @@ fn setup_scene(mut commands: Commands) {
             ..default()
         },
         DirectionalLight {
-            shadows_enabled: false,
+            shadow_maps_enabled: false,
             illuminance: 2000.,
             color: Color::Srgba(ORANGE_RED),
             ..default()
@@ -163,7 +163,7 @@ fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     // Load assets
     let models_assets =
-        load_assets::<Scene>(&asset_server, assets_definitions, ASSETS_PATH, "glb#Scene0");
+        load_assets::<WorldAsset>(&asset_server, assets_definitions, ASSETS_PATH, "glb#Scene0");
 
     commands.spawn((
         Transform::from_translation(Vec3 {
@@ -202,7 +202,7 @@ fn main() {
             ..default()
         }),
         FreeCameraPlugin,
-        ProcGenExamplesPlugin::<Cartesian3D, Handle<Scene>>::new(
+        ProcGenExamplesPlugin::<Cartesian3D, Handle<WorldAsset>>::new(
             GENERATION_VIEW_MODE,
             ASSETS_SCALE,
         ),
