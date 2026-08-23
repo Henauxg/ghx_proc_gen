@@ -119,7 +119,7 @@ impl<C: CoordinateSystem, G: Grid<C>> InternalGenerator<C, G> {
 impl<C: CoordinateSystem, G: Grid<C>> InternalGenerator<C, G> {
     #[inline]
     fn is_model_possible(&self, node: NodeIndex, model: ModelVariantIndex) -> bool {
-        self.nodes[node * self.rules.models_count() + model] == true
+        self.nodes[node * self.rules.models_count() + model]
     }
 
     #[inline]
@@ -172,7 +172,7 @@ impl<C: CoordinateSystem, G: Grid<C>> InternalGenerator<C, G> {
     pub(crate) fn reinitialize(
         &mut self,
         collector: &mut Collector,
-        initial_nodes: &Vec<(NodeIndex, ModelVariantIndex)>,
+        initial_nodes: &[(NodeIndex, ModelVariantIndex)],
     ) -> GenerationStatus {
         // Gen next seed from current rng
         let next_seed = self.rng.gen::<u64>();
@@ -252,7 +252,7 @@ impl<C: CoordinateSystem, G: Grid<C>> InternalGenerator<C, G> {
     fn generate_initial_nodes(
         &mut self,
         collector: &mut Collector,
-        initial_nodes: &Vec<(NodeIndex, ModelVariantIndex)>,
+        initial_nodes: &[(NodeIndex, ModelVariantIndex)],
     ) -> Result<GenerationStatus, GeneratorError> {
         for (node_index, model_variant_index) in initial_nodes.iter() {
             if self.possible_models_counts[*node_index] <= 1 {
@@ -272,7 +272,7 @@ impl<C: CoordinateSystem, G: Grid<C>> InternalGenerator<C, G> {
     pub(crate) fn pregen(
         &mut self,
         collector: &mut Collector,
-        initial_nodes: &Vec<(NodeIndex, ModelVariantIndex)>,
+        initial_nodes: &[(NodeIndex, ModelVariantIndex)],
     ) -> Result<GenerationStatus, NodeSetError> {
         self.initialize_supports_count(collector)?;
         // If done already, we still try to set all nodes and succeed only if initial nodes spawn requests match the already generated nodes.
@@ -282,7 +282,7 @@ impl<C: CoordinateSystem, G: Grid<C>> InternalGenerator<C, G> {
     fn pregen_initial_nodes(
         &mut self,
         collector: &mut Collector,
-        initial_nodes: &Vec<(NodeIndex, ModelVariantIndex)>,
+        initial_nodes: &[(NodeIndex, ModelVariantIndex)],
     ) -> Result<GenerationStatus, NodeSetError> {
         for (node_index, model_variant_index) in initial_nodes.iter() {
             match self.check_set_and_propagate_parameters(*node_index, *model_variant_index)? {
@@ -303,6 +303,7 @@ impl<C: CoordinateSystem, G: Grid<C>> InternalGenerator<C, G> {
     /// - node_index is invalid
     /// - model_variant_index is invalid
     /// - model_variant_index is not possible on node_index
+    ///
     /// Returns [`Ok(NodeSetStatus::CanBeSet)`] if model_variant_index can be generated on node_index and [`Ok(NodeSetStatus::AlreadySet)`] if node_index is already generated to model_variant_index
     fn check_set_and_propagate_parameters(
         &self,
@@ -327,7 +328,7 @@ impl<C: CoordinateSystem, G: Grid<C>> InternalGenerator<C, G> {
     pub(crate) fn generate(
         &mut self,
         retry_count: u32,
-        initial_nodes: &Vec<(NodeIndex, ModelVariantIndex)>,
+        initial_nodes: &[(NodeIndex, ModelVariantIndex)],
     ) -> Result<GenInfo, GeneratorError> {
         let mut last_error = None;
         for try_index in 0..=retry_count {
@@ -671,7 +672,7 @@ impl<C: CoordinateSystem, G: Grid<C>> InternalGenerator<C, G> {
     ) {
         let grid_node = GeneratedNode {
             node_index,
-            model_instance: self.rules.model(model_index).clone(),
+            model_instance: *self.rules.model(model_index),
         };
         let update = GenerationUpdate::Generated(grid_node);
         for obs in &mut self.observers {
@@ -698,7 +699,7 @@ impl<C: CoordinateSystem, G: Grid<C>> InternalGenerator<C, G> {
         let mut generated_nodes = Vec::with_capacity(self.nodes.len());
         for node_index in 0..self.grid.total_size() {
             let model_index = self.get_model_index(node_index);
-            generated_nodes.push(self.rules.model(model_index).clone())
+            generated_nodes.push(*self.rules.model(model_index))
         }
 
         GridData::new(self.grid.clone(), generated_nodes)

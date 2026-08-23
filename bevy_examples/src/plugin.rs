@@ -200,7 +200,7 @@ pub fn setup_examples_ui(mut commands: Commands, view_mode: Res<GenerationViewMo
                 },
                 ..default()
             },
-            BackgroundColor(Color::BLACK.with_alpha(0.6).into()),
+            BackgroundColor(Color::BLACK.with_alpha(0.6)),
             Pickable::IGNORE,
         ))
         .id();

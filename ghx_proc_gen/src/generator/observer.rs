@@ -117,9 +117,6 @@ impl QueuedObserver {
     ///
     /// Returns `Some(`[`GenerationUpdate`]`)` if there was an update to process, else returns `None`.
     pub fn dequeue_one(&mut self) -> Option<GenerationUpdate> {
-        match self.receiver.try_recv() {
-            Ok(update) => Some(update),
-            Err(_) => None,
-        }
+        self.receiver.try_recv().ok()
     }
 }

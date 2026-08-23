@@ -216,7 +216,7 @@ impl<C: CoordinateSystem> Rules<C> {
         let original_models_count = models.models_count();
         let mut model_variations = models.create_variations(rotation_axis);
         // We test the expanded models because a model may have no rotations allowed.
-        if model_variations.len() == 0 || socket_collection.is_empty() {
+        if model_variations.is_empty() || socket_collection.is_empty() {
             return Err(RulesBuilderError::NoModelsOrSockets);
         }
 

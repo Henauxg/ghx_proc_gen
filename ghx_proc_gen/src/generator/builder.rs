@@ -81,6 +81,12 @@ impl<C: CoordinateSystem, G: Grid<C>> GeneratorBuilder<Unset, Unset, C, G> {
     }
 }
 
+impl<C: CoordinateSystem, G: Grid<C>> Default for GeneratorBuilder<Unset, Unset, C, G> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<C: CoordinateSystem, G: Grid<C>> GeneratorBuilder<Unset, Unset, C, G> {
     /// Sets the [`Rules`] to be used by the [`Generator`]
     pub fn with_rules(self, rules: Rules<C>) -> GeneratorBuilder<Unset, Set, C, G> {
@@ -200,17 +206,14 @@ impl<C: CoordinateSystem, R, G: Grid<C>> GeneratorBuilder<Set, R, C, G> {
     ) -> Result<Self, GeneratorBuilderError> {
         let grid = self.grid.as_ref().unwrap();
         if grid.total_size() != data.grid().total_size() {
-            return Err(GeneratorBuilderError::InvalidGridSize(
+            Err(GeneratorBuilderError::InvalidGridSize(
                 data.grid().total_size(),
                 grid.total_size(),
-            ));
+            ))
         } else {
             for (node_index, node) in data.iter().enumerate() {
-                match node {
-                    Some(model_var_index) => {
-                        self.initial_nodes.push((node_index, *model_var_index))
-                    }
-                    None => (),
+                if let Some(model_var_index) = node {
+                    self.initial_nodes.push((node_index, *model_var_index))
                 }
             }
             Ok(self)
@@ -246,17 +249,15 @@ impl<C: CoordinateSystem, G: Grid<C>> GeneratorBuilder<Set, Set, C, G> {
         let grid = self.grid.as_ref().unwrap();
         let rules = self.rules.as_ref().unwrap();
         if grid.total_size() != data.grid().total_size() {
-            return Err(GeneratorBuilderError::InvalidGridSize(
+            Err(GeneratorBuilderError::InvalidGridSize(
                 data.grid().total_size(),
                 grid.total_size(),
-            ));
+            ))
         } else {
             for (node_index, node) in data.iter().enumerate() {
-                match node {
-                    Some(model_ref) => self
-                        .initial_nodes
-                        .push((node_index, model_ref.to_index(rules)?)),
-                    None => (),
+                if let Some(model_ref) = node {
+                    self.initial_nodes
+                        .push((node_index, model_ref.to_index(rules)?))
                 }
             }
             Ok(self)

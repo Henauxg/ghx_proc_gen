@@ -108,12 +108,11 @@ fn main() {
             let mut step = 0;
             let mut done = false;
             while !done {
-                match generator.select_and_propagate() {
-                    Ok(status) => match status {
+                if let Ok(status) = generator.select_and_propagate() {
+                    match status {
                         GenerationStatus::Ongoing => (),
                         GenerationStatus::Done => done = true,
-                    },
-                    Err(_) => (),
+                    }
                 }
                 observer.dequeue_all();
                 println!("Grid at iteration n°{}:", step);
@@ -133,7 +132,7 @@ fn main() {
 
 fn display_grid(
     data_grid: &GridData<Cartesian2D, Option<ModelInstance>, CartesianGrid<Cartesian2D>>,
-    icons: &Vec<&'static str>,
+    icons: &[&'static str],
 ) {
     for y in (0..data_grid.grid().size_y()).rev() {
         for x in 0..data_grid.grid().size_x() {
@@ -149,7 +148,7 @@ fn display_grid(
 fn pause() {
     let mut word = String::new();
     let mut stdout = stdout();
-    stdout.write(b"Press Enter to continue").unwrap();
+    stdout.write_all(b"Press Enter to continue").unwrap();
     stdout.flush().unwrap();
     stdin().read_line(&mut word).unwrap();
 }

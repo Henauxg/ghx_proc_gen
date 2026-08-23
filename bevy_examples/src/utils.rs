@@ -74,9 +74,9 @@ where
                         "{assets_directory}/{}.{extension}",
                         asset_def.path()
                     )),
-                    grid_offset: asset_def.grid_offset.clone(),
+                    grid_offset: asset_def.grid_offset,
                     world_offset: asset_def.offset,
-                    spawn_commands: asset_def.components_spawner.clone(),
+                    spawn_commands: asset_def.components_spawner,
                 },
             )
         }

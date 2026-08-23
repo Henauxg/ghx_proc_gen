@@ -406,6 +406,7 @@ pub fn deselect_from_keybinds(
 }
 
 /// Simple entity collection
+#[derive(Default)]
 pub struct EntityProvider {
     /// Entities in the collection
     pub entities: Vec<Entity>,
@@ -413,14 +414,6 @@ pub struct EntityProvider {
     pub index: usize,
 }
 
-impl Default for EntityProvider {
-    fn default() -> Self {
-        Self {
-            entities: Vec::new(),
-            index: 0,
-        }
-    }
-}
 impl EntityProvider {
     /// Updates the collection with `entities` and clamp the index to the new collection length
     pub fn update(&mut self, entities: Vec<Entity>) {
@@ -630,17 +623,14 @@ pub fn move_selection_from_keybinds<C: CartesianCoordinates>(
                 }
             };
 
-            match update_cursor {
-                Some((grid_entity, node_index, position)) => {
-                    cursor.0 = Some(spawn_marker_and_create_cursor(
-                        &mut commands,
-                        grid_entity,
-                        position,
-                        node_index,
-                        selection_marker_settings.color(),
-                    ));
-                }
-                None => (),
+            if let Some((grid_entity, node_index, position)) = update_cursor {
+                cursor.0 = Some(spawn_marker_and_create_cursor(
+                    &mut commands,
+                    grid_entity,
+                    position,
+                    node_index,
+                    selection_marker_settings.color(),
+                ));
             }
         }
     }
@@ -750,7 +740,7 @@ pub fn update_cursors_overlays(
             continue;
         };
 
-        let text = cursor_info_to_string(&grid_cursor, cursor_info);
+        let text = cursor_info_to_string(grid_cursor, cursor_info);
         commands.entity(overlay_entity).insert((
             // TODO bevy 0.15: Insert background once ?
             BackgroundColor(ui_config.background_color),

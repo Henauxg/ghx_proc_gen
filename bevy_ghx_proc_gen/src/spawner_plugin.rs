@@ -126,7 +126,7 @@ pub fn default_grid_spawner<C: CartesianCoordinates, A: BundleInserter>(
             spawn_node(
                 &mut commands,
                 gen_entity,
-                &generator.grid(),
+                generator.grid(),
                 asset_spawner,
                 model_instance,
                 node_index,
@@ -163,7 +163,7 @@ pub fn default_node_spawner<C: CartesianCoordinates, A: BundleInserter>(
             spawn_node(
                 &mut commands,
                 gen_entity,
-                &generator.grid(),
+                generator.grid(),
                 node_spawner,
                 &node.model_instance,
                 node.node_index,

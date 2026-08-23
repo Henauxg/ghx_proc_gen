@@ -49,7 +49,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // The generation could also be done iteratively via `generator.select_and_propagate()`, or the results could be obtained through an `Observer`
     let (_gen_info, chess_pattern) = generator.generate_grid().unwrap();
 
-    let icons = vec!["◻️ ", "⬛"];
+    let icons = ["◻️ ", "⬛"];
     // We draw from top to bottom
     for y in (0..chess_pattern.grid().size_y()).rev() {
         for x in 0..chess_pattern.grid().size_x() {

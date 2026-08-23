@@ -132,7 +132,7 @@ pub fn draw_edition_panel<C: CartesianCoordinates>(
         .show(contexts.ctx_mut()?, |ui| {
             ui.horizontal_wrapped(|ui| {
                 // TODO A rules models display
-                ui.label(format!("📖 Rules:",));
+                ui.label("📖 Rules:".to_string());
                 ui.colored_label(
                     Color32::WHITE,
                     format!(
@@ -269,7 +269,7 @@ pub fn update_painting_state(
         return;
     }
     if let Some(ev) = node_select_events.read().last() {
-        if let Ok(_) = cursor_targets.get(ev.0) {
+        if cursor_targets.get(ev.0).is_ok() {
             editor_context.painting = true;
         };
     }

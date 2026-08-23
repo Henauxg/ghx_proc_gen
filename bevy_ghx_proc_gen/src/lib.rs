@@ -1,4 +1,8 @@
 #![warn(missing_docs)]
+// Bevy system signatures: `Query` filters nest deeply, and systems take one parameter per
+// accessed piece of world data.
+#![allow(clippy::type_complexity)]
+#![allow(clippy::too_many_arguments)]
 
 //! This library encapsulates (and re-exports) the "ghx_proc_gen" library for 2D & 3D procedural generation with Model synthesis/Wave function Collapse, for a Bevy usage.
 //! Also provide grid utilities to manipulate & debug 2d & 3d grid data with Bevy.

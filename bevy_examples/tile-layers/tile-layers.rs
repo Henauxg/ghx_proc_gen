@@ -58,7 +58,7 @@ const GRID_Z: u32 = 5;
 
 fn setup_scene(mut commands: Commands) {
     // Camera
-    commands.spawn(Camera2d::default());
+    commands.spawn(Camera2d);
 }
 
 fn setup_generator(mut commands: Commands, asset_server: Res<AssetServer>) {

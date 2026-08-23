@@ -257,7 +257,7 @@ pub fn handle_reinitialization_and_continue<C: CartesianCoordinates>(
             return false;
         }
     }
-    return true;
+    true
 }
 
 /// Function used to display some info about a generation that finished,

@@ -108,42 +108,38 @@ impl InternalNodeSelectionHeuristic {
     }
 
     pub(crate) fn reinitialize(&mut self) {
-        match self {
-            InternalNodeSelectionHeuristic::MinimumEntropy {
-                initial_node_entropy_data,
-                node_entropies,
-                models_weight_log_weights: _,
-            } => {
-                // `models_weight_log_weights` does not change. We just reset the nodes
-                for node_entropy in node_entropies {
-                    *node_entropy = *initial_node_entropy_data;
-                }
+        if let InternalNodeSelectionHeuristic::MinimumEntropy {
+            initial_node_entropy_data,
+            node_entropies,
+            models_weight_log_weights: _,
+        } = self
+        {
+            // `models_weight_log_weights` does not change. We just reset the nodes
+            for node_entropy in node_entropies {
+                *node_entropy = *initial_node_entropy_data;
             }
-            _ => (),
         }
     }
 
     pub(crate) fn handle_ban(&mut self, node_index: NodeIndex, model_index: usize, weight: f32) {
-        match self {
-            InternalNodeSelectionHeuristic::MinimumEntropy {
-                initial_node_entropy_data: _,
-                node_entropies,
-                models_weight_log_weights,
-            } => {
-                let node_entropy = &mut node_entropies[node_index];
-                node_entropy.weight_sum -= weight;
-                node_entropy.weight_log_weight_sum -= models_weight_log_weights[model_index];
-                node_entropy.entropy =
-                    entropy(node_entropy.weight_sum, node_entropy.weight_log_weight_sum)
-            }
-            _ => (),
+        if let InternalNodeSelectionHeuristic::MinimumEntropy {
+            initial_node_entropy_data: _,
+            node_entropies,
+            models_weight_log_weights,
+        } = self
+        {
+            let node_entropy = &mut node_entropies[node_index];
+            node_entropy.weight_sum -= weight;
+            node_entropy.weight_log_weight_sum -= models_weight_log_weights[model_index];
+            node_entropy.entropy =
+                entropy(node_entropy.weight_sum, node_entropy.weight_log_weight_sum)
         }
     }
 
     /// Picks a node according to the heuristic
     pub(crate) fn select_node(
         &self,
-        possible_models_counts: &Vec<usize>,
+        possible_models_counts: &[usize],
         rng: &mut StdRng,
     ) -> Option<NodeIndex> {
         match self {
@@ -190,7 +186,7 @@ impl InternalNodeSelectionHeuristic {
                         candidates.push(index);
                     }
                 }
-                if candidates.len() > 0 {
+                if !candidates.is_empty() {
                     picked_node = Some(candidates[rng.gen_range(0..candidates.len())]);
                 }
                 picked_node

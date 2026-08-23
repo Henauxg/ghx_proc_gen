@@ -482,7 +482,7 @@ pub fn spawn_cursor_targets<C: CartesianCoordinates>(
     if let Ok((grid, grid_view)) = grids_with_cam3d.get(selected_node.grid) {
         spawn_cursor_targets_3d(
             commands,
-            &cursor_target_assets,
+            cursor_target_assets,
             axis,
             selected_node,
             grid,
@@ -491,7 +491,7 @@ pub fn spawn_cursor_targets<C: CartesianCoordinates>(
     } else if let Ok((grid, grid_view)) = grids_with_cam2d.get(selected_node.grid) {
         spawn_cursor_targets_2d(
             commands,
-            &cursor_target_assets,
+            cursor_target_assets,
             axis,
             selected_node,
             grid,

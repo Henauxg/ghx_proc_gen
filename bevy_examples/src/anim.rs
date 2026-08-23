@@ -66,7 +66,7 @@ pub fn animate_scale(
 }
 
 pub fn ease_in_cubic(x: f32) -> f32 {
-    return x * x * x;
+    x * x * x
 }
 
 pub fn ease_in_out_cubic(x: f32) -> f32 {

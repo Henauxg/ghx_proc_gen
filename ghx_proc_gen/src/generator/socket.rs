@@ -132,7 +132,7 @@ impl SocketCollection {
             for from_rot in ALL_MODEL_ROTATIONS {
                 let rotated_socket = from.rotated(*from_rot);
                 for to_socket in to_rotated_sockets.iter() {
-                    self.register_connection(&rotated_socket, &to_socket);
+                    self.register_connection(&rotated_socket, to_socket);
                 }
             }
         }
@@ -161,7 +161,7 @@ impl SocketCollection {
     /// and only if the `from` socket is rotated 90° more than the `to` socket, no matter their absolute rotations.
     ///
     /// - There is **no** direction in the relation, adding a connection from`a` to `b` also adds a connection from `b`
-    /// to `a` (here with the opposite relative rotation)
+    ///   to `a` (here with the opposite relative rotation)
     /// - By default (until the connection is explicitly added), a socket is not "compatible" with itself.
     pub fn add_constrained_rotated_connection(
         &mut self,
@@ -175,7 +175,7 @@ impl SocketCollection {
             for from_rotation in relative_rotations.iter_mut() {
                 let from_rotated_socket = from.rotated(*from_rotation);
                 for to_socket in to_rotated_sockets.iter() {
-                    self.register_connection(&from_rotated_socket, &to_socket);
+                    self.register_connection(&from_rotated_socket, to_socket);
                 }
                 *from_rotation = from_rotation.next();
             }
@@ -185,13 +185,10 @@ impl SocketCollection {
 
     fn register_connection_half(&mut self, from: &Socket, to: &Socket) {
         // TODO Decide if we check for existence
-        let connectable_sockets = self.uniques.entry(from.id()).or_insert(HashSet::new());
+        let connectable_sockets = self.uniques.entry(from.id()).or_default();
 
         if connectable_sockets.insert(to.id()) {
-            self.compatibles
-                .entry(from.id())
-                .or_insert(Vec::new())
-                .push(to.id());
+            self.compatibles.entry(from.id()).or_default().push(to.id());
         }
     }
 
@@ -206,6 +203,12 @@ impl SocketCollection {
 
     pub(crate) fn is_empty(&self) -> bool {
         self.incremental_socket_index == 0
+    }
+}
+
+impl Default for SocketCollection {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -236,7 +239,7 @@ impl Socket {
     }
 
     pub(crate) fn rotated(&self, rotation: ModelRotation) -> Socket {
-        let mut rotated_socket = self.clone();
+        let mut rotated_socket = *self;
         rotated_socket.rot = rotated_socket.rot.rotated(rotation);
         rotated_socket
     }
@@ -274,9 +277,9 @@ pub enum SocketsCartesian2D {
     },
 }
 
-impl Into<Vec<Vec<Socket>>> for SocketsCartesian2D {
-    fn into(self) -> Vec<Vec<Socket>> {
-        match self {
+impl From<SocketsCartesian2D> for Vec<Vec<Socket>> {
+    fn from(val: SocketsCartesian2D) -> Self {
+        match val {
             SocketsCartesian2D::Mono(socket) => vec![vec![socket]; 4],
             SocketsCartesian2D::Simple {
                 x_pos,
@@ -304,9 +307,9 @@ impl SocketsCartesian2D {
         ModelTemplate::<Cartesian2D>::new(self)
     }
 }
-impl Into<ModelTemplate<Cartesian2D>> for SocketsCartesian2D {
-    fn into(self) -> ModelTemplate<Cartesian2D> {
-        self.to_template()
+impl From<SocketsCartesian2D> for ModelTemplate<Cartesian2D> {
+    fn from(val: SocketsCartesian2D) -> Self {
+        val.to_template()
     }
 }
 
@@ -346,9 +349,9 @@ pub enum SocketsCartesian3D {
     },
 }
 
-impl Into<Vec<Vec<Socket>>> for SocketsCartesian3D {
-    fn into(self) -> Vec<Vec<Socket>> {
-        match self {
+impl From<SocketsCartesian3D> for Vec<Vec<Socket>> {
+    fn from(val: SocketsCartesian3D) -> Self {
+        match val {
             SocketsCartesian3D::Mono(socket) => vec![vec![socket]; 6],
             SocketsCartesian3D::Simple {
                 x_pos,
@@ -381,9 +384,9 @@ impl Into<Vec<Vec<Socket>>> for SocketsCartesian3D {
     }
 }
 
-impl Into<ModelTemplate<Cartesian3D>> for SocketsCartesian3D {
-    fn into(self) -> ModelTemplate<Cartesian3D> {
-        self.to_template()
+impl From<SocketsCartesian3D> for ModelTemplate<Cartesian3D> {
+    fn from(val: SocketsCartesian3D) -> Self {
+        val.to_template()
     }
 }
 

@@ -48,6 +48,12 @@ impl<C: CartesianCoordinates> ProcGenSimpleRunnerPlugin<C> {
     }
 }
 
+impl<C: CartesianCoordinates> Default for ProcGenSimpleRunnerPlugin<C> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// A group of plugins that combines simple generation and nodes spawning
 #[derive(Default)]
 pub struct ProcGenSimplePlugins<C: CartesianCoordinates, A: BundleInserter> {
@@ -62,17 +68,9 @@ impl<C: CartesianCoordinates, A: BundleInserter> PluginGroup for ProcGenSimplePl
 }
 
 /// Resource used by [`ProcGenSimpleRunnerPlugin`] to track generations that are yet to generate a result
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct PendingGenerations {
     pendings: HashSet<Entity>,
-}
-
-impl Default for PendingGenerations {
-    fn default() -> Self {
-        Self {
-            pendings: Default::default(),
-        }
-    }
 }
 
 /// System used by [`ProcGenSimpleRunnerPlugin`] to track entities with newly added [`Generator`] components

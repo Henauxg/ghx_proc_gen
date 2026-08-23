@@ -231,8 +231,7 @@ pub fn randomize_spawn_scale(
 ) {
     let mut rng = rand::thread_rng();
     for (entity, mut spawning_scale_animation) in altered_transforms.iter_mut() {
-        spawning_scale_animation.final_scale =
-            spawning_scale_animation.final_scale * rng.gen_range(0.7..1.3);
+        spawning_scale_animation.final_scale *= rng.gen_range(0.7..1.3);
         commands.entity(entity).remove::<ScaleRandomizer>();
     }
 }

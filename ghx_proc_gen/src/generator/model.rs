@@ -120,7 +120,7 @@ impl<C: CoordinateSystem> ModelTemplate<C> {
         mut self,
         rotations: R,
     ) -> Self {
-        self.allowed_rotations.extend(rotations.into_iter());
+        self.allowed_rotations.extend(rotations);
         self
     }
     /// Specify that this [`ModelTemplate`] can be rotated in every way.
@@ -227,7 +227,7 @@ impl<C: CoordinateSystem> ModelCollection<C> {
         for model in self.models.iter() {
             // Iterate on a vec of all possible node rotations and filter with the set to have a deterministic insertion order of model variations.
             for rotation in ALL_MODEL_ROTATIONS {
-                if model.template.allowed_rotations.contains(&rotation) {
+                if model.template.allowed_rotations.contains(rotation) {
                     let rotated_sockets = model.template.rotated_sockets(*rotation, rotation_axis);
                     model_variations.push(ModelVariation {
                         sockets: rotated_sockets
@@ -244,6 +244,12 @@ impl<C: CoordinateSystem> ModelCollection<C> {
             }
         }
         model_variations
+    }
+}
+
+impl<C: CoordinateSystem> Default for ModelCollection<C> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -301,9 +307,7 @@ impl<C: CoordinateSystem> Model<C> {
         &mut self,
         rotations: R,
     ) -> &mut Self {
-        self.template
-            .allowed_rotations
-            .extend(rotations.into_iter());
+        self.template.allowed_rotations.extend(rotations);
         self
     }
     /// Specify that this [`Model`] can be rotated in every way.
@@ -363,9 +367,9 @@ impl<C: CoordinateSystem> Model<C> {
         }
     }
 }
-impl<C: CoordinateSystem> Into<ModelTemplate<C>> for Model<C> {
-    fn into(self) -> ModelTemplate<C> {
-        self.template.clone()
+impl<C: CoordinateSystem> From<Model<C>> for ModelTemplate<C> {
+    fn from(val: Model<C>) -> Self {
+        val.template.clone()
     }
 }
 
@@ -523,7 +527,7 @@ impl ModelRotation {
 }
 
 /// All the possible rotations for a [`Model`]
-pub const ALL_MODEL_ROTATIONS: &'static [ModelRotation] = &[
+pub const ALL_MODEL_ROTATIONS: &[ModelRotation] = &[
     ModelRotation::Rot0,
     ModelRotation::Rot90,
     ModelRotation::Rot180,

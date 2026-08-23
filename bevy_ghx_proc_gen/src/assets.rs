@@ -92,3 +92,9 @@ impl<A: BundleInserter> ModelsAssets<A> {
         }
     }
 }
+
+impl<A: BundleInserter> Default for ModelsAssets<A> {
+    fn default() -> Self {
+        Self::new()
+    }
+}

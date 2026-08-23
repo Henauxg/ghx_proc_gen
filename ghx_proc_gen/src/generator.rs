@@ -112,6 +112,8 @@ impl<C: CoordinateSystem, G: Grid<C>> Generator<C, G> {
         GeneratorBuilder::new()
     }
 
+    // The public entry point is `GeneratorBuilder`, which assembles these arguments.
+    #[allow(clippy::too_many_arguments)]
     fn create(
         rules: Arc<Rules<C>>,
         grid: G,
@@ -297,7 +299,7 @@ impl<C: CoordinateSystem, G: Grid<C>> Generator<C, G> {
             return models;
         }
         for model_variant_index in self.internal.possible_model_indexes(node_index) {
-            models.push(self.internal.rules.model(model_variant_index).clone());
+            models.push(*self.internal.rules.model(model_variant_index));
         }
 
         models

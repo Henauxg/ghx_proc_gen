@@ -6,9 +6,15 @@
 
 - Updated `bevy` to 0.19
 - Updated `ghx_grid` to 0.9
+- Fixed all `clippy` warnings
+
+#### ghx-proc-gen
+
+- Added `Default` implementations for `SocketCollection`, `ModelCollection` and `GeneratorBuilder`
 
 #### bevy-ghx-proc-gen
 
+- Added `Default` implementations for `ModelsAssets` and `ProcGenSimpleRunnerPlugin`
 - Updated `bevy_ghx_grid` to 0.9 and `bevy_egui` to 0.42
 - `BundleInserter` is now implemented for `Handle<WorldAsset>` instead of `Handle<Scene>`, following the rename of `bevy_scene` to `bevy_world_serialization` in `bevy` 0.19
 - The `default-bundle-inserters` feature now enables `bevy/bevy_world_serialization` instead of `bevy/bevy_scene`
