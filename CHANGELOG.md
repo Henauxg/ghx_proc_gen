@@ -7,6 +7,10 @@
 - Updated `bevy` to 0.20
 - Updated `ghx_grid` to 0.10
 
+#### ghx-proc-gen
+
+- `with_weight` on `ModelTemplate` and `Model` now takes an `f32` instead of a `W: Into<f32>`. With the generic parameter, a float literal such as `with_weight(0.5)` triggers the `float_literal_f32_fallback` lint, which Rust plans to turn into an error
+
 #### bevy-ghx-proc-gen
 
 - Updated `bevy_ghx_grid` to 0.10 and `bevy_egui` to 0.43

@@ -136,8 +136,8 @@ impl<C: CoordinateSystem> ModelTemplate<C> {
     /// Used by a [`super::Generator`] when using [`super::ModelSelectionHeuristic::WeightedProbability`] and [`super::node_heuristic::NodeSelectionHeuristic::MinimumEntropy`].
     ///
     /// All the variations (rotations) of this [`ModelTemplate`] will use the same weight.
-    pub fn with_weight<W: Into<f32>>(mut self, weight: W) -> Self {
-        let mut checked_weight = weight.into();
+    pub fn with_weight(mut self, weight: f32) -> Self {
+        let mut checked_weight = weight;
         if checked_weight <= 0. {
             #[cfg(feature = "debug-traces")]
             warn!(
@@ -323,8 +323,8 @@ impl<C: CoordinateSystem> Model<C> {
     /// Used by a [`super::Generator`] when using [`super::ModelSelectionHeuristic::WeightedProbability`] and [`super::node_heuristic::NodeSelectionHeuristic::MinimumEntropy`].
     ///
     /// All the variations (rotations) of this [`Model`] will use the same weight.
-    pub fn with_weight<W: Into<f32>>(&mut self, weight: W) -> &mut Self {
-        let mut checked_weight = weight.into();
+    pub fn with_weight(&mut self, weight: f32) -> &mut Self {
+        let mut checked_weight = weight;
         if checked_weight <= 0. {
             #[cfg(feature = "debug-traces")]
             warn!(
