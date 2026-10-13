@@ -115,9 +115,7 @@ impl InternalNodeSelectionHeuristic {
         } = self
         {
             // `models_weight_log_weights` does not change. We just reset the nodes
-            for node_entropy in node_entropies {
-                *node_entropy = *initial_node_entropy_data;
-            }
+            node_entropies.fill(*initial_node_entropy_data);
         }
     }
 
