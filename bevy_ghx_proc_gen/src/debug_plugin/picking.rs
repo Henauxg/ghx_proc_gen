@@ -16,13 +16,15 @@ use bevy::{
     },
     input::{keyboard::KeyCode, ButtonInput},
     light::NotShadowCaster,
-    math::{primitives::Cuboid, Vec2, Vec3},
+    math::{Vec2, Vec3},
     mesh::Mesh,
     pbr::{MeshMaterial3d, StandardMaterial},
-    picking::{events::Press, Pickable},
-    prelude::{
-        Add, AlphaMode, Deref, DerefMut, Mesh3d, Out, Over, Pointer, PointerButton, TextUiWriter,
+    picking::{
+        events::{PointerOut, PointerOver, PointerPress},
+        Pickable,
     },
+    prelude::{Add, AlphaMode, Deref, DerefMut, Mesh3d, PointerButton, TextUiWriter},
+    shape::Cuboid,
     sprite::Sprite,
     transform::components::Transform,
     utils::default,
@@ -181,16 +183,16 @@ impl From<Entity> for NodeSelectedMessage {
 
 /// System that inserts picking event handlers to entites with an added [GridNode] component
 pub fn insert_cursor_picking_handlers_on_grid_nodes<C: CoordinateSystem>(
-    trigger: On<Add, GridNode>,
+    trigger: On<Add<GridNode>>,
     mut commands: Commands,
 ) {
     commands
         .entity(trigger.event().entity)
         .insert(Pickable::default())
-        .observe(retransmit_event::<Pointer<Over>, NodeOverMessage>)
-        .observe(retransmit_event::<Pointer<Out>, NodeOutMessage>)
+        .observe(retransmit_event::<PointerOver, NodeOverMessage>)
+        .observe(retransmit_event::<PointerOut, NodeOutMessage>)
         .observe(
-            |pressed: On<Pointer<Press>>,
+            |pressed: On<PointerPress>,
              mut selection_events: MessageWriter<NodeSelectedMessage>| {
                 if pressed.event().button == PointerButton::Primary {
                     selection_events.write(NodeSelectedMessage(pressed.event().entity));

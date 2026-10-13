@@ -88,7 +88,7 @@ impl<A: BundleInserter> NodesSpawner<A> {
 
 /// Simple observer system that calculates and add a [`VoidNodes`] component for generator entites which don't have one yet.
 pub fn insert_void_nodes_to_new_generations<C: CartesianCoordinates, A: BundleInserter>(
-    new_generator: On<Add, Generator<C, CartesianGrid<C>>>,
+    new_generator: On<Add<Generator<C, CartesianGrid<C>>>>,
     mut commands: Commands,
     mut new_generations: Query<
         (

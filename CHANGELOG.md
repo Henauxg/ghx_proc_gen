@@ -1,5 +1,16 @@
 # Changelog
 
+## Version 0.10.0 (2026-10-13)
+
+###  All crates
+
+- Updated `bevy` to 0.20
+- Updated `ghx_grid` to 0.10
+
+#### bevy-ghx-proc-gen
+
+- Updated `bevy_ghx_grid` to 0.10 and `bevy_egui` to 0.43
+
 ## Version 0.9.0 (2026-08-23)
 
 ###  All crates
